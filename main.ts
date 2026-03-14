@@ -1825,6 +1825,9 @@ class AnkifySettingTab extends PluginSettingTab {
 
     containerEl.createEl("h2", { text: "Ankify 插件设置" });
 
+    // ========== 基础配置 ==========
+    containerEl.createEl("h3", { text: "基础配置" });
+
     // API模型选择
     new Setting(containerEl)
       .setName("AI模型选择")
@@ -1885,11 +1888,8 @@ class AnkifySettingTab extends PluginSettingTab {
             })
         );
     } else if (this.plugin.settings.apiModel === "custom") {
-      // 自定义API设置
-      containerEl.createEl("h3", { text: "自定义API设置" });
-      
       new Setting(containerEl)
-        .setName("API URL")
+        .setName("自定义API URL")
         .setDesc("输入自定义API的完整URL")
         .addText((text) =>
           text
@@ -1900,9 +1900,9 @@ class AnkifySettingTab extends PluginSettingTab {
               await this.plugin.saveSettings();
             })
         );
-        
+
       new Setting(containerEl)
-        .setName("API 密钥")
+        .setName("自定义API 密钥")
         .setDesc("输入自定义API的密钥")
         .addText((text) =>
           text
@@ -1913,9 +1913,9 @@ class AnkifySettingTab extends PluginSettingTab {
               await this.plugin.saveSettings();
             })
         );
-        
+
       new Setting(containerEl)
-        .setName("模型名称")
+        .setName("自定义模型名称")
         .setDesc("输入要使用的模型名称")
         .addText((text) =>
           text
@@ -1926,9 +1926,9 @@ class AnkifySettingTab extends PluginSettingTab {
               await this.plugin.saveSettings();
             })
         );
-        
+
       new Setting(containerEl)
-        .setName("API 版本 (可选)")
+        .setName("自定义API 版本 (可选)")
         .setDesc("如果需要指定API版本，请在此输入")
         .addText((text) =>
           text
@@ -1941,8 +1941,9 @@ class AnkifySettingTab extends PluginSettingTab {
         );
     }
 
+    // 自定义Prompt
     new Setting(containerEl)
-      .setName("自定义Prompt")
+      .setName("文本内容Prompt")
       .setDesc("设置生成Anki卡片的提示词（用于文本内容）")
       .addTextArea(
         (text) =>
@@ -1957,6 +1958,7 @@ class AnkifySettingTab extends PluginSettingTab {
             }).inputEl.style.minHeight = "80px")
       );
 
+    // 图片识别Prompt
     new Setting(containerEl)
       .setName("图片识别Prompt")
       .setDesc("设置识别图片内容并生成Anki卡片的提示词")
@@ -1973,7 +1975,161 @@ class AnkifySettingTab extends PluginSettingTab {
             }).inputEl.style.minHeight = "80px")
       );
 
-    // Debug模式开关
+    // API连通性测试
+    const apiTestSetting = new Setting(containerEl)
+      .setName("API连通性测试")
+      .setDesc("测试当前选择的API是否可以正常连接");
+
+    const apiTestContainer = apiTestSetting.settingEl.createDiv();
+    apiTestContainer.style.display = "flex";
+    apiTestContainer.style.alignItems = "center";
+    apiTestContainer.style.gap = "10px";
+    apiTestContainer.style.marginTop = "10px";
+
+    const apiTestButton = apiTestContainer.createEl("button", {
+      text: "测试API连接",
+    });
+
+    const apiTestStatus = apiTestContainer.createEl("span");
+    apiTestStatus.style.fontSize = "20px";
+
+    const apiTestResult = containerEl.createEl("div");
+    apiTestResult.style.marginTop = "10px";
+    apiTestResult.style.padding = "10px";
+    apiTestResult.style.backgroundColor = "#f5f5f5";
+    apiTestResult.style.border = "1px solid #ddd";
+    apiTestResult.style.borderRadius = "4px";
+    apiTestResult.style.fontFamily = "monospace";
+    apiTestResult.style.fontSize = "12px";
+    apiTestResult.style.display = "none";
+
+    apiTestButton.addEventListener("click", async () => {
+      apiTestButton.disabled = true;
+      apiTestButton.textContent = "测试中...";
+      apiTestStatus.textContent = "";
+      apiTestResult.style.display = "none";
+
+      try {
+        const testResult = await this.plugin.callModelAPI("测试连接");
+        apiTestStatus.textContent = "✅";
+        apiTestStatus.style.color = "green";
+        apiTestResult.textContent = `连接成功！\n\nAPI返回示例:\n${testResult.substring(0, 200)}...`;
+        apiTestResult.style.display = "block";
+        new Notice("API连接测试成功");
+      } catch (error) {
+        apiTestStatus.textContent = "❌";
+        apiTestStatus.style.color = "red";
+        apiTestResult.textContent = `连接失败：\n${error.message}`;
+        apiTestResult.style.display = "block";
+        new Notice("API连接测试失败");
+      } finally {
+        apiTestButton.disabled = false;
+        apiTestButton.textContent = "测试API连接";
+      }
+    });
+
+    // 图片识别测试
+    const visionTestSetting = new Setting(containerEl)
+      .setName("图片识别测试")
+      .setDesc("选择图片文件进行测试");
+
+    const visionTestContainer = visionTestSetting.settingEl.createDiv();
+    visionTestContainer.style.marginTop = "10px";
+
+    // 文件选择器
+    const visionTestFileInput = visionTestContainer.createEl("input", {
+      type: "file",
+      attr: {
+        accept: "image/*"
+      }
+    });
+    visionTestFileInput.style.marginBottom = "10px";
+
+    const visionTestButtonContainer = visionTestContainer.createDiv();
+    visionTestButtonContainer.style.display = "flex";
+    visionTestButtonContainer.style.alignItems = "center";
+    visionTestButtonContainer.style.gap = "10px";
+    visionTestButtonContainer.style.marginTop = "10px";
+
+    const visionTestButton = visionTestButtonContainer.createEl("button", {
+      text: "测试图片识别",
+    });
+
+    const visionTestStatus = visionTestButtonContainer.createEl("span");
+    visionTestStatus.style.fontSize = "20px";
+
+    const visionTestResult = containerEl.createEl("textarea");
+    visionTestResult.placeholder = "识别结果将显示在这里...";
+    visionTestResult.style.width = "100%";
+    visionTestResult.style.minHeight = "150px";
+    visionTestResult.style.marginTop = "10px";
+    visionTestResult.style.padding = "10px";
+    visionTestResult.style.backgroundColor = "#f5f5f5";
+    visionTestResult.style.border = "1px solid #ddd";
+    visionTestResult.style.borderRadius = "4px";
+    visionTestResult.style.fontFamily = "monospace";
+    visionTestResult.style.fontSize = "12px";
+    visionTestResult.style.display = "none";
+    visionTestResult.readOnly = true;
+
+    visionTestButton.addEventListener("click", async () => {
+      const file = visionTestFileInput.files?.[0];
+      if (!file) {
+        new Notice("请先选择图片文件");
+        return;
+      }
+
+      visionTestButton.disabled = true;
+      visionTestButton.textContent = "识别中...";
+      visionTestStatus.textContent = "";
+      visionTestResult.style.display = "none";
+
+      try {
+        console.log('开始读取图片:', file.name, '大小:', file.size);
+        console.log('使用的Prompt:', this.plugin.settings.visionPrompt);
+
+        // 使用FileReader读取文件
+        const reader = new FileReader();
+        const base64Image = await new Promise<string>((resolve, reject) => {
+          reader.onload = () => {
+            const result = reader.result as string;
+            resolve(result);
+          };
+          reader.onerror = () => reject(reader.error);
+          reader.readAsDataURL(file);
+        });
+
+        console.log('Base64转换成功，大小:', Math.round(base64Image.length / 1024), 'KB');
+
+        // 压缩图片
+        const compressedImage = await this.plugin.compressImage(base64Image);
+        console.log('图片压缩完成');
+
+        // 调用图片识别API
+        const result = await this.plugin.callVisionAPI(compressedImage);
+
+        visionTestStatus.textContent = "✅";
+        visionTestStatus.style.color = "green";
+
+        // 显示使用的Prompt和识别结果
+        const resultText = `【使用的Prompt】\n${this.plugin.settings.visionPrompt}\n\n${'='.repeat(50)}\n\n【识别结果】\n${result}`;
+        visionTestResult.textContent = resultText;
+        visionTestResult.style.display = "block";
+        new Notice("图片识别测试成功");
+      } catch (error) {
+        console.error('图片识别测试失败:', error);
+        visionTestStatus.textContent = "❌";
+        visionTestStatus.style.color = "red";
+        visionTestResult.textContent = `识别失败：\n${error.message}`;
+        visionTestResult.style.display = "block";
+        new Notice("图片识别测试失败");
+      } finally {
+        visionTestButton.disabled = false;
+        visionTestButton.textContent = "测试图片识别";
+      }
+    });
+
+    // ========== Debug模式 ==========
     new Setting(containerEl)
       .setName("Debug模式")
       .setDesc("启用后，在卡片选择界面底部显示实际使用的提示词和AI返回结果，用于调试")
@@ -1986,20 +2142,7 @@ class AnkifySettingTab extends PluginSettingTab {
           })
       );
 
-    // 新增设置：是否直接插入文档
-    new Setting(containerEl)
-      .setName("直接插入文档")
-      .setDesc("启用后，生成的Anki卡片将直接插入到文档末尾，而不是显示在弹窗中")
-      .addToggle((toggle) =>
-        toggle
-          .setValue(this.plugin.settings.insertToDocument)
-          .onChange(async (value) => {
-            this.plugin.settings.insertToDocument = value;
-            await this.plugin.saveSettings();
-          })
-      );
-
-    // 图片识别设置
+    // ========== 图片识别设置 ==========
     containerEl.createEl("h3", { text: "图片识别设置" });
 
     new Setting(containerEl)
@@ -2072,6 +2215,18 @@ class AnkifySettingTab extends PluginSettingTab {
           .setValue(this.plugin.settings.defaultNoteType)
           .onChange(async (value) => {
             this.plugin.settings.defaultNoteType = value;
+            await this.plugin.saveSettings();
+          })
+      );
+
+    new Setting(containerEl)
+      .setName("直接插入文档")
+      .setDesc("启用后，生成的Anki卡片将直接插入到文档末尾，而不是显示在弹窗中")
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.insertToDocument)
+          .onChange(async (value) => {
+            this.plugin.settings.insertToDocument = value;
             await this.plugin.saveSettings();
           })
       );

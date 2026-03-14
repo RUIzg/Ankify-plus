@@ -1357,6 +1357,7 @@ var AnkifySettingTab = class extends import_obsidian.PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
     containerEl.createEl("h2", { text: "Ankify \u63D2\u4EF6\u8BBE\u7F6E" });
+    containerEl.createEl("h3", { text: "\u57FA\u7840\u914D\u7F6E" });
     new import_obsidian.Setting(containerEl).setName("AI\u6A21\u578B\u9009\u62E9").setDesc("\u9009\u62E9\u7528\u4E8E\u751F\u6210Anki\u5361\u7247\u7684AI\u6A21\u578B").addDropdown((dropdown) => {
       dropdown.addOption("deepseek", "DeepSeek").addOption("openai", "OpenAI").addOption("claude", "Claude").addOption("custom", "\u81EA\u5B9A\u4E49API").setValue(this.plugin.settings.apiModel).onChange(async (value) => {
         this.plugin.settings.apiModel = value;
@@ -1380,25 +1381,24 @@ var AnkifySettingTab = class extends import_obsidian.PluginSettingTab {
         await this.plugin.saveSettings();
       }));
     } else if (this.plugin.settings.apiModel === "custom") {
-      containerEl.createEl("h3", { text: "\u81EA\u5B9A\u4E49API\u8BBE\u7F6E" });
-      new import_obsidian.Setting(containerEl).setName("API URL").setDesc("\u8F93\u5165\u81EA\u5B9A\u4E49API\u7684\u5B8C\u6574URL").addText((text) => text.setPlaceholder("https://api.example.com/v1/chat/completions").setValue(this.plugin.settings.customApiUrl).onChange(async (value) => {
+      new import_obsidian.Setting(containerEl).setName("\u81EA\u5B9A\u4E49API URL").setDesc("\u8F93\u5165\u81EA\u5B9A\u4E49API\u7684\u5B8C\u6574URL").addText((text) => text.setPlaceholder("https://api.example.com/v1/chat/completions").setValue(this.plugin.settings.customApiUrl).onChange(async (value) => {
         this.plugin.settings.customApiUrl = value;
         await this.plugin.saveSettings();
       }));
-      new import_obsidian.Setting(containerEl).setName("API \u5BC6\u94A5").setDesc("\u8F93\u5165\u81EA\u5B9A\u4E49API\u7684\u5BC6\u94A5").addText((text) => text.setPlaceholder("sk-...").setValue(this.plugin.settings.customApiKey).onChange(async (value) => {
+      new import_obsidian.Setting(containerEl).setName("\u81EA\u5B9A\u4E49API \u5BC6\u94A5").setDesc("\u8F93\u5165\u81EA\u5B9A\u4E49API\u7684\u5BC6\u94A5").addText((text) => text.setPlaceholder("sk-...").setValue(this.plugin.settings.customApiKey).onChange(async (value) => {
         this.plugin.settings.customApiKey = value;
         await this.plugin.saveSettings();
       }));
-      new import_obsidian.Setting(containerEl).setName("\u6A21\u578B\u540D\u79F0").setDesc("\u8F93\u5165\u8981\u4F7F\u7528\u7684\u6A21\u578B\u540D\u79F0").addText((text) => text.setPlaceholder("model-name").setValue(this.plugin.settings.customModelName).onChange(async (value) => {
+      new import_obsidian.Setting(containerEl).setName("\u81EA\u5B9A\u4E49\u6A21\u578B\u540D\u79F0").setDesc("\u8F93\u5165\u8981\u4F7F\u7528\u7684\u6A21\u578B\u540D\u79F0").addText((text) => text.setPlaceholder("model-name").setValue(this.plugin.settings.customModelName).onChange(async (value) => {
         this.plugin.settings.customModelName = value;
         await this.plugin.saveSettings();
       }));
-      new import_obsidian.Setting(containerEl).setName("API \u7248\u672C (\u53EF\u9009)").setDesc("\u5982\u679C\u9700\u8981\u6307\u5B9AAPI\u7248\u672C\uFF0C\u8BF7\u5728\u6B64\u8F93\u5165").addText((text) => text.setPlaceholder("\u4F8B\u5982\uFF1A2023-06-01").setValue(this.plugin.settings.customApiVersion).onChange(async (value) => {
+      new import_obsidian.Setting(containerEl).setName("\u81EA\u5B9A\u4E49API \u7248\u672C (\u53EF\u9009)").setDesc("\u5982\u679C\u9700\u8981\u6307\u5B9AAPI\u7248\u672C\uFF0C\u8BF7\u5728\u6B64\u8F93\u5165").addText((text) => text.setPlaceholder("\u4F8B\u5982\uFF1A2023-06-01").setValue(this.plugin.settings.customApiVersion).onChange(async (value) => {
         this.plugin.settings.customApiVersion = value;
         await this.plugin.saveSettings();
       }));
     }
-    new import_obsidian.Setting(containerEl).setName("\u81EA\u5B9A\u4E49Prompt").setDesc("\u8BBE\u7F6E\u751F\u6210Anki\u5361\u7247\u7684\u63D0\u793A\u8BCD\uFF08\u7528\u4E8E\u6587\u672C\u5185\u5BB9\uFF09").addTextArea((text) => text.setPlaceholder('\u8BF7\u57FA\u4E8E\u4EE5\u4E0B\u5185\u5BB9\u521B\u5EFAAnki\u5361\u7247\uFF0C\u683C\u5F0F\u4E3A"\u95EE\u9898:::\u7B54\u6848"...').setValue(this.plugin.settings.customPrompt).onChange(async (value) => {
+    new import_obsidian.Setting(containerEl).setName("\u6587\u672C\u5185\u5BB9Prompt").setDesc("\u8BBE\u7F6E\u751F\u6210Anki\u5361\u7247\u7684\u63D0\u793A\u8BCD\uFF08\u7528\u4E8E\u6587\u672C\u5185\u5BB9\uFF09").addTextArea((text) => text.setPlaceholder('\u8BF7\u57FA\u4E8E\u4EE5\u4E0B\u5185\u5BB9\u521B\u5EFAAnki\u5361\u7247\uFF0C\u683C\u5F0F\u4E3A"\u95EE\u9898:::\u7B54\u6848"...').setValue(this.plugin.settings.customPrompt).onChange(async (value) => {
       this.plugin.settings.customPrompt = value;
       await this.plugin.saveSettings();
     }).inputEl.style.minHeight = "80px");
@@ -1406,12 +1406,140 @@ var AnkifySettingTab = class extends import_obsidian.PluginSettingTab {
       this.plugin.settings.visionPrompt = value;
       await this.plugin.saveSettings();
     }).inputEl.style.minHeight = "80px");
+    const apiTestSetting = new import_obsidian.Setting(containerEl).setName("API\u8FDE\u901A\u6027\u6D4B\u8BD5").setDesc("\u6D4B\u8BD5\u5F53\u524D\u9009\u62E9\u7684API\u662F\u5426\u53EF\u4EE5\u6B63\u5E38\u8FDE\u63A5");
+    const apiTestContainer = apiTestSetting.settingEl.createDiv();
+    apiTestContainer.style.display = "flex";
+    apiTestContainer.style.alignItems = "center";
+    apiTestContainer.style.gap = "10px";
+    apiTestContainer.style.marginTop = "10px";
+    const apiTestButton = apiTestContainer.createEl("button", {
+      text: "\u6D4B\u8BD5API\u8FDE\u63A5"
+    });
+    const apiTestStatus = apiTestContainer.createEl("span");
+    apiTestStatus.style.fontSize = "20px";
+    const apiTestResult = containerEl.createEl("div");
+    apiTestResult.style.marginTop = "10px";
+    apiTestResult.style.padding = "10px";
+    apiTestResult.style.backgroundColor = "#f5f5f5";
+    apiTestResult.style.border = "1px solid #ddd";
+    apiTestResult.style.borderRadius = "4px";
+    apiTestResult.style.fontFamily = "monospace";
+    apiTestResult.style.fontSize = "12px";
+    apiTestResult.style.display = "none";
+    apiTestButton.addEventListener("click", async () => {
+      apiTestButton.disabled = true;
+      apiTestButton.textContent = "\u6D4B\u8BD5\u4E2D...";
+      apiTestStatus.textContent = "";
+      apiTestResult.style.display = "none";
+      try {
+        const testResult = await this.plugin.callModelAPI("\u6D4B\u8BD5\u8FDE\u63A5");
+        apiTestStatus.textContent = "\u2705";
+        apiTestStatus.style.color = "green";
+        apiTestResult.textContent = `\u8FDE\u63A5\u6210\u529F\uFF01
+
+API\u8FD4\u56DE\u793A\u4F8B:
+${testResult.substring(0, 200)}...`;
+        apiTestResult.style.display = "block";
+        new import_obsidian.Notice("API\u8FDE\u63A5\u6D4B\u8BD5\u6210\u529F");
+      } catch (error) {
+        apiTestStatus.textContent = "\u274C";
+        apiTestStatus.style.color = "red";
+        apiTestResult.textContent = `\u8FDE\u63A5\u5931\u8D25\uFF1A
+${error.message}`;
+        apiTestResult.style.display = "block";
+        new import_obsidian.Notice("API\u8FDE\u63A5\u6D4B\u8BD5\u5931\u8D25");
+      } finally {
+        apiTestButton.disabled = false;
+        apiTestButton.textContent = "\u6D4B\u8BD5API\u8FDE\u63A5";
+      }
+    });
+    const visionTestSetting = new import_obsidian.Setting(containerEl).setName("\u56FE\u7247\u8BC6\u522B\u6D4B\u8BD5").setDesc("\u9009\u62E9\u56FE\u7247\u6587\u4EF6\u8FDB\u884C\u6D4B\u8BD5");
+    const visionTestContainer = visionTestSetting.settingEl.createDiv();
+    visionTestContainer.style.marginTop = "10px";
+    const visionTestFileInput = visionTestContainer.createEl("input", {
+      type: "file",
+      attr: {
+        accept: "image/*"
+      }
+    });
+    visionTestFileInput.style.marginBottom = "10px";
+    const visionTestButtonContainer = visionTestContainer.createDiv();
+    visionTestButtonContainer.style.display = "flex";
+    visionTestButtonContainer.style.alignItems = "center";
+    visionTestButtonContainer.style.gap = "10px";
+    visionTestButtonContainer.style.marginTop = "10px";
+    const visionTestButton = visionTestButtonContainer.createEl("button", {
+      text: "\u6D4B\u8BD5\u56FE\u7247\u8BC6\u522B"
+    });
+    const visionTestStatus = visionTestButtonContainer.createEl("span");
+    visionTestStatus.style.fontSize = "20px";
+    const visionTestResult = containerEl.createEl("textarea");
+    visionTestResult.placeholder = "\u8BC6\u522B\u7ED3\u679C\u5C06\u663E\u793A\u5728\u8FD9\u91CC...";
+    visionTestResult.style.width = "100%";
+    visionTestResult.style.minHeight = "150px";
+    visionTestResult.style.marginTop = "10px";
+    visionTestResult.style.padding = "10px";
+    visionTestResult.style.backgroundColor = "#f5f5f5";
+    visionTestResult.style.border = "1px solid #ddd";
+    visionTestResult.style.borderRadius = "4px";
+    visionTestResult.style.fontFamily = "monospace";
+    visionTestResult.style.fontSize = "12px";
+    visionTestResult.style.display = "none";
+    visionTestResult.readOnly = true;
+    visionTestButton.addEventListener("click", async () => {
+      var _a;
+      const file = (_a = visionTestFileInput.files) == null ? void 0 : _a[0];
+      if (!file) {
+        new import_obsidian.Notice("\u8BF7\u5148\u9009\u62E9\u56FE\u7247\u6587\u4EF6");
+        return;
+      }
+      visionTestButton.disabled = true;
+      visionTestButton.textContent = "\u8BC6\u522B\u4E2D...";
+      visionTestStatus.textContent = "";
+      visionTestResult.style.display = "none";
+      try {
+        console.log("\u5F00\u59CB\u8BFB\u53D6\u56FE\u7247:", file.name, "\u5927\u5C0F:", file.size);
+        console.log("\u4F7F\u7528\u7684Prompt:", this.plugin.settings.visionPrompt);
+        const reader = new FileReader();
+        const base64Image = await new Promise((resolve, reject) => {
+          reader.onload = () => {
+            const result2 = reader.result;
+            resolve(result2);
+          };
+          reader.onerror = () => reject(reader.error);
+          reader.readAsDataURL(file);
+        });
+        console.log("Base64\u8F6C\u6362\u6210\u529F\uFF0C\u5927\u5C0F:", Math.round(base64Image.length / 1024), "KB");
+        const compressedImage = await this.plugin.compressImage(base64Image);
+        console.log("\u56FE\u7247\u538B\u7F29\u5B8C\u6210");
+        const result = await this.plugin.callVisionAPI(compressedImage);
+        visionTestStatus.textContent = "\u2705";
+        visionTestStatus.style.color = "green";
+        const resultText = `\u3010\u4F7F\u7528\u7684Prompt\u3011
+${this.plugin.settings.visionPrompt}
+
+${"=".repeat(50)}
+
+\u3010\u8BC6\u522B\u7ED3\u679C\u3011
+${result}`;
+        visionTestResult.textContent = resultText;
+        visionTestResult.style.display = "block";
+        new import_obsidian.Notice("\u56FE\u7247\u8BC6\u522B\u6D4B\u8BD5\u6210\u529F");
+      } catch (error) {
+        console.error("\u56FE\u7247\u8BC6\u522B\u6D4B\u8BD5\u5931\u8D25:", error);
+        visionTestStatus.textContent = "\u274C";
+        visionTestStatus.style.color = "red";
+        visionTestResult.textContent = `\u8BC6\u522B\u5931\u8D25\uFF1A
+${error.message}`;
+        visionTestResult.style.display = "block";
+        new import_obsidian.Notice("\u56FE\u7247\u8BC6\u522B\u6D4B\u8BD5\u5931\u8D25");
+      } finally {
+        visionTestButton.disabled = false;
+        visionTestButton.textContent = "\u6D4B\u8BD5\u56FE\u7247\u8BC6\u522B";
+      }
+    });
     new import_obsidian.Setting(containerEl).setName("Debug\u6A21\u5F0F").setDesc("\u542F\u7528\u540E\uFF0C\u5728\u5361\u7247\u9009\u62E9\u754C\u9762\u5E95\u90E8\u663E\u793A\u5B9E\u9645\u4F7F\u7528\u7684\u63D0\u793A\u8BCD\u548CAI\u8FD4\u56DE\u7ED3\u679C\uFF0C\u7528\u4E8E\u8C03\u8BD5").addToggle((toggle) => toggle.setValue(this.plugin.settings.debugMode).onChange(async (value) => {
       this.plugin.settings.debugMode = value;
-      await this.plugin.saveSettings();
-    }));
-    new import_obsidian.Setting(containerEl).setName("\u76F4\u63A5\u63D2\u5165\u6587\u6863").setDesc("\u542F\u7528\u540E\uFF0C\u751F\u6210\u7684Anki\u5361\u7247\u5C06\u76F4\u63A5\u63D2\u5165\u5230\u6587\u6863\u672B\u5C3E\uFF0C\u800C\u4E0D\u662F\u663E\u793A\u5728\u5F39\u7A97\u4E2D").addToggle((toggle) => toggle.setValue(this.plugin.settings.insertToDocument).onChange(async (value) => {
-      this.plugin.settings.insertToDocument = value;
       await this.plugin.saveSettings();
     }));
     containerEl.createEl("h3", { text: "\u56FE\u7247\u8BC6\u522B\u8BBE\u7F6E" });
@@ -1440,6 +1568,10 @@ var AnkifySettingTab = class extends import_obsidian.PluginSettingTab {
     }));
     new import_obsidian.Setting(containerEl).setName("\u9ED8\u8BA4\u7B14\u8BB0\u7C7B\u578B").setDesc("\u6DFB\u52A0\u5361\u7247\u65F6\u7684\u9ED8\u8BA4\u7B14\u8BB0\u7C7B\u578B").addText((text) => text.setPlaceholder("Basic").setValue(this.plugin.settings.defaultNoteType).onChange(async (value) => {
       this.plugin.settings.defaultNoteType = value;
+      await this.plugin.saveSettings();
+    }));
+    new import_obsidian.Setting(containerEl).setName("\u76F4\u63A5\u63D2\u5165\u6587\u6863").setDesc("\u542F\u7528\u540E\uFF0C\u751F\u6210\u7684Anki\u5361\u7247\u5C06\u76F4\u63A5\u63D2\u5165\u5230\u6587\u6863\u672B\u5C3E\uFF0C\u800C\u4E0D\u662F\u663E\u793A\u5728\u5F39\u7A97\u4E2D").addToggle((toggle) => toggle.setValue(this.plugin.settings.insertToDocument).onChange(async (value) => {
+      this.plugin.settings.insertToDocument = value;
       await this.plugin.saveSettings();
     }));
   }
