@@ -35,15 +35,18 @@ var import_obsidian = __toModule(require("obsidian"));
 var DEFAULT_SETTINGS = {
   apiModel: "deepseek",
   deepseekApiKey: "",
+  deepseekApiUrl: "https://api.deepseek.com/v1/chat/completions",
   openaiApiKey: "",
   claudeApiKey: "",
+  doubaoApiKey: "",
+  doubaoApiUrl: "https://ark.cn-beijing.volces.com/api/v3/chat/completions",
+  doubaoModelName: "doubao-1-5-vision-pro-32k-250115",
   customApiUrl: "https://api.example.com/v1/chat/completions",
   customApiKey: "",
   customModelName: "custom-model",
   customApiVersion: "",
   customPrompt: '\u8BF7\u57FA\u4E8E\u4EE5\u4E0B\u5185\u5BB9\u521B\u5EFAAnki\u5361\u7247\uFF0C\u683C\u5F0F\u4E3A"\u95EE\u9898:::\u7B54\u6848"\uFF0C\u6BCF\u4E2A\u5361\u7247\u4E00\u884C\u3002\u63D0\u53D6\u5173\u952E\u6982\u5FF5\u548C\u77E5\u8BC6\u70B9\u3002\n\n',
   visionPrompt: '\u8BF7\u8BC6\u522B\u8FD9\u5F20\u56FE\u7247\u4E2D\u7684\u5185\u5BB9\uFF0C\u5E76\u57FA\u4E8E\u56FE\u7247\u5185\u5BB9\u521B\u5EFAAnki\u5361\u7247\uFF0C\u683C\u5F0F\u4E3A"\u95EE\u9898:::\u7B54\u6848"\uFF0C\u6BCF\u4E2A\u5361\u7247\u4E00\u884C\u3002\u63D0\u53D6\u56FE\u7247\u4E2D\u7684\u5173\u952E\u6982\u5FF5\u548C\u77E5\u8BC6\u70B9\u3002',
-  debugMode: false,
   maxImageSize: 1024,
   imageQuality: 0.8,
   insertToDocument: false,
@@ -458,6 +461,8 @@ var AnkifyPlugin = class extends import_obsidian.Plugin {
       apiKey = this.settings.openaiApiKey;
     } else if (model === "claude") {
       apiKey = this.settings.claudeApiKey;
+    } else if (model === "doubao") {
+      apiKey = this.settings.doubaoApiKey;
     } else if (model === "custom") {
       apiKey = this.settings.customApiKey;
       if (!this.settings.customApiUrl) {
@@ -470,7 +475,7 @@ var AnkifyPlugin = class extends import_obsidian.Plugin {
       }
     }
     if (!apiKey) {
-      const modelName = model === "deepseek" ? "DeepSeek" : model === "openai" ? "OpenAI" : model === "claude" ? "Claude" : "\u81EA\u5B9A\u4E49API";
+      const modelName = model === "deepseek" ? "DeepSeek" : model === "openai" ? "OpenAI" : model === "claude" ? "Claude" : model === "doubao" ? "\u8C46\u5305" : "\u81EA\u5B9A\u4E49API";
       new import_obsidian.Notice(`\u8BF7\u5148\u8BBE\u7F6E${modelName}\u5BC6\u94A5`);
       return;
     }
@@ -524,7 +529,7 @@ var AnkifyPlugin = class extends import_obsidian.Plugin {
     new import_obsidian.Notice("Anki\u5361\u7247\u5DF2\u6DFB\u52A0\u5230\u6587\u6863\u672B\u5C3E");
   }
   async callVisionAPI(base64Image) {
-    var _a, _b, _c, _d, _e, _f, _g;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k;
     const model = this.settings.apiModel;
     let apiUrl = "";
     let headers = {
@@ -533,39 +538,58 @@ var AnkifyPlugin = class extends import_obsidian.Plugin {
     let requestBody = {};
     const visionPrompt = this.settings.visionPrompt;
     if (model === "deepseek") {
-      apiUrl = "https://api.deepseek.com/v1/chat/completions";
+      apiUrl = this.settings.deepseekApiUrl || "https://api.deepseek.com/v1/chat/completions";
       headers["Authorization"] = `Bearer ${this.settings.deepseekApiKey}`;
-      const base64Data = base64Image.includes("base64,") ? base64Image.split("base64,")[1] : base64Image;
-      console.log("DeepSeek\u56FE\u7247\u8BC6\u522B - base64\u6570\u636E\u957F\u5EA6:", base64Data.length);
-      console.log("DeepSeek\u56FE\u7247\u8BC6\u522B - base64\u524D100\u5B57\u7B26:", base64Data.substring(0, 100));
-      const contentJson = JSON.stringify([
-        {
-          type: "text",
-          text: visionPrompt
-        },
-        {
-          type: "image",
-          image: {
-            data: base64Data,
-            format: "base64"
-          }
-        }
-      ]);
-      requestBody = {
-        model: "deepseek-chat",
-        messages: [
+      const isV3Api = apiUrl.includes("/v3/");
+      if (isV3Api) {
+        const base64Data = base64Image.includes("base64,") ? base64Image.split("base64,")[1] : base64Image;
+        console.log("DeepSeek V3 API \u56FE\u7247\u8BC6\u522B - base64\u6570\u636E\u957F\u5EA6:", base64Data.length);
+        console.log("DeepSeek V3 API \u56FE\u7247\u8BC6\u522B - base64\u524D100\u5B57\u7B26:", base64Data.substring(0, 100));
+        requestBody = {
+          model_version: "v3.0-pro",
+          prompt: visionPrompt,
+          image_url: `data:image/jpeg;base64,${base64Data}`,
+          temperature: 0.7,
+          response_format: "text"
+        };
+        console.log("DeepSeek V3 API \u8BF7\u6C42\u4F53\uFF08\u4E0D\u542B\u56FE\u7247\u6570\u636E\uFF09:", {
+          model_version: requestBody.model_version,
+          temperature: requestBody.temperature,
+          prompt: requestBody.prompt.substring(0, 100) + "..."
+        });
+      } else {
+        const base64Data = base64Image.includes("base64,") ? base64Image.split("base64,")[1] : base64Image;
+        console.log("DeepSeek V1 API \u56FE\u7247\u8BC6\u522B - base64\u6570\u636E\u957F\u5EA6:", base64Data.length);
+        console.log("DeepSeek V1 API \u56FE\u7247\u8BC6\u522B - base64\u524D100\u5B57\u7B26:", base64Data.substring(0, 100));
+        const contentJson = JSON.stringify([
           {
-            role: "user",
-            content: contentJson
+            type: "text",
+            text: visionPrompt
+          },
+          {
+            type: "image",
+            image: {
+              data: base64Data,
+              format: "base64"
+            }
           }
-        ],
-        temperature: 0.7
-      };
-      console.log("DeepSeek API \u8BF7\u6C42\u4F53\uFF08\u4E0D\u542B\u56FE\u7247\u6570\u636E\uFF09:", {
-        model: requestBody.model,
-        temperature: requestBody.temperature,
-        contentLength: contentJson.length
-      });
+        ]);
+        requestBody = {
+          model: "deepseek-chat",
+          messages: [
+            {
+              role: "user",
+              content: contentJson
+            }
+          ],
+          temperature: 0.7
+        };
+        console.log("DeepSeek V1 API \u8BF7\u6C42\u4F53\uFF08\u4E0D\u542B\u56FE\u7247\u6570\u636E\uFF09:", {
+          model: requestBody.model,
+          temperature: requestBody.temperature,
+          contentLength: contentJson.length
+        });
+      }
     } else if (model === "openai") {
       apiUrl = "https://api.openai.com/v1/chat/completions";
       headers["Authorization"] = `Bearer ${this.settings.openaiApiKey}`;
@@ -649,6 +673,29 @@ var AnkifyPlugin = class extends import_obsidian.Plugin {
         ],
         temperature: 0.7
       };
+    } else if (model === "doubao") {
+      apiUrl = this.settings.doubaoApiUrl;
+      headers["Authorization"] = `Bearer ${this.settings.doubaoApiKey}`;
+      requestBody = {
+        model: this.settings.doubaoModelName,
+        messages: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "image_url",
+                image_url: {
+                  url: base64Image
+                }
+              },
+              {
+                type: "text",
+                text: visionPrompt
+              }
+            ]
+          }
+        ]
+      };
     } else {
       throw new Error("\u4E0D\u652F\u6301\u7684\u6A21\u578B\u7C7B\u578B");
     }
@@ -659,21 +706,48 @@ var AnkifyPlugin = class extends import_obsidian.Plugin {
       body: JSON.stringify(requestBody)
     });
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(((_a = errorData.error) == null ? void 0 : _a.message) || "\u8BF7\u6C42\u5931\u8D25");
+      const errorText = await response.text();
+      console.error("API \u9519\u8BEF\u54CD\u5E94:", errorText);
+      let errorMessage = `\u8BF7\u6C42\u5931\u8D25: HTTP ${response.status}`;
+      try {
+        const errorData = JSON.parse(errorText);
+        errorMessage = ((_a = errorData.error) == null ? void 0 : _a.message) || errorData.message || errorText;
+      } catch (e) {
+        errorMessage = errorText || `HTTP ${response.status} ${response.statusText}`;
+      }
+      throw new Error(errorMessage);
     }
-    const data = await response.json();
+    const responseText = await response.text();
+    if (!responseText || responseText.trim() === "") {
+      throw new Error("API \u8FD4\u56DE\u7A7A\u54CD\u5E94");
+    }
+    console.log("API \u539F\u59CB\u54CD\u5E94:", responseText.substring(0, 500));
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch (e) {
+      console.error("JSON \u89E3\u6790\u5931\u8D25\uFF0C\u539F\u59CB\u54CD\u5E94:", responseText);
+      throw new Error(`API \u8FD4\u56DE\u65E0\u6548 JSON \u683C\u5F0F: ${responseText.substring(0, 200)}`);
+    }
     const endTime = Date.now();
     console.log(`${model.toUpperCase()} Vision API\u54CD\u5E94\u65F6\u95F4: ${endTime - startTime}ms`);
     let result = "";
-    if (model === "deepseek" || model === "openai") {
-      result = ((_c = (_b = data.choices[0]) == null ? void 0 : _b.message) == null ? void 0 : _c.content) || "\u65E0\u6CD5\u8BC6\u522B\u56FE\u7247\u5185\u5BB9";
+    if (model === "deepseek") {
+      if (apiUrl.includes("/v3/")) {
+        result = data.response || data.text || data.content || data.result || data.output || data.generated_text || "\u65E0\u6CD5\u8BC6\u522B\u56FE\u7247\u5185\u5BB9";
+      } else {
+        result = ((_c = (_b = data.choices[0]) == null ? void 0 : _b.message) == null ? void 0 : _c.content) || "\u65E0\u6CD5\u8BC6\u522B\u56FE\u7247\u5185\u5BB9";
+      }
+    } else if (model === "openai") {
+      result = ((_e = (_d = data.choices[0]) == null ? void 0 : _d.message) == null ? void 0 : _e.content) || "\u65E0\u6CD5\u8BC6\u522B\u56FE\u7247\u5185\u5BB9";
     } else if (model === "claude") {
-      result = ((_d = data.content[0]) == null ? void 0 : _d.text) || "\u65E0\u6CD5\u8BC6\u522B\u56FE\u7247\u5185\u5BB9";
+      result = ((_f = data.content[0]) == null ? void 0 : _f.text) || "\u65E0\u6CD5\u8BC6\u522B\u56FE\u7247\u5185\u5BB9";
+    } else if (model === "doubao") {
+      result = ((_h = (_g = data.choices[0]) == null ? void 0 : _g.message) == null ? void 0 : _h.content) || "\u65E0\u6CD5\u8BC6\u522B\u56FE\u7247\u5185\u5BB9";
     } else if (model === "custom") {
-      if (data.choices && ((_f = (_e = data.choices[0]) == null ? void 0 : _e.message) == null ? void 0 : _f.content)) {
+      if (data.choices && ((_j = (_i = data.choices[0]) == null ? void 0 : _i.message) == null ? void 0 : _j.content)) {
         result = data.choices[0].message.content;
-      } else if (data.content && ((_g = data.content[0]) == null ? void 0 : _g.text)) {
+      } else if (data.content && ((_k = data.content[0]) == null ? void 0 : _k.text)) {
         result = data.content[0].text;
       } else if (data.response) {
         result = data.response;
@@ -737,6 +811,18 @@ var AnkifyPlugin = class extends import_obsidian.Plugin {
         max_tokens: 1e3,
         temperature: 0.7
       };
+    } else if (model === "doubao") {
+      apiUrl = this.settings.doubaoApiUrl;
+      headers["Authorization"] = `Bearer ${this.settings.doubaoApiKey}`;
+      requestBody = {
+        model: this.settings.doubaoModelName,
+        messages: [
+          {
+            role: "user",
+            content: prompt
+          }
+        ]
+      };
     } else if (model === "custom") {
       apiUrl = this.settings.customApiUrl;
       headers["Authorization"] = `Bearer ${this.settings.customApiKey}`;
@@ -787,14 +873,33 @@ var AnkifyPlugin = class extends import_obsidian.Plugin {
       body: JSON.stringify(requestBody)
     });
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(((_a = errorData.error) == null ? void 0 : _a.message) || "\u8BF7\u6C42\u5931\u8D25");
+      const errorText = await response.text();
+      console.error("API \u9519\u8BEF\u54CD\u5E94:", errorText);
+      let errorMessage = `\u8BF7\u6C42\u5931\u8D25: HTTP ${response.status}`;
+      try {
+        const errorData = JSON.parse(errorText);
+        errorMessage = ((_a = errorData.error) == null ? void 0 : _a.message) || errorData.message || errorText;
+      } catch (e) {
+        errorMessage = errorText || `HTTP ${response.status} ${response.statusText}`;
+      }
+      throw new Error(errorMessage);
     }
-    const data = await response.json();
+    const responseText = await response.text();
+    if (!responseText || responseText.trim() === "") {
+      throw new Error("API \u8FD4\u56DE\u7A7A\u54CD\u5E94");
+    }
+    console.log("API \u539F\u59CB\u54CD\u5E94:", responseText.substring(0, 500));
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch (e) {
+      console.error("JSON \u89E3\u6790\u5931\u8D25\uFF0C\u539F\u59CB\u54CD\u5E94:", responseText);
+      throw new Error(`API \u8FD4\u56DE\u65E0\u6548 JSON \u683C\u5F0F: ${responseText.substring(0, 200)}`);
+    }
     const endTime = Date.now();
     console.log(`${model.toUpperCase()} API\u54CD\u5E94\u65F6\u95F4: ${endTime - startTime}ms`);
     let result = "";
-    if (model === "deepseek" || model === "openai") {
+    if (model === "deepseek" || model === "openai" || model === "doubao") {
       result = ((_c = (_b = data.choices[0]) == null ? void 0 : _b.message) == null ? void 0 : _c.content) || "\u65E0\u6CD5\u751F\u6210\u5361\u7247\u5185\u5BB9";
     } else if (model === "claude") {
       result = ((_d = data.content[0]) == null ? void 0 : _d.text) || "\u65E0\u6CD5\u751F\u6210\u5361\u7247\u5185\u5BB9";
@@ -847,63 +952,7 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
   async loadContent() {
     const { contentEl } = this;
     contentEl.createEl("h2", { text: "Anki\u5361\u7247\u751F\u6210" });
-    const debugContainer = contentEl.createDiv({ cls: "ankify-debug-info" });
-    debugContainer.createEl("h3", { text: "\u8BF7\u6C42\u4FE1\u606F" });
-    debugContainer.style.marginBottom = "20px";
-    debugContainer.style.padding = "10px";
-    debugContainer.style.backgroundColor = "#f9f9f9";
-    debugContainer.style.border = "1px solid #ddd";
-    debugContainer.style.borderRadius = "4px";
-    let imageInfoEl = null;
-    if (this.imageInfo) {
-      debugContainer.createEl("h4", { text: "\u56FE\u7247\u8DEF\u5F84\u4FE1\u606F:" });
-      imageInfoEl = debugContainer.createEl("pre", {
-        text: this.imageInfo
-      });
-      imageInfoEl.style.fontFamily = "monospace";
-      imageInfoEl.style.fontSize = "12px";
-      imageInfoEl.style.backgroundColor = "#fff";
-      imageInfoEl.style.border = "1px solid #ddd";
-      imageInfoEl.style.padding = "8px";
-      imageInfoEl.style.borderRadius = "4px";
-      imageInfoEl.style.marginBottom = "10px";
-      imageInfoEl.style.whiteSpace = "pre-wrap";
-      imageInfoEl.style.wordBreak = "break-all";
-    }
-    if (this.usedPrompt) {
-      debugContainer.createEl("h4", { text: "\u4F7F\u7528\u7684\u63D0\u793A\u8BCD:" });
-      const promptTextArea = debugContainer.createEl("textarea", {
-        cls: "ankify-debug-prompt",
-        text: this.usedPrompt
-      });
-      promptTextArea.style.width = "100%";
-      promptTextArea.style.minHeight = "80px";
-      promptTextArea.style.fontFamily = "monospace";
-      promptTextArea.style.fontSize = "12px";
-      promptTextArea.style.backgroundColor = "#fff";
-      promptTextArea.style.border = "1px solid #ddd";
-      promptTextArea.style.padding = "8px";
-      promptTextArea.style.borderRadius = "4px";
-      promptTextArea.style.marginBottom = "10px";
-      promptTextArea.readOnly = true;
-    }
-    if (this.selectedContent) {
-      debugContainer.createEl("h4", { text: "\u9009\u4E2D\u7684\u5185\u5BB9:" });
-      const contentTextArea = debugContainer.createEl("textarea", {
-        cls: "ankify-debug-content",
-        text: this.selectedContent
-      });
-      contentTextArea.style.width = "100%";
-      contentTextArea.style.minHeight = "100px";
-      contentTextArea.style.fontFamily = "monospace";
-      contentTextArea.style.fontSize = "12px";
-      contentTextArea.style.backgroundColor = "#fff";
-      contentTextArea.style.border = "1px solid #ddd";
-      contentTextArea.style.padding = "8px";
-      contentTextArea.style.borderRadius = "4px";
-      contentTextArea.style.marginBottom = "10px";
-      contentTextArea.readOnly = true;
-    }
+    this.addRequestInfo(contentEl);
     const loadingContainer = contentEl.createDiv({ cls: "ankify-loading-container" });
     loadingContainer.style.textAlign = "center";
     loadingContainer.style.padding = "20px";
@@ -914,14 +963,15 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
     const loadingText = loadingContainer.createEl("div", { text: "\u6B63\u5728\u751F\u6210Anki\u5361\u7247\uFF0C\u8BF7\u7A0D\u5019..." });
     loadingText.style.fontSize = "14px";
     loadingText.style.color = "#666";
+    let imageInfoEl = null;
     if (this.apiCallFn) {
       try {
         const apiResult = await this.apiCallFn();
         this.rawResult = apiResult.result;
         this.cards = apiResult.cards;
-        if (apiResult.imageInfo && imageInfoEl) {
+        this.selectedCards = this.cards.map(() => true);
+        if (apiResult.imageInfo) {
           this.imageInfo = apiResult.imageInfo;
-          imageInfoEl.textContent = apiResult.imageInfo;
         }
         loadingContainer.remove();
         if (this.insertToDocument) {
@@ -929,22 +979,35 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
           this.close();
           return;
         }
-        await this.renderCards();
+        await this.renderCards(contentEl);
+        const existingRequestInfo = contentEl.querySelector(".ankify-request-info");
+        if (existingRequestInfo) {
+          existingRequestInfo.remove();
+        }
+        this.addRequestInfo(contentEl);
       } catch (error) {
         loadingContainer.remove();
         contentEl.createEl("p", {
           text: `\u751F\u6210\u5931\u8D25: ${error.message}`,
           cls: "ankify-error"
         }).style.color = "red";
-        this.renderDebugInfo(true);
+        const existingRequestInfo = contentEl.querySelector(".ankify-request-info");
+        if (existingRequestInfo) {
+          existingRequestInfo.remove();
+        }
+        this.addRequestInfo(contentEl);
       }
     } else {
       loadingContainer.remove();
-      await this.renderCards();
+      await this.renderCards(contentEl);
+      const existingRequestInfo = contentEl.querySelector(".ankify-request-info");
+      if (existingRequestInfo) {
+        existingRequestInfo.remove();
+      }
+      this.addRequestInfo(contentEl);
     }
   }
-  async renderCards() {
-    const { contentEl } = this;
+  async renderCards(contentEl) {
     if (this.cards.length === 0) {
       contentEl.createEl("p", {
         text: "\u672A\u80FD\u89E3\u6790\u51FA\u6709\u6548\u7684Anki\u5361\u7247\uFF0C\u8BF7\u68C0\u67E5\u751F\u6210\u7ED3\u679C\u683C\u5F0F\u3002"
@@ -976,67 +1039,7 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
         new import_obsidian.Notice("\u5185\u5BB9\u5DF2\u6DFB\u52A0\u5230\u6587\u6863\u672B\u5C3E");
         this.close();
       });
-      const debugContainer = contentEl.createDiv({ cls: "ankify-debug-info" });
-      debugContainer.createEl("h3", { text: "\u8C03\u8BD5\u4FE1\u606F" });
-      debugContainer.style.marginTop = "20px";
-      debugContainer.style.padding = "10px";
-      debugContainer.style.backgroundColor = "#f9f9f9";
-      debugContainer.style.border = "1px solid #ddd";
-      debugContainer.style.borderRadius = "4px";
-      if (this.imageInfo) {
-        debugContainer.createEl("h4", { text: "\u56FE\u7247\u8DEF\u5F84\u4FE1\u606F:" });
-        const imageInfoEl = debugContainer.createEl("pre", {
-          text: this.imageInfo
-        });
-        imageInfoEl.style.fontFamily = "monospace";
-        imageInfoEl.style.fontSize = "12px";
-        imageInfoEl.style.backgroundColor = "#fff";
-        imageInfoEl.style.border = "1px solid #ddd";
-        imageInfoEl.style.padding = "8px";
-        imageInfoEl.style.borderRadius = "4px";
-        imageInfoEl.style.marginBottom = "10px";
-        imageInfoEl.style.whiteSpace = "pre-wrap";
-        imageInfoEl.style.wordBreak = "break-all";
-      }
-      if (this.usedPrompt) {
-        debugContainer.createEl("h4", { text: "\u4F7F\u7528\u7684\u63D0\u793A\u8BCD:" });
-        const promptTextArea = debugContainer.createEl("textarea", {
-          cls: "ankify-debug-prompt",
-          text: this.usedPrompt
-        });
-        promptTextArea.style.width = "100%";
-        promptTextArea.style.minHeight = "80px";
-        promptTextArea.style.fontFamily = "monospace";
-        promptTextArea.style.fontSize = "12px";
-        promptTextArea.style.backgroundColor = "#fff";
-        promptTextArea.style.border = "1px solid #ddd";
-        promptTextArea.style.padding = "8px";
-        promptTextArea.style.borderRadius = "4px";
-        promptTextArea.style.marginBottom = "10px";
-        promptTextArea.readOnly = true;
-      }
-      debugContainer.createEl("h4", { text: "AI\u539F\u59CB\u8FD4\u56DE\u7ED3\u679C:" });
-      const resultTextArea = debugContainer.createEl("textarea", {
-        cls: "ankify-debug-result",
-        text: this.rawResult
-      });
-      resultTextArea.style.width = "100%";
-      resultTextArea.style.minHeight = "150px";
-      resultTextArea.style.fontFamily = "monospace";
-      resultTextArea.style.fontSize = "12px";
-      resultTextArea.style.backgroundColor = "#fff";
-      resultTextArea.style.border = "1px solid #ddd";
-      resultTextArea.style.padding = "8px";
-      resultTextArea.style.borderRadius = "4px";
-      resultTextArea.readOnly = true;
-      const copyDebugButton = debugContainer.createEl("button", {
-        text: "\u590D\u5236\u539F\u59CB\u7ED3\u679C"
-      });
-      copyDebugButton.style.marginTop = "5px";
-      copyDebugButton.addEventListener("click", () => {
-        navigator.clipboard.writeText(this.rawResult);
-        new import_obsidian.Notice("\u5DF2\u590D\u5236\u539F\u59CB\u7ED3\u679C\u5230\u526A\u8D34\u677F");
-      });
+      this.addRequestInfo(contentEl);
       return;
     }
     const ankiSettingsEl = contentEl.createDiv({ cls: "ankify-anki-settings" });
@@ -1233,107 +1236,12 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
       new import_obsidian.Notice("\u5185\u5BB9\u5DF2\u6DFB\u52A0\u5230\u6587\u6863\u672B\u5C3E");
       this.close();
     });
-    if (this.plugin.settings.debugMode || this.cards.length === 0) {
-      const debugContainer = contentEl.createDiv({ cls: "ankify-debug-info" });
-      debugContainer.createEl("h3", { text: "\u8C03\u8BD5\u4FE1\u606F" });
-      debugContainer.style.marginTop = "20px";
-      debugContainer.style.padding = "10px";
-      debugContainer.style.backgroundColor = "#f9f9f9";
-      debugContainer.style.border = "1px solid #ddd";
-      debugContainer.style.borderRadius = "4px";
-      if (this.imageInfo) {
-        debugContainer.createEl("h4", { text: "\u56FE\u7247\u8DEF\u5F84\u4FE1\u606F:" });
-        const imageInfoEl = debugContainer.createEl("pre", {
-          text: this.imageInfo
-        });
-        imageInfoEl.style.fontFamily = "monospace";
-        imageInfoEl.style.fontSize = "12px";
-        imageInfoEl.style.backgroundColor = "#fff";
-        imageInfoEl.style.border = "1px solid #ddd";
-        imageInfoEl.style.padding = "8px";
-        imageInfoEl.style.borderRadius = "4px";
-        imageInfoEl.style.marginBottom = "10px";
-        imageInfoEl.style.whiteSpace = "pre-wrap";
-        imageInfoEl.style.wordBreak = "break-all";
-      }
-      if (this.usedPrompt) {
-        debugContainer.createEl("h4", { text: "\u4F7F\u7528\u7684\u63D0\u793A\u8BCD:" });
-        const promptTextArea = debugContainer.createEl("textarea", {
-          cls: "ankify-debug-prompt",
-          text: this.usedPrompt
-        });
-        promptTextArea.style.width = "100%";
-        promptTextArea.style.minHeight = "80px";
-        promptTextArea.style.fontFamily = "monospace";
-        promptTextArea.style.fontSize = "12px";
-        promptTextArea.style.backgroundColor = "#fff";
-        promptTextArea.style.border = "1px solid #ddd";
-        promptTextArea.style.padding = "8px";
-        promptTextArea.style.borderRadius = "4px";
-        promptTextArea.style.marginBottom = "10px";
-        promptTextArea.readOnly = true;
-      }
-      debugContainer.createEl("h4", { text: "AI\u539F\u59CB\u8FD4\u56DE\u7ED3\u679C:" });
-      const resultTextArea = debugContainer.createEl("textarea", {
-        cls: "ankify-debug-result",
-        text: this.rawResult
-      });
-      resultTextArea.style.width = "100%";
-      resultTextArea.style.minHeight = "150px";
-      resultTextArea.style.fontFamily = "monospace";
-      resultTextArea.style.fontSize = "12px";
-      resultTextArea.style.backgroundColor = "#fff";
-      resultTextArea.style.border = "1px solid #ddd";
-      resultTextArea.style.padding = "8px";
-      resultTextArea.style.borderRadius = "4px";
-      resultTextArea.readOnly = true;
-      const copyDebugButton = debugContainer.createEl("button", {
-        text: "\u590D\u5236\u539F\u59CB\u7ED3\u679C"
-      });
-      copyDebugButton.style.marginTop = "5px";
-      copyDebugButton.addEventListener("click", () => {
-        navigator.clipboard.writeText(this.rawResult);
-        new import_obsidian.Notice("\u5DF2\u590D\u5236\u539F\u59CB\u7ED3\u679C\u5230\u526A\u8D34\u677F");
-      });
-    }
   }
   appendResultToDocument(editor, result) {
     const docContent = editor.getValue();
     const newContent = docContent + "\n\n## Anki\u5361\u7247\n\n" + result;
     editor.setValue(newContent);
     new import_obsidian.Notice("Anki\u5361\u7247\u5DF2\u6DFB\u52A0\u5230\u6587\u6863\u672B\u5C3E");
-  }
-  renderDebugInfo(isError = false) {
-    const { contentEl } = this;
-    const debugContainer = contentEl.createDiv({ cls: "ankify-debug-info" });
-    debugContainer.createEl("h3", { text: isError ? "\u9519\u8BEF\u8C03\u8BD5\u4FE1\u606F" : "AI\u8FD4\u56DE\u7ED3\u679C" });
-    debugContainer.style.marginTop = "20px";
-    debugContainer.style.padding = "10px";
-    debugContainer.style.backgroundColor = "#f9f9f9";
-    debugContainer.style.border = "1px solid #ddd";
-    debugContainer.style.borderRadius = "4px";
-    debugContainer.createEl("h4", { text: "AI\u539F\u59CB\u8FD4\u56DE\u7ED3\u679C:" });
-    const resultTextArea = debugContainer.createEl("textarea", {
-      cls: "ankify-debug-result",
-      text: this.rawResult
-    });
-    resultTextArea.style.width = "100%";
-    resultTextArea.style.minHeight = "150px";
-    resultTextArea.style.fontFamily = "monospace";
-    resultTextArea.style.fontSize = "12px";
-    resultTextArea.style.backgroundColor = "#fff";
-    resultTextArea.style.border = "1px solid #ddd";
-    resultTextArea.style.padding = "8px";
-    resultTextArea.style.borderRadius = "4px";
-    resultTextArea.readOnly = true;
-    const copyDebugButton = debugContainer.createEl("button", {
-      text: "\u590D\u5236\u539F\u59CB\u7ED3\u679C"
-    });
-    copyDebugButton.style.marginTop = "5px";
-    copyDebugButton.addEventListener("click", () => {
-      navigator.clipboard.writeText(this.rawResult);
-      new import_obsidian.Notice("\u5DF2\u590D\u5236\u539F\u59CB\u7ED3\u679C\u5230\u526A\u8D34\u677F");
-    });
   }
   updateCardSelectionDisplay() {
     this.selectedCards.forEach((isSelected, index) => {
@@ -1342,6 +1250,90 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
         checkbox.checked = isSelected;
       }
     });
+  }
+  addRequestInfo(contentEl) {
+    const requestInfoContainer = contentEl.createDiv({ cls: "ankify-request-info" });
+    requestInfoContainer.style.marginTop = "20px";
+    const header = requestInfoContainer.createEl("div");
+    header.style.display = "flex";
+    header.style.justifyContent = "space-between";
+    header.style.alignItems = "center";
+    header.style.cursor = "pointer";
+    header.style.padding = "10px";
+    header.style.backgroundColor = "#f9f9f9";
+    header.style.border = "1px solid #ddd";
+    header.style.borderRadius = "4px";
+    const title = header.createEl("h3", { text: "\u8BF7\u6C42\u4FE1\u606F (\u70B9\u51FB\u5C55\u5F00)" });
+    title.style.margin = "0";
+    title.style.fontSize = "14px";
+    const toggle = header.createEl("span", { text: "\u25BC" });
+    const content = requestInfoContainer.createEl("div");
+    content.style.display = "none";
+    content.style.padding = "10px";
+    content.style.backgroundColor = "#f9f9f9";
+    content.style.border = "1px solid #ddd";
+    content.style.borderTop = "none";
+    content.style.borderRadius = "0 0 4px 4px";
+    header.addEventListener("click", () => {
+      if (content.style.display === "none") {
+        content.style.display = "block";
+        toggle.textContent = "\u25B2";
+        title.textContent = "\u8BF7\u6C42\u4FE1\u606F (\u70B9\u51FB\u6536\u8D77)";
+      } else {
+        content.style.display = "none";
+        toggle.textContent = "\u25BC";
+        title.textContent = "\u8BF7\u6C42\u4FE1\u606F (\u70B9\u51FB\u5C55\u5F00)";
+      }
+    });
+    if (this.imageInfo) {
+      content.createEl("h4", { text: "\u56FE\u7247\u8DEF\u5F84\u4FE1\u606F:" });
+      const imageInfoEl = content.createEl("pre", {
+        text: this.imageInfo
+      });
+      imageInfoEl.style.fontFamily = "monospace";
+      imageInfoEl.style.fontSize = "12px";
+      imageInfoEl.style.backgroundColor = "#fff";
+      imageInfoEl.style.border = "1px solid #ddd";
+      imageInfoEl.style.padding = "8px";
+      imageInfoEl.style.borderRadius = "4px";
+      imageInfoEl.style.marginBottom = "10px";
+      imageInfoEl.style.whiteSpace = "pre-wrap";
+      imageInfoEl.style.wordBreak = "break-all";
+    }
+    if (this.usedPrompt) {
+      content.createEl("h4", { text: "\u4F7F\u7528\u7684\u63D0\u793A\u8BCD:" });
+      const promptTextArea = content.createEl("textarea", {
+        cls: "ankify-debug-prompt",
+        text: this.usedPrompt
+      });
+      promptTextArea.style.width = "100%";
+      promptTextArea.style.minHeight = "80px";
+      promptTextArea.style.fontFamily = "monospace";
+      promptTextArea.style.fontSize = "12px";
+      promptTextArea.style.backgroundColor = "#fff";
+      promptTextArea.style.border = "1px solid #ddd";
+      promptTextArea.style.padding = "8px";
+      promptTextArea.style.borderRadius = "4px";
+      promptTextArea.style.marginBottom = "10px";
+      promptTextArea.readOnly = true;
+    }
+    if (this.selectedContent) {
+      content.createEl("h4", { text: "\u9009\u4E2D\u7684\u5185\u5BB9:" });
+      const contentTextArea = content.createEl("textarea", {
+        cls: "ankify-debug-content",
+        text: this.selectedContent
+      });
+      contentTextArea.style.width = "100%";
+      contentTextArea.style.minHeight = "100px";
+      contentTextArea.style.fontFamily = "monospace";
+      contentTextArea.style.fontSize = "12px";
+      contentTextArea.style.backgroundColor = "#fff";
+      contentTextArea.style.border = "1px solid #ddd";
+      contentTextArea.style.padding = "8px";
+      contentTextArea.style.borderRadius = "4px";
+      contentTextArea.style.marginBottom = "10px";
+      contentTextArea.readOnly = true;
+    }
   }
   onClose() {
     const { contentEl } = this;
@@ -1359,7 +1351,7 @@ var AnkifySettingTab = class extends import_obsidian.PluginSettingTab {
     containerEl.createEl("h2", { text: "Ankify \u63D2\u4EF6\u8BBE\u7F6E" });
     containerEl.createEl("h3", { text: "\u57FA\u7840\u914D\u7F6E" });
     new import_obsidian.Setting(containerEl).setName("AI\u6A21\u578B\u9009\u62E9").setDesc("\u9009\u62E9\u7528\u4E8E\u751F\u6210Anki\u5361\u7247\u7684AI\u6A21\u578B").addDropdown((dropdown) => {
-      dropdown.addOption("deepseek", "DeepSeek").addOption("openai", "OpenAI").addOption("claude", "Claude").addOption("custom", "\u81EA\u5B9A\u4E49API").setValue(this.plugin.settings.apiModel).onChange(async (value) => {
+      dropdown.addOption("deepseek", "DeepSeek").addOption("openai", "OpenAI").addOption("claude", "Claude").addOption("doubao", "\u8C46\u5305 (Doubao)").addOption("custom", "\u81EA\u5B9A\u4E49API").setValue(this.plugin.settings.apiModel).onChange(async (value) => {
         this.plugin.settings.apiModel = value;
         await this.plugin.saveSettings();
         this.display();
@@ -1370,6 +1362,55 @@ var AnkifySettingTab = class extends import_obsidian.PluginSettingTab {
         this.plugin.settings.deepseekApiKey = value;
         await this.plugin.saveSettings();
       }));
+      const deepseekUrlSetting = new import_obsidian.Setting(containerEl).setName("DeepSeek API URL").setDesc("\u9009\u62E9\u6216\u8F93\u5165DeepSeek API\u7684URL\u5730\u5740");
+      const deepseekUrlContainer = deepseekUrlSetting.settingEl.createDiv();
+      deepseekUrlContainer.style.display = "flex";
+      deepseekUrlContainer.style.flexDirection = "column";
+      deepseekUrlContainer.style.gap = "10px";
+      deepseekUrlContainer.style.marginTop = "10px";
+      const urlSelect = deepseekUrlContainer.createEl("select");
+      urlSelect.style.width = "100%";
+      urlSelect.style.padding = "5px";
+      urlSelect.style.marginBottom = "5px";
+      const urlOptions = [
+        { value: "https://api.deepseek.com/v1/chat/completions", label: "DeepSeek \u5B98\u65B9 API (v1)", url: "https://api.deepseek.com/v1/chat/completions" },
+        { value: "https://api.deepseek.com/v3/chat", label: "DeepSeek V3 API", url: "https://api.deepseek.com/v3/chat" },
+        { value: "custom", label: "\u81EA\u5B9A\u4E49 URL", url: "" }
+      ];
+      urlOptions.forEach((option) => {
+        const opt = urlSelect.createEl("option");
+        opt.value = option.value;
+        opt.text = `${option.label} - ${option.url || "\u624B\u52A8\u8F93\u5165"}`;
+        if (this.plugin.settings.deepseekApiUrl === option.value) {
+          opt.selected = true;
+        }
+      });
+      const customUrlInput = deepseekUrlContainer.createEl("input");
+      customUrlInput.type = "text";
+      customUrlInput.placeholder = "\u8F93\u5165\u81EA\u5B9A\u4E49API URL";
+      customUrlInput.style.width = "100%";
+      customUrlInput.style.padding = "5px";
+      customUrlInput.style.display = this.plugin.settings.deepseekApiUrl === "custom" || !urlOptions.some((opt) => opt.value === this.plugin.settings.deepseekApiUrl) ? "block" : "none";
+      if (!urlOptions.some((opt) => opt.value === this.plugin.settings.deepseekApiUrl)) {
+        customUrlInput.value = this.plugin.settings.deepseekApiUrl;
+      }
+      urlSelect.addEventListener("change", async () => {
+        const selectedValue = urlSelect.value;
+        if (selectedValue === "custom") {
+          customUrlInput.style.display = "block";
+          this.plugin.settings.deepseekApiUrl = customUrlInput.value || "";
+        } else {
+          customUrlInput.style.display = "none";
+          this.plugin.settings.deepseekApiUrl = selectedValue;
+        }
+        await this.plugin.saveSettings();
+      });
+      customUrlInput.addEventListener("input", async () => {
+        if (urlSelect.value === "custom") {
+          this.plugin.settings.deepseekApiUrl = customUrlInput.value;
+          await this.plugin.saveSettings();
+        }
+      });
     } else if (this.plugin.settings.apiModel === "openai") {
       new import_obsidian.Setting(containerEl).setName("OpenAI API \u5BC6\u94A5").setDesc("\u8F93\u5165\u60A8\u7684OpenAI API\u5BC6\u94A5").addText((text) => text.setPlaceholder("sk-...").setValue(this.plugin.settings.openaiApiKey).onChange(async (value) => {
         this.plugin.settings.openaiApiKey = value;
@@ -1395,6 +1436,19 @@ var AnkifySettingTab = class extends import_obsidian.PluginSettingTab {
       }));
       new import_obsidian.Setting(containerEl).setName("\u81EA\u5B9A\u4E49API \u7248\u672C (\u53EF\u9009)").setDesc("\u5982\u679C\u9700\u8981\u6307\u5B9AAPI\u7248\u672C\uFF0C\u8BF7\u5728\u6B64\u8F93\u5165").addText((text) => text.setPlaceholder("\u4F8B\u5982\uFF1A2023-06-01").setValue(this.plugin.settings.customApiVersion).onChange(async (value) => {
         this.plugin.settings.customApiVersion = value;
+        await this.plugin.saveSettings();
+      }));
+    } else if (this.plugin.settings.apiModel === "doubao") {
+      new import_obsidian.Setting(containerEl).setName("\u8C46\u5305 API \u5BC6\u94A5").setDesc("\u8F93\u5165\u60A8\u7684\u8C46\u5305 API \u5BC6\u94A5").addText((text) => text.setPlaceholder("\u8F93\u5165\u8C46\u5305 API \u5BC6\u94A5").setValue(this.plugin.settings.doubaoApiKey).onChange(async (value) => {
+        this.plugin.settings.doubaoApiKey = value;
+        await this.plugin.saveSettings();
+      }));
+      new import_obsidian.Setting(containerEl).setName("\u8C46\u5305 API URL").setDesc("\u8F93\u5165\u8C46\u5305 API \u7684 URL \u5730\u5740").addText((text) => text.setPlaceholder("https://ark.cn-beijing.volces.com/api/v3/chat/completions").setValue(this.plugin.settings.doubaoApiUrl).onChange(async (value) => {
+        this.plugin.settings.doubaoApiUrl = value;
+        await this.plugin.saveSettings();
+      }));
+      new import_obsidian.Setting(containerEl).setName("\u8C46\u5305\u6A21\u578B\u540D\u79F0").setDesc("\u8F93\u5165\u8981\u4F7F\u7528\u7684\u8C46\u5305\u6A21\u578B\u540D\u79F0").addText((text) => text.setPlaceholder("doubao-1-5-vision-pro-32k-250115").setValue(this.plugin.settings.doubaoModelName).onChange(async (value) => {
+        this.plugin.settings.doubaoModelName = value;
         await this.plugin.saveSettings();
       }));
     }
@@ -1430,6 +1484,7 @@ var AnkifySettingTab = class extends import_obsidian.PluginSettingTab {
       apiTestButton.disabled = true;
       apiTestButton.textContent = "\u6D4B\u8BD5\u4E2D...";
       apiTestStatus.textContent = "";
+      apiTestResult.textContent = "";
       apiTestResult.style.display = "none";
       try {
         const testResult = await this.plugin.callModelAPI("\u6D4B\u8BD5\u8FDE\u63A5");
@@ -1496,6 +1551,7 @@ ${error.message}`;
       visionTestButton.disabled = true;
       visionTestButton.textContent = "\u8BC6\u522B\u4E2D...";
       visionTestStatus.textContent = "";
+      visionTestResult.textContent = "";
       visionTestResult.style.display = "none";
       try {
         console.log("\u5F00\u59CB\u8BFB\u53D6\u56FE\u7247:", file.name, "\u5927\u5C0F:", file.size);
@@ -1538,10 +1594,6 @@ ${error.message}`;
         visionTestButton.textContent = "\u6D4B\u8BD5\u56FE\u7247\u8BC6\u522B";
       }
     });
-    new import_obsidian.Setting(containerEl).setName("Debug\u6A21\u5F0F").setDesc("\u542F\u7528\u540E\uFF0C\u5728\u5361\u7247\u9009\u62E9\u754C\u9762\u5E95\u90E8\u663E\u793A\u5B9E\u9645\u4F7F\u7528\u7684\u63D0\u793A\u8BCD\u548CAI\u8FD4\u56DE\u7ED3\u679C\uFF0C\u7528\u4E8E\u8C03\u8BD5").addToggle((toggle) => toggle.setValue(this.plugin.settings.debugMode).onChange(async (value) => {
-      this.plugin.settings.debugMode = value;
-      await this.plugin.saveSettings();
-    }));
     containerEl.createEl("h3", { text: "\u56FE\u7247\u8BC6\u522B\u8BBE\u7F6E" });
     new import_obsidian.Setting(containerEl).setName("\u56FE\u7247\u6700\u5927\u5C3A\u5BF8").setDesc("\u56FE\u7247\u8BC6\u522B\u524D\u4F1A\u538B\u7F29\u5230\u6B64\u5C3A\u5BF8\uFF08\u50CF\u7D20\uFF09\uFF0C\u51CF\u5C11token\u6D88\u8017\u3002\u63A8\u8350\uFF1A512-1024").addText((text) => text.setPlaceholder("1024").setValue(String(this.plugin.settings.maxImageSize)).onChange(async (value) => {
       const size = parseInt(value);
@@ -1558,10 +1610,38 @@ ${error.message}`;
       }
     }));
     containerEl.createEl("h3", { text: "Anki Connect \u8BBE\u7F6E" });
-    new import_obsidian.Setting(containerEl).setName("Anki Connect URL").setDesc("Anki Connect API\u7684\u5730\u5740\uFF0C\u9ED8\u8BA4\u4E3A http://127.0.0.1:8765").addText((text) => text.setPlaceholder("http://127.0.0.1:8765").setValue(this.plugin.settings.ankiConnectUrl).onChange(async (value) => {
-      this.plugin.settings.ankiConnectUrl = value;
+    const ankiConnectSetting = new import_obsidian.Setting(containerEl).setName("Anki Connect URL").setDesc("Anki Connect API\u7684\u5730\u5740\uFF0C\u9ED8\u8BA4\u4E3A http://127.0.0.1:8765");
+    const ankiConnectContainer = ankiConnectSetting.settingEl.createDiv();
+    ankiConnectContainer.style.display = "flex";
+    ankiConnectContainer.style.alignItems = "center";
+    ankiConnectContainer.style.gap = "10px";
+    ankiConnectContainer.style.marginTop = "10px";
+    const urlInput = ankiConnectContainer.createEl("input");
+    urlInput.type = "text";
+    urlInput.placeholder = "http://127.0.0.1:8765";
+    urlInput.value = this.plugin.settings.ankiConnectUrl;
+    urlInput.style.flex = "1";
+    urlInput.style.padding = "5px";
+    urlInput.addEventListener("change", async () => {
+      this.plugin.settings.ankiConnectUrl = urlInput.value;
       await this.plugin.saveSettings();
-    }));
+    });
+    const testButton = ankiConnectContainer.createEl("button");
+    testButton.textContent = "\u6D4B\u8BD5\u8FDE\u63A5";
+    testButton.addEventListener("click", async () => {
+      testButton.disabled = true;
+      testButton.textContent = "\u6D4B\u8BD5\u4E2D...";
+      try {
+        const result = await this.plugin.invokeAnkiConnect("version");
+        new import_obsidian.Notice(`Anki Connect \u8FDE\u63A5\u6210\u529F\uFF01\u7248\u672C: ${result}`);
+      } catch (error) {
+        console.error("Anki Connect \u6D4B\u8BD5\u5931\u8D25:", error);
+        new import_obsidian.Notice(`Anki Connect \u8FDE\u63A5\u5931\u8D25: ${error.message}`);
+      } finally {
+        testButton.disabled = false;
+        testButton.textContent = "\u6D4B\u8BD5\u8FDE\u63A5";
+      }
+    });
     new import_obsidian.Setting(containerEl).setName("\u9ED8\u8BA4\u724C\u7EC4").setDesc("\u6DFB\u52A0\u5361\u7247\u65F6\u7684\u9ED8\u8BA4\u724C\u7EC4\u540D\u79F0").addText((text) => text.setPlaceholder("Default").setValue(this.plugin.settings.defaultDeck).onChange(async (value) => {
       this.plugin.settings.defaultDeck = value;
       await this.plugin.saveSettings();

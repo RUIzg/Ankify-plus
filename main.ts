@@ -22,8 +22,12 @@ interface AnkifySettings {
   // API设置
   apiModel: string; // 选择的API模型
   deepseekApiKey: string;
+  deepseekApiUrl: string; // DeepSeek API URL
   openaiApiKey: string;
   claudeApiKey: string;
+  doubaoApiKey: string; // 豆包 API 密钥
+  doubaoApiUrl: string; // 豆包 API URL
+  doubaoModelName: string; // 豆包模型名称
   // 自定义API设置
   customApiUrl: string;
   customApiKey: string;
@@ -32,7 +36,6 @@ interface AnkifySettings {
   // 通用设置
   customPrompt: string;
   visionPrompt: string; // 图片识别提示词
-  debugMode: boolean; // Debug模式
   maxImageSize: number; // 图片最大尺寸（像素）
   imageQuality: number; // 图片压缩质量（0-1）
   insertToDocument: boolean; // 是否直接插入文档而不是弹窗
@@ -45,8 +48,12 @@ const DEFAULT_SETTINGS: AnkifySettings = {
   // API设置
   apiModel: "deepseek", // 默认使用DeepSeek
   deepseekApiKey: "",
+  deepseekApiUrl: "https://api.deepseek.com/v1/chat/completions", // DeepSeek API URL
   openaiApiKey: "",
   claudeApiKey: "",
+  doubaoApiKey: "", // 豆包 API 密钥
+  doubaoApiUrl: "https://ark.cn-beijing.volces.com/api/v3/chat/completions", // 豆包 API URL
+  doubaoModelName: "doubao-1-5-vision-pro-32k-250115", // 豆包默认模型
   // 自定义API设置
   customApiUrl: "https://api.example.com/v1/chat/completions",
   customApiKey: "",
@@ -57,7 +64,6 @@ const DEFAULT_SETTINGS: AnkifySettings = {
     '请基于以下内容创建Anki卡片，格式为"问题:::答案"，每个卡片一行。提取关键概念和知识点。\n\n',
   visionPrompt:
     '请识别这张图片中的内容，并基于图片内容创建Anki卡片，格式为"问题:::答案"，每个卡片一行。提取图片中的关键概念和知识点。',
-  debugMode: false, // 默认关闭Debug模式
   maxImageSize: 1024, // 图片最大尺寸1024px
   imageQuality: 0.8, // 图片质量80%
   insertToDocument: false, // 默认使用弹窗
@@ -658,6 +664,8 @@ export default class AnkifyPlugin extends Plugin {
       apiKey = this.settings.openaiApiKey;
     } else if (model === "claude") {
       apiKey = this.settings.claudeApiKey;
+    } else if (model === "doubao") {
+      apiKey = this.settings.doubaoApiKey;
     } else if (model === "custom") {
       apiKey = this.settings.customApiKey;
       // 检查自定义API URL
@@ -675,7 +683,8 @@ export default class AnkifyPlugin extends Plugin {
     if (!apiKey) {
       const modelName = model === "deepseek" ? "DeepSeek" :
                         model === "openai" ? "OpenAI" :
-                        model === "claude" ? "Claude" : "自定义API";
+                        model === "claude" ? "Claude" :
+                        model === "doubao" ? "豆包" : "自定义API";
       new Notice(`请先设置${modelName}密钥`);
       return;
     }
@@ -780,49 +789,78 @@ export default class AnkifyPlugin extends Plugin {
 
     // 根据选择的模型设置API请求参数
     if (model === "deepseek") {
-      // DeepSeek 的图片识别格式
-      apiUrl = "https://api.deepseek.com/v1/chat/completions";
+      // 使用配置的 DeepSeek API URL
+      apiUrl = this.settings.deepseekApiUrl || "https://api.deepseek.com/v1/chat/completions";
       headers["Authorization"] = `Bearer ${this.settings.deepseekApiKey}`;
 
-      // 提取纯base64数据（移除 data:image/xxx;base64, 前缀）
-      const base64Data = base64Image.includes('base64,')
-        ? base64Image.split('base64,')[1]
-        : base64Image;
+      // 判断是否是 V3 API 格式（URL 包含 /v3/）
+      const isV3Api = apiUrl.includes('/v3/');
 
-      console.log('DeepSeek图片识别 - base64数据长度:', base64Data.length);
-      console.log('DeepSeek图片识别 - base64前100字符:', base64Data.substring(0, 100));
+      if (isV3Api) {
+        // V3 API 格式 - 类似 Python 示例的格式
+        // 提取纯base64数据（移除 data:image/xxx;base64, 前缀）
+        const base64Data = base64Image.includes('base64,')
+          ? base64Image.split('base64,')[1]
+          : base64Image;
 
-      // DeepSeek 需要将 content 序列化为 JSON 字符串
-      const contentJson = JSON.stringify([
-        {
-          type: "text",
-          text: visionPrompt
-        },
-        {
-          type: "image",
-          image: {
-            data: base64Data,
-            format: "base64"
-          }
-        }
-      ]);
+        console.log('DeepSeek V3 API 图片识别 - base64数据长度:', base64Data.length);
+        console.log('DeepSeek V3 API 图片识别 - base64前100字符:', base64Data.substring(0, 100));
 
-      requestBody = {
-        model: "deepseek-chat",
-        messages: [
+        requestBody = {
+          model_version: "v3.0-pro",
+          prompt: visionPrompt,
+          image_url: `data:image/jpeg;base64,${base64Data}`,  // 使用 base64 数据作为图片 URL
+          temperature: 0.7,
+          response_format: "text"
+        };
+
+        console.log('DeepSeek V3 API 请求体（不含图片数据）:', {
+          model_version: requestBody.model_version,
+          temperature: requestBody.temperature,
+          prompt: requestBody.prompt.substring(0, 100) + '...'
+        });
+      } else {
+        // V1 API 格式 - 原有的 OpenAI 兼容格式
+        // 提取纯base64数据（移除 data:image/xxx;base64, 前缀）
+        const base64Data = base64Image.includes('base64,')
+          ? base64Image.split('base64,')[1]
+          : base64Image;
+
+        console.log('DeepSeek V1 API 图片识别 - base64数据长度:', base64Data.length);
+        console.log('DeepSeek V1 API 图片识别 - base64前100字符:', base64Data.substring(0, 100));
+
+        // DeepSeek 需要将 content 序列化为 JSON 字符串
+        const contentJson = JSON.stringify([
           {
-            role: "user",
-            content: contentJson
+            type: "text",
+            text: visionPrompt
+          },
+          {
+            type: "image",
+            image: {
+              data: base64Data,
+              format: "base64"
+            }
           }
-        ],
-        temperature: 0.7,
-      };
+        ]);
 
-      console.log('DeepSeek API 请求体（不含图片数据）:', {
-        model: requestBody.model,
-        temperature: requestBody.temperature,
-        contentLength: contentJson.length
-      });
+        requestBody = {
+          model: "deepseek-chat",
+          messages: [
+            {
+              role: "user",
+              content: contentJson
+            }
+          ],
+          temperature: 0.7,
+        };
+
+        console.log('DeepSeek V1 API 请求体（不含图片数据）:', {
+          model: requestBody.model,
+          temperature: requestBody.temperature,
+          contentLength: contentJson.length
+        });
+      }
     } else if (model === "openai") {
       apiUrl = "https://api.openai.com/v1/chat/completions";
       headers["Authorization"] = `Bearer ${this.settings.openaiApiKey}`;
@@ -912,6 +950,31 @@ export default class AnkifyPlugin extends Plugin {
         ],
         temperature: 0.7,
       };
+    } else if (model === "doubao") {
+      // 豆包 API
+      apiUrl = this.settings.doubaoApiUrl;
+      headers["Authorization"] = `Bearer ${this.settings.doubaoApiKey}`;
+
+      requestBody = {
+        model: this.settings.doubaoModelName,
+        messages: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "image_url",
+                image_url: {
+                  url: base64Image
+                }
+              },
+              {
+                type: "text",
+                text: visionPrompt
+              }
+            ]
+          }
+        ]
+      };
     } else {
       throw new Error("不支持的模型类型");
     }
@@ -925,20 +988,54 @@ export default class AnkifyPlugin extends Plugin {
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error?.message || "请求失败");
+      const errorText = await response.text();
+      console.error("API 错误响应:", errorText);
+      let errorMessage = `请求失败: HTTP ${response.status}`;
+      try {
+        const errorData = JSON.parse(errorText);
+        errorMessage = errorData.error?.message || errorData.message || errorText;
+      } catch (e) {
+        errorMessage = errorText || `HTTP ${response.status} ${response.statusText}`;
+      }
+      throw new Error(errorMessage);
     }
 
-    const data = await response.json();
+    // 获取响应文本并检查是否为空
+    const responseText = await response.text();
+    if (!responseText || responseText.trim() === "") {
+      throw new Error("API 返回空响应");
+    }
+
+    console.log("API 原始响应:", responseText.substring(0, 500));
+
+    // 解析 JSON
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch (e) {
+      console.error("JSON 解析失败，原始响应:", responseText);
+      throw new Error(`API 返回无效 JSON 格式: ${responseText.substring(0, 200)}`);
+    }
     const endTime = Date.now();
     console.log(`${model.toUpperCase()} Vision API响应时间: ${endTime - startTime}ms`);
 
     // 根据不同API响应格式获取结果
     let result = "";
-    if (model === "deepseek" || model === "openai") {
+    if (model === "deepseek") {
+      // 判断是否是 V3 API 响应格式
+      if (apiUrl.includes('/v3/')) {
+        // V3 API 格式
+        result = data.response || data.text || data.content || data.result || data.output || data.generated_text || "无法识别图片内容";
+      } else {
+        // V1 API 格式 (OpenAI 兼容格式)
+        result = data.choices[0]?.message?.content || "无法识别图片内容";
+      }
+    } else if (model === "openai") {
       result = data.choices[0]?.message?.content || "无法识别图片内容";
     } else if (model === "claude") {
       result = data.content[0]?.text || "无法识别图片内容";
+    } else if (model === "doubao") {
+      result = data.choices[0]?.message?.content || "无法识别图片内容";
     } else if (model === "custom") {
       if (data.choices && data.choices[0]?.message?.content) {
         result = data.choices[0].message.content;
@@ -1009,6 +1106,19 @@ export default class AnkifyPlugin extends Plugin {
         max_tokens: 1000,
         temperature: 0.7,
       };
+    } else if (model === "doubao") {
+      // 豆包 API
+      apiUrl = this.settings.doubaoApiUrl;
+      headers["Authorization"] = `Bearer ${this.settings.doubaoApiKey}`;
+      requestBody = {
+        model: this.settings.doubaoModelName,
+        messages: [
+          {
+            role: "user",
+            content: prompt,
+          },
+        ]
+      };
     } else if (model === "custom") {
       // 使用自定义API设置
       apiUrl = this.settings.customApiUrl;
@@ -1068,17 +1178,41 @@ export default class AnkifyPlugin extends Plugin {
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error?.message || "请求失败");
+      const errorText = await response.text();
+      console.error("API 错误响应:", errorText);
+      let errorMessage = `请求失败: HTTP ${response.status}`;
+      try {
+        const errorData = JSON.parse(errorText);
+        errorMessage = errorData.error?.message || errorData.message || errorText;
+      } catch (e) {
+        errorMessage = errorText || `HTTP ${response.status} ${response.statusText}`;
+      }
+      throw new Error(errorMessage);
     }
 
-    const data = await response.json();
+    // 获取响应文本并检查是否为空
+    const responseText = await response.text();
+    if (!responseText || responseText.trim() === "") {
+      throw new Error("API 返回空响应");
+    }
+
+    console.log("API 原始响应:", responseText.substring(0, 500));
+
+    // 解析 JSON
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch (e) {
+      console.error("JSON 解析失败，原始响应:", responseText);
+      throw new Error(`API 返回无效 JSON 格式: ${responseText.substring(0, 200)}`);
+    }
+
     const endTime = Date.now();
     console.log(`${model.toUpperCase()} API响应时间: ${endTime - startTime}ms`);
     
     // 根据不同API响应格式获取结果
     let result = "";
-    if (model === "deepseek" || model === "openai") {
+    if (model === "deepseek" || model === "openai" || model === "doubao") {
       result = data.choices[0]?.message?.content || "无法生成卡片内容";
     } else if (model === "claude") {
       result = data.content[0]?.text || "无法生成卡片内容";
@@ -1174,70 +1308,8 @@ class SelectableCardsModal extends Modal {
     const { contentEl } = this;
     contentEl.createEl("h2", { text: "Anki卡片生成" });
 
-    // 显示调试信息区域（始终显示）
-    const debugContainer = contentEl.createDiv({ cls: "ankify-debug-info" });
-    debugContainer.createEl("h3", { text: "请求信息" });
-    debugContainer.style.marginBottom = "20px";
-    debugContainer.style.padding = "10px";
-    debugContainer.style.backgroundColor = "#f9f9f9";
-    debugContainer.style.border = "1px solid #ddd";
-    debugContainer.style.borderRadius = "4px";
-
-    // 显示图片路径信息（保存元素引用以便后续更新）
-    let imageInfoEl: HTMLPreElement | null = null;
-    if (this.imageInfo) {
-      debugContainer.createEl("h4", { text: "图片路径信息:" });
-      imageInfoEl = debugContainer.createEl("pre", {
-        text: this.imageInfo,
-      });
-      imageInfoEl.style.fontFamily = "monospace";
-      imageInfoEl.style.fontSize = "12px";
-      imageInfoEl.style.backgroundColor = "#fff";
-      imageInfoEl.style.border = "1px solid #ddd";
-      imageInfoEl.style.padding = "8px";
-      imageInfoEl.style.borderRadius = "4px";
-      imageInfoEl.style.marginBottom = "10px";
-      imageInfoEl.style.whiteSpace = "pre-wrap";
-      imageInfoEl.style.wordBreak = "break-all";
-    }
-
-    // 显示提示词
-    if (this.usedPrompt) {
-      debugContainer.createEl("h4", { text: "使用的提示词:" });
-      const promptTextArea = debugContainer.createEl("textarea", {
-        cls: "ankify-debug-prompt",
-        text: this.usedPrompt,
-      });
-      promptTextArea.style.width = "100%";
-      promptTextArea.style.minHeight = "80px";
-      promptTextArea.style.fontFamily = "monospace";
-      promptTextArea.style.fontSize = "12px";
-      promptTextArea.style.backgroundColor = "#fff";
-      promptTextArea.style.border = "1px solid #ddd";
-      promptTextArea.style.padding = "8px";
-      promptTextArea.style.borderRadius = "4px";
-      promptTextArea.style.marginBottom = "10px";
-      promptTextArea.readOnly = true;
-    }
-
-    // 显示选中的内容
-    if (this.selectedContent) {
-      debugContainer.createEl("h4", { text: "选中的内容:" });
-      const contentTextArea = debugContainer.createEl("textarea", {
-        cls: "ankify-debug-content",
-        text: this.selectedContent,
-      });
-      contentTextArea.style.width = "100%";
-      contentTextArea.style.minHeight = "100px";
-      contentTextArea.style.fontFamily = "monospace";
-      contentTextArea.style.fontSize = "12px";
-      contentTextArea.style.backgroundColor = "#fff";
-      contentTextArea.style.border = "1px solid #ddd";
-      contentTextArea.style.padding = "8px";
-      contentTextArea.style.borderRadius = "4px";
-      contentTextArea.style.marginBottom = "10px";
-      contentTextArea.readOnly = true;
-    }
+    // 先添加请求信息面板（默认折叠）
+    this.addRequestInfo(contentEl);
 
     // 创建加载区域
     const loadingContainer = contentEl.createDiv({ cls: "ankify-loading-container" });
@@ -1253,17 +1325,20 @@ class SelectableCardsModal extends Modal {
     loadingText.style.fontSize = "14px";
     loadingText.style.color = "#666";
 
+    // 保存图片信息元素引用
+    let imageInfoEl: HTMLPreElement | null = null;
+
     // 如果有API调用函数，执行它
     if (this.apiCallFn) {
       try {
         const apiResult = await this.apiCallFn();
         this.rawResult = apiResult.result;
         this.cards = apiResult.cards;
+        this.selectedCards = this.cards.map(() => true); // 重新设置为全选
 
         // 如果有更新的图片信息，更新显示
-        if (apiResult.imageInfo && imageInfoEl) {
+        if (apiResult.imageInfo) {
           this.imageInfo = apiResult.imageInfo;
-          imageInfoEl.textContent = apiResult.imageInfo;
         }
 
         // 移除加载区域
@@ -1277,27 +1352,52 @@ class SelectableCardsModal extends Modal {
         }
 
         // 渲染卡片内容
-        await this.renderCards();
+        await this.renderCards(contentEl);
+        
+        // 移除旧的请求信息面板
+        const existingRequestInfo = contentEl.querySelector(".ankify-request-info");
+        if (existingRequestInfo) {
+          existingRequestInfo.remove();
+        }
+        
+        // 在卡片内容之后重新添加请求信息面板
+        this.addRequestInfo(contentEl);
       } catch (error) {
         loadingContainer.remove();
         contentEl.createEl("p", {
           text: `生成失败: ${error.message}`,
           cls: "ankify-error"
         }).style.color = "red";
-
-        // 显示错误调试信息
-        this.renderDebugInfo(true);
+        
+        // 移除旧的请求信息面板
+        const existingRequestInfo = contentEl.querySelector(".ankify-request-info");
+        if (existingRequestInfo) {
+          existingRequestInfo.remove();
+        }
+        
+        // 在错误信息之后添加请求信息面板
+        this.addRequestInfo(contentEl);
       }
     } else {
       // 没有API调用函数，直接渲染已有的卡片
       loadingContainer.remove();
-      await this.renderCards();
+      
+      // 渲染卡片内容
+      await this.renderCards(contentEl);
+      
+      // 移除旧的请求信息面板
+      const existingRequestInfo = contentEl.querySelector(".ankify-request-info");
+      if (existingRequestInfo) {
+        existingRequestInfo.remove();
+      }
+      
+      // 在卡片内容之后添加请求信息面板
+      this.addRequestInfo(contentEl);
     }
   }
 
   // 渲染卡片内容
-  async renderCards() {
-    const { contentEl } = this;
+  async renderCards(contentEl: HTMLElement) {
 
     if (this.cards.length === 0) {
       contentEl.createEl("p", {
@@ -1336,76 +1436,8 @@ class SelectableCardsModal extends Modal {
         this.close();
       });
 
-      // 解析失败时也显示调试信息
-      const debugContainer = contentEl.createDiv({ cls: "ankify-debug-info" });
-      debugContainer.createEl("h3", { text: "调试信息" });
-      debugContainer.style.marginTop = "20px";
-      debugContainer.style.padding = "10px";
-      debugContainer.style.backgroundColor = "#f9f9f9";
-      debugContainer.style.border = "1px solid #ddd";
-      debugContainer.style.borderRadius = "4px";
-
-      // 显示图片路径信息
-      if (this.imageInfo) {
-        debugContainer.createEl("h4", { text: "图片路径信息:" });
-        const imageInfoEl = debugContainer.createEl("pre", {
-          text: this.imageInfo,
-        });
-        imageInfoEl.style.fontFamily = "monospace";
-        imageInfoEl.style.fontSize = "12px";
-        imageInfoEl.style.backgroundColor = "#fff";
-        imageInfoEl.style.border = "1px solid #ddd";
-        imageInfoEl.style.padding = "8px";
-        imageInfoEl.style.borderRadius = "4px";
-        imageInfoEl.style.marginBottom = "10px";
-        imageInfoEl.style.whiteSpace = "pre-wrap";
-        imageInfoEl.style.wordBreak = "break-all";
-      }
-
-      // 显示提示词
-      if (this.usedPrompt) {
-        debugContainer.createEl("h4", { text: "使用的提示词:" });
-        const promptTextArea = debugContainer.createEl("textarea", {
-          cls: "ankify-debug-prompt",
-          text: this.usedPrompt,
-        });
-        promptTextArea.style.width = "100%";
-        promptTextArea.style.minHeight = "80px";
-        promptTextArea.style.fontFamily = "monospace";
-        promptTextArea.style.fontSize = "12px";
-        promptTextArea.style.backgroundColor = "#fff";
-        promptTextArea.style.border = "1px solid #ddd";
-        promptTextArea.style.padding = "8px";
-        promptTextArea.style.borderRadius = "4px";
-        promptTextArea.style.marginBottom = "10px";
-        promptTextArea.readOnly = true;
-      }
-
-      // 显示AI原始返回结果
-      debugContainer.createEl("h4", { text: "AI原始返回结果:" });
-      const resultTextArea = debugContainer.createEl("textarea", {
-        cls: "ankify-debug-result",
-        text: this.rawResult,
-      });
-      resultTextArea.style.width = "100%";
-      resultTextArea.style.minHeight = "150px";
-      resultTextArea.style.fontFamily = "monospace";
-      resultTextArea.style.fontSize = "12px";
-      resultTextArea.style.backgroundColor = "#fff";
-      resultTextArea.style.border = "1px solid #ddd";
-      resultTextArea.style.padding = "8px";
-      resultTextArea.style.borderRadius = "4px";
-      resultTextArea.readOnly = true;
-
-      // 添加复制按钮
-      const copyDebugButton = debugContainer.createEl("button", {
-        text: "复制原始结果",
-      });
-      copyDebugButton.style.marginTop = "5px";
-      copyDebugButton.addEventListener("click", () => {
-        navigator.clipboard.writeText(this.rawResult);
-        new Notice("已复制原始结果到剪贴板");
-      });
+      // 添加请求信息到底部
+      this.addRequestInfo(contentEl);
 
       return;
     }
@@ -1670,79 +1702,6 @@ class SelectableCardsModal extends Modal {
       new Notice("内容已添加到文档末尾");
       this.close();
     });
-
-    // Debug模式 或 解析失败时：显示详细信息
-    if (this.plugin.settings.debugMode || this.cards.length === 0) {
-      const debugContainer = contentEl.createDiv({ cls: "ankify-debug-info" });
-      debugContainer.createEl("h3", { text: "调试信息" });
-      debugContainer.style.marginTop = "20px";
-      debugContainer.style.padding = "10px";
-      debugContainer.style.backgroundColor = "#f9f9f9";
-      debugContainer.style.border = "1px solid #ddd";
-      debugContainer.style.borderRadius = "4px";
-
-      // 显示图片路径信息
-      if (this.imageInfo) {
-        debugContainer.createEl("h4", { text: "图片路径信息:" });
-        const imageInfoEl = debugContainer.createEl("pre", {
-          text: this.imageInfo,
-        });
-        imageInfoEl.style.fontFamily = "monospace";
-        imageInfoEl.style.fontSize = "12px";
-        imageInfoEl.style.backgroundColor = "#fff";
-        imageInfoEl.style.border = "1px solid #ddd";
-        imageInfoEl.style.padding = "8px";
-        imageInfoEl.style.borderRadius = "4px";
-        imageInfoEl.style.marginBottom = "10px";
-        imageInfoEl.style.whiteSpace = "pre-wrap";
-        imageInfoEl.style.wordBreak = "break-all";
-      }
-
-      // 显示提示词
-      if (this.usedPrompt) {
-        debugContainer.createEl("h4", { text: "使用的提示词:" });
-        const promptTextArea = debugContainer.createEl("textarea", {
-          cls: "ankify-debug-prompt",
-          text: this.usedPrompt,
-        });
-        promptTextArea.style.width = "100%";
-        promptTextArea.style.minHeight = "80px";
-        promptTextArea.style.fontFamily = "monospace";
-        promptTextArea.style.fontSize = "12px";
-        promptTextArea.style.backgroundColor = "#fff";
-        promptTextArea.style.border = "1px solid #ddd";
-        promptTextArea.style.padding = "8px";
-        promptTextArea.style.borderRadius = "4px";
-        promptTextArea.style.marginBottom = "10px";
-        promptTextArea.readOnly = true;
-      }
-
-      // 显示AI原始返回结果
-      debugContainer.createEl("h4", { text: "AI原始返回结果:" });
-      const resultTextArea = debugContainer.createEl("textarea", {
-        cls: "ankify-debug-result",
-        text: this.rawResult,
-      });
-      resultTextArea.style.width = "100%";
-      resultTextArea.style.minHeight = "150px";
-      resultTextArea.style.fontFamily = "monospace";
-      resultTextArea.style.fontSize = "12px";
-      resultTextArea.style.backgroundColor = "#fff";
-      resultTextArea.style.border = "1px solid #ddd";
-      resultTextArea.style.padding = "8px";
-      resultTextArea.style.borderRadius = "4px";
-      resultTextArea.readOnly = true;
-
-      // 添加复制按钮
-      const copyDebugButton = debugContainer.createEl("button", {
-        text: "复制原始结果",
-      });
-      copyDebugButton.style.marginTop = "5px";
-      copyDebugButton.addEventListener("click", () => {
-        navigator.clipboard.writeText(this.rawResult);
-        new Notice("已复制原始结果到剪贴板");
-      });
-    }
   }
 
   // 将结果追加到文档末尾
@@ -1751,45 +1710,6 @@ class SelectableCardsModal extends Modal {
     const newContent = docContent + "\n\n## Anki卡片\n\n" + result;
     editor.setValue(newContent);
     new Notice("Anki卡片已添加到文档末尾");
-  }
-
-  // 渲染调试信息
-  renderDebugInfo(isError: boolean = false) {
-    const { contentEl } = this;
-
-    const debugContainer = contentEl.createDiv({ cls: "ankify-debug-info" });
-    debugContainer.createEl("h3", { text: isError ? "错误调试信息" : "AI返回结果" });
-    debugContainer.style.marginTop = "20px";
-    debugContainer.style.padding = "10px";
-    debugContainer.style.backgroundColor = "#f9f9f9";
-    debugContainer.style.border = "1px solid #ddd";
-    debugContainer.style.borderRadius = "4px";
-
-    // 显示AI原始返回结果
-    debugContainer.createEl("h4", { text: "AI原始返回结果:" });
-    const resultTextArea = debugContainer.createEl("textarea", {
-      cls: "ankify-debug-result",
-      text: this.rawResult,
-    });
-    resultTextArea.style.width = "100%";
-    resultTextArea.style.minHeight = "150px";
-    resultTextArea.style.fontFamily = "monospace";
-    resultTextArea.style.fontSize = "12px";
-    resultTextArea.style.backgroundColor = "#fff";
-    resultTextArea.style.border = "1px solid #ddd";
-    resultTextArea.style.padding = "8px";
-    resultTextArea.style.borderRadius = "4px";
-    resultTextArea.readOnly = true;
-
-    // 添加复制按钮
-    const copyDebugButton = debugContainer.createEl("button", {
-      text: "复制原始结果",
-    });
-    copyDebugButton.style.marginTop = "5px";
-    copyDebugButton.addEventListener("click", () => {
-      navigator.clipboard.writeText(this.rawResult);
-      new Notice("已复制原始结果到剪贴板");
-    });
   }
 
   // 更新卡片选择框状态
@@ -1802,6 +1722,107 @@ class SelectableCardsModal extends Modal {
         checkbox.checked = isSelected;
       }
     });
+  }
+
+  // 添加请求信息（默认折叠，放到底部）
+  addRequestInfo(contentEl: HTMLElement) {
+    // 显示请求信息（默认折叠）
+    const requestInfoContainer = contentEl.createDiv({ cls: "ankify-request-info" });
+    requestInfoContainer.style.marginTop = "20px";
+    
+    // 标题和折叠按钮
+    const header = requestInfoContainer.createEl("div");
+    header.style.display = "flex";
+    header.style.justifyContent = "space-between";
+    header.style.alignItems = "center";
+    header.style.cursor = "pointer";
+    header.style.padding = "10px";
+    header.style.backgroundColor = "#f9f9f9";
+    header.style.border = "1px solid #ddd";
+    header.style.borderRadius = "4px";
+    
+    const title = header.createEl("h3", { text: "请求信息 (点击展开)" });
+    title.style.margin = "0";
+    title.style.fontSize = "14px";
+    
+    const toggle = header.createEl("span", { text: "▼" });
+    
+    // 内容区域，默认隐藏
+    const content = requestInfoContainer.createEl("div");
+    content.style.display = "none";
+    content.style.padding = "10px";
+    content.style.backgroundColor = "#f9f9f9";
+    content.style.border = "1px solid #ddd";
+    content.style.borderTop = "none";
+    content.style.borderRadius = "0 0 4px 4px";
+    
+    // 切换折叠状态
+    header.addEventListener("click", () => {
+      if (content.style.display === "none") {
+        content.style.display = "block";
+        toggle.textContent = "▲";
+        title.textContent = "请求信息 (点击收起)";
+      } else {
+        content.style.display = "none";
+        toggle.textContent = "▼";
+        title.textContent = "请求信息 (点击展开)";
+      }
+    });
+
+    // 显示图片路径信息
+    if (this.imageInfo) {
+      content.createEl("h4", { text: "图片路径信息:" });
+      const imageInfoEl = content.createEl("pre", {
+        text: this.imageInfo,
+      });
+      imageInfoEl.style.fontFamily = "monospace";
+      imageInfoEl.style.fontSize = "12px";
+      imageInfoEl.style.backgroundColor = "#fff";
+      imageInfoEl.style.border = "1px solid #ddd";
+      imageInfoEl.style.padding = "8px";
+      imageInfoEl.style.borderRadius = "4px";
+      imageInfoEl.style.marginBottom = "10px";
+      imageInfoEl.style.whiteSpace = "pre-wrap";
+      imageInfoEl.style.wordBreak = "break-all";
+    }
+
+    // 显示提示词
+    if (this.usedPrompt) {
+      content.createEl("h4", { text: "使用的提示词:" });
+      const promptTextArea = content.createEl("textarea", {
+        cls: "ankify-debug-prompt",
+        text: this.usedPrompt,
+      });
+      promptTextArea.style.width = "100%";
+      promptTextArea.style.minHeight = "80px";
+      promptTextArea.style.fontFamily = "monospace";
+      promptTextArea.style.fontSize = "12px";
+      promptTextArea.style.backgroundColor = "#fff";
+      promptTextArea.style.border = "1px solid #ddd";
+      promptTextArea.style.padding = "8px";
+      promptTextArea.style.borderRadius = "4px";
+      promptTextArea.style.marginBottom = "10px";
+      promptTextArea.readOnly = true;
+    }
+
+    // 显示选中的内容
+    if (this.selectedContent) {
+      content.createEl("h4", { text: "选中的内容:" });
+      const contentTextArea = content.createEl("textarea", {
+        cls: "ankify-debug-content",
+        text: this.selectedContent,
+      });
+      contentTextArea.style.width = "100%";
+      contentTextArea.style.minHeight = "100px";
+      contentTextArea.style.fontFamily = "monospace";
+      contentTextArea.style.fontSize = "12px";
+      contentTextArea.style.backgroundColor = "#fff";
+      contentTextArea.style.border = "1px solid #ddd";
+      contentTextArea.style.padding = "8px";
+      contentTextArea.style.borderRadius = "4px";
+      contentTextArea.style.marginBottom = "10px";
+      contentTextArea.readOnly = true;
+    }
   }
 
   onClose() {
@@ -1837,6 +1858,7 @@ class AnkifySettingTab extends PluginSettingTab {
           .addOption("deepseek", "DeepSeek")
           .addOption("openai", "OpenAI")
           .addOption("claude", "Claude")
+          .addOption("doubao", "豆包 (Doubao)")
           .addOption("custom", "自定义API")
           .setValue(this.plugin.settings.apiModel)
           .onChange(async (value) => {
@@ -1861,6 +1883,73 @@ class AnkifySettingTab extends PluginSettingTab {
               await this.plugin.saveSettings();
             })
         );
+
+      // DeepSeek API URL 选择
+      const deepseekUrlSetting = new Setting(containerEl)
+        .setName("DeepSeek API URL")
+        .setDesc("选择或输入DeepSeek API的URL地址");
+
+      const deepseekUrlContainer = deepseekUrlSetting.settingEl.createDiv();
+      deepseekUrlContainer.style.display = "flex";
+      deepseekUrlContainer.style.flexDirection = "column";
+      deepseekUrlContainer.style.gap = "10px";
+      deepseekUrlContainer.style.marginTop = "10px";
+
+      // 下拉选择常用URL
+      const urlSelect = deepseekUrlContainer.createEl("select");
+      urlSelect.style.width = "100%";
+      urlSelect.style.padding = "5px";
+      urlSelect.style.marginBottom = "5px";
+
+      const urlOptions = [
+        { value: "https://api.deepseek.com/v1/chat/completions", label: "DeepSeek 官方 API (v1)", url: "https://api.deepseek.com/v1/chat/completions" },
+        { value: "https://api.deepseek.com/v3/chat", label: "DeepSeek V3 API", url: "https://api.deepseek.com/v3/chat" },
+        { value: "custom", label: "自定义 URL", url: "" }
+      ];
+
+      urlOptions.forEach(option => {
+        const opt = urlSelect.createEl("option");
+        opt.value = option.value;
+        opt.text = `${option.label} - ${option.url || "手动输入"}`;
+        if (this.plugin.settings.deepseekApiUrl === option.value) {
+          opt.selected = true;
+        }
+      });
+
+      // 自定义URL输入框
+      const customUrlInput = deepseekUrlContainer.createEl("input");
+      customUrlInput.type = "text";
+      customUrlInput.placeholder = "输入自定义API URL";
+      customUrlInput.style.width = "100%";
+      customUrlInput.style.padding = "5px";
+      customUrlInput.style.display = this.plugin.settings.deepseekApiUrl === "custom" || 
+        !urlOptions.some(opt => opt.value === this.plugin.settings.deepseekApiUrl) ? "block" : "none";
+      
+      if (!urlOptions.some(opt => opt.value === this.plugin.settings.deepseekApiUrl)) {
+        customUrlInput.value = this.plugin.settings.deepseekApiUrl;
+      }
+
+      // 下拉选择事件
+      urlSelect.addEventListener("change", async () => {
+        const selectedValue = urlSelect.value;
+        if (selectedValue === "custom") {
+          customUrlInput.style.display = "block";
+          this.plugin.settings.deepseekApiUrl = customUrlInput.value || "";
+        } else {
+          customUrlInput.style.display = "none";
+          this.plugin.settings.deepseekApiUrl = selectedValue;
+        }
+        await this.plugin.saveSettings();
+      });
+
+      // 自定义URL输入事件
+      customUrlInput.addEventListener("input", async () => {
+        if (urlSelect.value === "custom") {
+          this.plugin.settings.deepseekApiUrl = customUrlInput.value;
+          await this.plugin.saveSettings();
+        }
+      });
+
     } else if (this.plugin.settings.apiModel === "openai") {
       new Setting(containerEl)
         .setName("OpenAI API 密钥")
@@ -1939,6 +2028,45 @@ class AnkifySettingTab extends PluginSettingTab {
               await this.plugin.saveSettings();
             })
         );
+    } else if (this.plugin.settings.apiModel === "doubao") {
+      new Setting(containerEl)
+        .setName("豆包 API 密钥")
+        .setDesc("输入您的豆包 API 密钥")
+        .addText((text) =>
+          text
+            .setPlaceholder("输入豆包 API 密钥")
+            .setValue(this.plugin.settings.doubaoApiKey)
+            .onChange(async (value) => {
+              this.plugin.settings.doubaoApiKey = value;
+              await this.plugin.saveSettings();
+            })
+        );
+
+      new Setting(containerEl)
+        .setName("豆包 API URL")
+        .setDesc("输入豆包 API 的 URL 地址")
+        .addText((text) =>
+          text
+            .setPlaceholder("https://ark.cn-beijing.volces.com/api/v3/chat/completions")
+            .setValue(this.plugin.settings.doubaoApiUrl)
+            .onChange(async (value) => {
+              this.plugin.settings.doubaoApiUrl = value;
+              await this.plugin.saveSettings();
+            })
+        );
+
+      new Setting(containerEl)
+        .setName("豆包模型名称")
+        .setDesc("输入要使用的豆包模型名称")
+        .addText((text) =>
+          text
+            .setPlaceholder("doubao-1-5-vision-pro-32k-250115")
+            .setValue(this.plugin.settings.doubaoModelName)
+            .onChange(async (value) => {
+              this.plugin.settings.doubaoModelName = value;
+              await this.plugin.saveSettings();
+            })
+        );
     }
 
     // 自定义Prompt
@@ -2007,6 +2135,7 @@ class AnkifySettingTab extends PluginSettingTab {
       apiTestButton.disabled = true;
       apiTestButton.textContent = "测试中...";
       apiTestStatus.textContent = "";
+      apiTestResult.textContent = "";
       apiTestResult.style.display = "none";
 
       try {
@@ -2082,6 +2211,7 @@ class AnkifySettingTab extends PluginSettingTab {
       visionTestButton.disabled = true;
       visionTestButton.textContent = "识别中...";
       visionTestStatus.textContent = "";
+      visionTestResult.textContent = "";
       visionTestResult.style.display = "none";
 
       try {
@@ -2130,18 +2260,6 @@ class AnkifySettingTab extends PluginSettingTab {
     });
 
     // ========== Debug模式 ==========
-    new Setting(containerEl)
-      .setName("Debug模式")
-      .setDesc("启用后，在卡片选择界面底部显示实际使用的提示词和AI返回结果，用于调试")
-      .addToggle((toggle) =>
-        toggle
-          .setValue(this.plugin.settings.debugMode)
-          .onChange(async (value) => {
-            this.plugin.settings.debugMode = value;
-            await this.plugin.saveSettings();
-          })
-      );
-
     // ========== 图片识别设置 ==========
     containerEl.createEl("h3", { text: "图片识别设置" });
 
@@ -2180,18 +2298,47 @@ class AnkifySettingTab extends PluginSettingTab {
     // Anki Connect 相关设置
     containerEl.createEl("h3", { text: "Anki Connect 设置" });
 
-    new Setting(containerEl)
+    // Anki Connect URL 设置和测试
+    const ankiConnectSetting = new Setting(containerEl)
       .setName("Anki Connect URL")
-      .setDesc("Anki Connect API的地址，默认为 http://127.0.0.1:8765")
-      .addText((text) =>
-        text
-          .setPlaceholder("http://127.0.0.1:8765")
-          .setValue(this.plugin.settings.ankiConnectUrl)
-          .onChange(async (value) => {
-            this.plugin.settings.ankiConnectUrl = value;
-            await this.plugin.saveSettings();
-          })
-      );
+      .setDesc("Anki Connect API的地址，默认为 http://127.0.0.1:8765");
+
+    const ankiConnectContainer = ankiConnectSetting.settingEl.createDiv();
+    ankiConnectContainer.style.display = "flex";
+    ankiConnectContainer.style.alignItems = "center";
+    ankiConnectContainer.style.gap = "10px";
+    ankiConnectContainer.style.marginTop = "10px";
+
+    // URL 输入框
+    const urlInput = ankiConnectContainer.createEl("input");
+    urlInput.type = "text";
+    urlInput.placeholder = "http://127.0.0.1:8765";
+    urlInput.value = this.plugin.settings.ankiConnectUrl;
+    urlInput.style.flex = "1";
+    urlInput.style.padding = "5px";
+    urlInput.addEventListener("change", async () => {
+      this.plugin.settings.ankiConnectUrl = urlInput.value;
+      await this.plugin.saveSettings();
+    });
+
+    // 测试按钮
+    const testButton = ankiConnectContainer.createEl("button");
+    testButton.textContent = "测试连接";
+    testButton.addEventListener("click", async () => {
+      testButton.disabled = true;
+      testButton.textContent = "测试中...";
+      
+      try {
+        const result = await this.plugin.invokeAnkiConnect("version");
+        new Notice(`Anki Connect 连接成功！版本: ${result}`);
+      } catch (error) {
+        console.error("Anki Connect 测试失败:", error);
+        new Notice(`Anki Connect 连接失败: ${error.message}`);
+      } finally {
+        testButton.disabled = false;
+        testButton.textContent = "测试连接";
+      }
+    });
 
     new Setting(containerEl)
       .setName("默认牌组")
