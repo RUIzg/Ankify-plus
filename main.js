@@ -335,8 +335,9 @@ var AnkifyPlugin = class extends import_obsidian.Plugin {
         } else {
           throw new Error(`\u65E0\u6CD5\u786E\u5B9ACloze\u7B14\u8BB0\u7C7B\u578B\u7684\u5B57\u6BB5`);
         }
+        const clozeContent = card.question ? `${card.question}<br>${card.answer}` : card.answer;
         fields = {
-          [mainFieldName]: card.answer
+          [mainFieldName]: clozeContent
         };
         if (extraFieldName && card.annotation) {
           fields[extraFieldName] = card.annotation;
@@ -377,8 +378,10 @@ var AnkifyPlugin = class extends import_obsidian.Plugin {
 <span style="color: rgb(143, 53, 8);">${card.annotation}</span>` : "")
           };
         } else if (modelFieldNames.length === 1) {
+          const clozeContent = card.question ? `${card.question}
+${card.answer}` : card.answer;
           fields = {
-            [modelFieldNames[0]]: card.answer + (card.annotation ? `
+            [modelFieldNames[0]]: clozeContent + (card.annotation ? `
 <hr>
 <span style="color: rgb(143, 53, 8);">${card.annotation}</span>` : "")
           };
@@ -1237,6 +1240,7 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
     selectAllCheckbox.addEventListener("change", () => {
       this.selectedCards = this.selectedCards.map(() => selectAllCheckbox.checked);
       this.updateCardSelectionDisplay();
+      updateSelectionCount();
     });
     const cardsListEl = cardsContainer.createDiv({ cls: "ankify-cards-list" });
     const availableNoteTypes = noteTypes.length > 0 ? noteTypes : [
@@ -1245,6 +1249,17 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
       "Cloze",
       "Basic (optional reversed card)"
     ];
+    const selectionCountEl = selectAllContainer.createEl("span", {
+      text: ` (\u5DF2\u9009\u62E9 ${this.selectedCards.filter(Boolean).length}/${this.selectedCards.length})`,
+      cls: "ankify-selection-count"
+    });
+    selectionCountEl.style.marginLeft = "10px";
+    selectionCountEl.style.color = "var(--text-muted)";
+    const updateSelectionCount = () => {
+      const selectedCount = this.selectedCards.filter(Boolean).length;
+      const totalCount = this.selectedCards.length;
+      selectionCountEl.textContent = ` (\u5DF2\u9009\u62E9 ${selectedCount}/${totalCount})`;
+    };
     this.cards.forEach((card, index) => {
       const cardEl = cardsListEl.createDiv({ cls: "ankify-card" });
       const checkboxContainer = cardEl.createDiv({
@@ -1257,10 +1272,11 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
       checkbox.checked = this.selectedCards[index];
       checkbox.addEventListener("change", () => {
         this.selectedCards[index] = checkbox.checked;
+        updateSelectionCount();
       });
       const cardContent = cardEl.createDiv({ cls: "ankify-card-content" });
       const questionEl = cardContent.createDiv({ cls: "ankify-card-question" });
-      questionEl.createEl("strong", { text: "\u95EE\u9898: " });
+      questionEl.createEl("strong", { text: `\u95EE\u9898${index + 1}: ` });
       const questionInput = questionEl.createEl("input", {
         cls: "ankify-card-input",
         type: "text",
@@ -1270,7 +1286,7 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
         this.cards[index].question = questionInput.value;
       });
       const answerEl = cardContent.createDiv({ cls: "ankify-card-answer" });
-      answerEl.createEl("strong", { text: "\u7B54\u6848: " });
+      answerEl.createEl("strong", { text: `\u7B54\u6848${index + 1}: ` });
       const answerInput = answerEl.createEl("input", {
         cls: "ankify-card-input",
         type: "text",

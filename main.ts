@@ -481,8 +481,10 @@ export default class AnkifyPlugin extends Plugin {
           }
           
           // 构建字段
+          // 对于Cloze类型，将问题和答案合并写入到主要字段
+          const clozeContent = card.question ? `${card.question}<br><br>${card.answer}` : card.answer;
           fields = {
-            [mainFieldName]: card.answer,
+            [mainFieldName]: clozeContent,
           };
           
           // 如果有额外字段且有注释，将注释放到额外字段
@@ -543,8 +545,10 @@ export default class AnkifyPlugin extends Plugin {
             };
           } else if (modelFieldNames.length === 1) {
             // 只有一个字段的情况，通常是Cloze类型
+            // 对于Cloze类型，将问题和答案合并写入到单个字段
+            const clozeContent = card.question ? `${card.question}\n${card.answer}` : card.answer;
             fields = {
-              [modelFieldNames[0]]: card.answer +
+              [modelFieldNames[0]]: clozeContent +
                 (card.annotation
                   ? `\n<hr>\n<span style="color: rgb(143, 53, 8);">${card.annotation}</span>`
                   : ""),
@@ -1690,6 +1694,7 @@ class SelectableCardsModal extends Modal {
         () => selectAllCheckbox.checked
       );
       this.updateCardSelectionDisplay();
+      updateSelectionCount();
     });
 
     // 卡片列表
@@ -1702,6 +1707,21 @@ class SelectableCardsModal extends Modal {
       "Cloze",
       "Basic (optional reversed card)",
     ];
+
+    // 添加选择数量显示
+    const selectionCountEl = selectAllContainer.createEl("span", {
+      text: ` (已选择 ${this.selectedCards.filter(Boolean).length}/${this.selectedCards.length})`,
+      cls: "ankify-selection-count",
+    });
+    selectionCountEl.style.marginLeft = "10px";
+    selectionCountEl.style.color = "var(--text-muted)";
+
+    // 更新选择数量
+    const updateSelectionCount = () => {
+      const selectedCount = this.selectedCards.filter(Boolean).length;
+      const totalCount = this.selectedCards.length;
+      selectionCountEl.textContent = ` (已选择 ${selectedCount}/${totalCount})`;
+    };
 
     this.cards.forEach((card, index) => {
       const cardEl = cardsListEl.createDiv({ cls: "ankify-card" });
@@ -1718,6 +1738,7 @@ class SelectableCardsModal extends Modal {
 
       checkbox.addEventListener("change", () => {
         this.selectedCards[index] = checkbox.checked;
+        updateSelectionCount();
       });
 
       // 卡片内容展示
@@ -1725,7 +1746,7 @@ class SelectableCardsModal extends Modal {
 
       // 问题编辑
       const questionEl = cardContent.createDiv({ cls: "ankify-card-question" });
-      questionEl.createEl("strong", { text: "问题: " });
+      questionEl.createEl("strong", { text: `问题${index + 1}: ` });
       const questionInput = questionEl.createEl("input", {
         cls: "ankify-card-input",
         type: "text",
@@ -1737,7 +1758,7 @@ class SelectableCardsModal extends Modal {
 
       // 答案编辑
       const answerEl = cardContent.createDiv({ cls: "ankify-card-answer" });
-      answerEl.createEl("strong", { text: "答案: " });
+      answerEl.createEl("strong", { text: `答案${index + 1}: ` });
       const answerInput = answerEl.createEl("input", {
         cls: "ankify-card-input",
         type: "text",
