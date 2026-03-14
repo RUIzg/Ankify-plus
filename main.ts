@@ -15,6 +15,8 @@ interface AnkiCard {
   answer: string;
   annotation?: string;
   tags?: string[];
+  noteType: string; // 卡片的笔记类型
+  originalAnswer: string; // 原始答案（用于切换回填空类型时还原）
 }
 
 // 默认设置
@@ -74,6 +76,7 @@ const DEFAULT_SETTINGS: AnkifySettings = {
 
 export default class AnkifyPlugin extends Plugin {
   settings: AnkifySettings;
+  noteTypeFields: Record<string, string[]> = {}; // 存储笔记类型的字段信息
 
   async onload() {
     await this.loadSettings();
@@ -193,30 +196,44 @@ export default class AnkifyPlugin extends Plugin {
           .split("\n")
           .map((line) => line.trim())
           .filter((line) => line);
-        const card: AnkiCard = { question: "", answer: "" };
+        const card: AnkiCard = { 
+          question: "", 
+          answer: "",
+          noteType: this.settings.defaultNoteType, // 默认使用设置中的笔记类型
+          originalAnswer: "", // 初始化原始答案为空
+          tags: [] // 初始化标签为空数组
+        };
 
         for (const line of lines) {
           if (line.startsWith("Q:") || line.startsWith("问:") || line.startsWith("问：")) {
             card.question = line.substring(2).trim();
           } else if (line.startsWith("A:") || line.startsWith("答:") || line.startsWith("答：")) {
             card.answer = line.substring(2).trim();
+            card.originalAnswer = card.answer; // 保存原始答案
+            
+            // 检测是否包含填空格式
+            if (this.containsClozeFormat(card.answer)) {
+              card.noteType = "Cloze"; // 如果包含填空格式，默认使用Cloze类型
+            }
           } else if (line.startsWith("annotation:") || line.startsWith("注释:") || line.startsWith("注释：")) {
             card.annotation = line.substring(line.indexOf(':') + 1).trim();
           } else if (line.startsWith("tags:") || line.startsWith("标签:") || line.startsWith("标签：")) {
             const tagsText = line.substring(line.indexOf(':') + 1).trim();
-            // 处理标签
+            // 处理标签 - 追加到现有标签数组
             if (tagsText.includes("#")) {
               // 带#格式：#tag1 #tag2
-              card.tags = tagsText
+              const newTags = tagsText
                 .split("#")
                 .map((tag) => tag.trim())
                 .filter((tag) => tag.length > 0);
+              card.tags = [...card.tags, ...newTags];
             } else {
               // 不带#格式
-              card.tags = tagsText
+              const newTags = tagsText
                 .split(/[\s,]+/)
                 .map((tag) => tag.trim())
                 .filter((tag) => tag.length > 0);
+              card.tags = [...card.tags, ...newTags];
             }
           }
         }
@@ -261,28 +278,38 @@ export default class AnkifyPlugin extends Plugin {
             const card: AnkiCard = {
               question: parts[0].trim(),
               answer: parts[1].trim(),
+              noteType: this.settings.defaultNoteType, // 默认使用设置中的笔记类型
+              originalAnswer: parts[1].trim(), // 保存原始答案
+              tags: [] // 初始化标签为空数组
             };
+
+            // 检测是否包含填空格式
+            if (this.containsClozeFormat(card.answer)) {
+              card.noteType = "Cloze"; // 如果包含填空格式，默认使用Cloze类型
+            }
 
             if (parts.length >= 3 && parts[2].trim()) {
               card.annotation = parts[2].trim();
             }
 
             if (parts.length >= 4 && parts[3].trim()) {
-              // 处理标签 - 支持带#和不带#的格式
+              // 处理标签 - 支持带#和不带#的格式，追加到现有标签数组
               const tagsText = parts[3].trim();
               if (tagsText) {
                 if (tagsText.includes("#")) {
                   // 带#格式：#tag1 #tag2
                   const tagParts = tagsText.split("#");
-                  card.tags = tagParts
+                  const newTags = tagParts
                     .map((tag) => tag.trim())
                     .filter((tag) => tag.length > 0);
+                  card.tags = [...card.tags, ...newTags];
                 } else {
                   // 不带#格式，假设用空格或逗号分隔
-                  card.tags = tagsText
+                  const newTags = tagsText
                     .split(/[\s,]+/)
                     .map((tag) => tag.trim())
                     .filter((tag) => tag.length > 0);
+                  card.tags = [...card.tags, ...newTags];
                 }
               }
             }
@@ -301,7 +328,15 @@ export default class AnkifyPlugin extends Plugin {
             const card: AnkiCard = {
               question: qaMatch[1]?.trim() || "",
               answer: qaMatch[2]?.trim() || "",
+              noteType: this.settings.defaultNoteType, // 默认使用设置中的笔记类型
+              originalAnswer: qaMatch[2]?.trim() || "", // 保存原始答案
+              tags: [] // 初始化标签为空数组
             };
+
+            // 检测是否包含填空格式
+            if (this.containsClozeFormat(card.answer)) {
+              card.noteType = "Cloze"; // 如果包含填空格式，默认使用Cloze类型
+            }
 
             // 查找注释
             const annotationMatch = line.match(
@@ -314,11 +349,12 @@ export default class AnkifyPlugin extends Plugin {
             // 查找标签
             const tagsMatch = line.match(/(?:tags:|标签[:：])\s*(.*?)$/i);
             if (tagsMatch && tagsMatch[1]) {
-              // 解析标签，格式为 #tag1 #tag2
-              card.tags = tagsMatch[1]
+              // 解析标签，格式为 #tag1 #tag2，追加到现有标签数组
+              const newTags = tagsMatch[1]
                 .split("#")
                 .map((tag) => tag.trim())
                 .filter((tag) => tag.length > 0);
+              card.tags = [...card.tags, ...newTags];
             }
 
             cards.push(card);
@@ -326,10 +362,21 @@ export default class AnkifyPlugin extends Plugin {
             // 尝试匹配问题:::答案格式
             const splitLine = line.split(":::");
             if (splitLine.length >= 2) {
-              cards.push({
+              const answer = splitLine[1].trim();
+              const card: AnkiCard = {
                 question: splitLine[0].trim(),
-                answer: splitLine[1].trim(),
-              });
+                answer: answer,
+                noteType: this.settings.defaultNoteType, // 默认使用设置中的笔记类型
+                originalAnswer: answer, // 保存原始答案
+                tags: [] // 初始化标签为空数组
+              };
+              
+              // 检测是否包含填空格式
+              if (this.containsClozeFormat(card.answer)) {
+                card.noteType = "Cloze"; // 如果包含填空格式，默认使用Cloze类型
+              }
+              
+              cards.push(card);
             }
           }
         }
@@ -363,18 +410,91 @@ export default class AnkifyPlugin extends Plugin {
           );
         }
 
+        // 使用卡片自己的笔记类型
+        const cardNoteType = card.noteType;
+
         // 根据笔记类型构建字段映射
         let fields: Record<string, string> = {};
 
         // 获取笔记类型的字段名称
         const modelFieldNames = await this.invokeAnkiConnect(
           "modelFieldNames",
-          { modelName: noteType }
+          { modelName: cardNoteType }
         );
-        console.log(`笔记类型 ${noteType} 的字段名称:`, modelFieldNames);
+        console.log(`笔记类型 ${cardNoteType} 的字段名称:`, modelFieldNames);
+        
+        // 存储笔记类型的字段信息
+        this.noteTypeFields[cardNoteType] = modelFieldNames;
 
         // 根据字段名称进行映射
-        if (
+        if (cardNoteType === "Cloze" || cardNoteType === "填空题") {
+          // Cloze类型通常只有一个主要字段，通常是Text或正面
+          let mainFieldName: string;
+          let extraFieldName: string | null = null;
+          
+          // 确定主要字段和额外字段
+          if (modelFieldNames.includes("Text")) {
+            mainFieldName = "Text";
+            // 优先检查是否有Back Extra字段，然后是Extra字段，最后是Back字段
+            if (modelFieldNames.includes("Back Extra")) {
+              extraFieldName = "Back Extra";
+            } else if (modelFieldNames.includes("Extra")) {
+              extraFieldName = "Extra";
+            } else if (modelFieldNames.includes("Back")) {
+              extraFieldName = "Back";
+            }
+          } else if (modelFieldNames.includes("正面")) {
+            mainFieldName = "正面";
+            // 优先检查是否有背面 额外字段，然后是额外字段，最后是背面字段
+            if (modelFieldNames.includes("背面 额外")) {
+              extraFieldName = "背面 额外";
+            } else if (modelFieldNames.includes("额外")) {
+              extraFieldName = "额外";
+            } else if (modelFieldNames.includes("背面")) {
+              extraFieldName = "背面";
+            }
+          } else if (modelFieldNames.includes("Back")) {
+            mainFieldName = "Back";
+            // 检查是否有Back Extra字段，然后是Extra字段
+            if (modelFieldNames.includes("Back Extra")) {
+              extraFieldName = "Back Extra";
+            } else if (modelFieldNames.includes("Extra")) {
+              extraFieldName = "Extra";
+            }
+          } else if (modelFieldNames.length > 0) {
+            // 使用第一个字段作为主要字段
+            mainFieldName = modelFieldNames[0];
+            // 检查是否有第二个字段作为额外字段，优先选择Back Extra或其他合适的字段
+            for (let i = 1; i < modelFieldNames.length; i++) {
+              const field = modelFieldNames[i];
+              if (field === "Back Extra" || field === "背面 额外" || field === "Extra" || field === "额外" || field === "Back" || field === "背面") {
+                extraFieldName = field;
+                break;
+              }
+            }
+            // 如果没有找到合适的字段，使用第二个字段
+            if (!extraFieldName && modelFieldNames.length > 1) {
+              extraFieldName = modelFieldNames[1];
+            }
+          } else {
+            throw new Error(`无法确定Cloze笔记类型的字段`);
+          }
+          
+          // 构建字段
+          fields = {
+            [mainFieldName]: card.answer,
+          };
+          
+          // 如果有额外字段且有注释，将注释放到额外字段
+          if (extraFieldName && card.annotation) {
+            fields[extraFieldName] = card.annotation;
+            console.log(`将注释放入额外字段 ${extraFieldName}:`, card.annotation);
+          } else if (card.annotation) {
+            // 如果没有额外字段但有注释，仍然追加到主要字段
+            fields[mainFieldName] += `\n<hr>\n<span style="color: rgb(143, 53, 8);">${card.annotation}</span>`;
+            console.log(`将注释追加到主要字段 ${mainFieldName}:`, card.annotation);
+          }
+        } else if (
           modelFieldNames.includes("Front") &&
           modelFieldNames.includes("Back")
         ) {
@@ -421,8 +541,16 @@ export default class AnkifyPlugin extends Plugin {
                   ? `\n<hr>\n<span style="color: rgb(143, 53, 8);">${card.annotation}</span>`
                   : ""),
             };
+          } else if (modelFieldNames.length === 1) {
+            // 只有一个字段的情况，通常是Cloze类型
+            fields = {
+              [modelFieldNames[0]]: card.answer +
+                (card.annotation
+                  ? `\n<hr>\n<span style="color: rgb(143, 53, 8);">${card.annotation}</span>`
+                  : ""),
+            };
           } else {
-            throw new Error(`无法确定笔记类型 ${noteType} 的字段映射`);
+            throw new Error(`无法确定笔记类型 ${cardNoteType} 的字段映射`);
           }
         }
 
@@ -433,17 +561,21 @@ export default class AnkifyPlugin extends Plugin {
           }
         }
 
+        // 确保ankify标签在最后
+        const userTags = (card.tags || []).filter(tag => tag !== "ankify");
+        const finalTags = [...userTags, "ankify"];
+        
         const note = {
           deckName,
-          modelName: noteType,
+          modelName: cardNoteType,
           fields,
-          tags: card.tags || [],
+          tags: finalTags,
           options: {
             allowDuplicate: false,
           },
         };
 
-        console.log(`第 ${index + 1} 张卡片的完整笔记对象:`, note);
+        console.log(`第 ${index + 1} 张卡片的标签:`, finalTags);
         return note;
       })
     );
@@ -774,6 +906,13 @@ export default class AnkifyPlugin extends Plugin {
     const newContent = docContent + "\n\n## Anki卡片\n\n" + result;
     editor.setValue(newContent);
     new Notice("Anki卡片已添加到文档末尾");
+  }
+
+  // 检测答案是否包含填空格式
+  containsClozeFormat(text: string): boolean {
+    // 匹配 {{c数字::内容}} 格式
+    const clozePattern = /\{\{c\d+::[^}]+\}\}/g;
+    return clozePattern.test(text);
   }
 
   async callVisionAPI(base64Image: string): Promise<string> {
@@ -1556,6 +1695,14 @@ class SelectableCardsModal extends Modal {
     // 卡片列表
     const cardsListEl = cardsContainer.createDiv({ cls: "ankify-cards-list" });
 
+    // 获取可用的笔记类型（复用之前获取的noteTypes）
+    const availableNoteTypes = noteTypes.length > 0 ? noteTypes : [
+      "Basic",
+      "Basic (and reversed card)",
+      "Cloze",
+      "Basic (optional reversed card)",
+    ];
+
     this.cards.forEach((card, index) => {
       const cardEl = cardsListEl.createDiv({ cls: "ankify-card" });
 
@@ -1600,6 +1747,43 @@ class SelectableCardsModal extends Modal {
         this.cards[index].answer = answerInput.value;
       });
 
+      // 笔记类型选择器
+      const noteTypeContainer = cardContent.createDiv({ cls: "ankify-card-note-type" });
+      noteTypeContainer.createEl("strong", { text: "笔记类型: " });
+      const noteTypeSelect = noteTypeContainer.createEl("select");
+      noteTypeSelect.style.marginLeft = "5px";
+
+      // 添加笔记类型选项
+      availableNoteTypes.forEach((type) => {
+        const option = noteTypeSelect.createEl("option", {
+          value: type,
+          text: type,
+        });
+        if (type === card.noteType) {
+          option.selected = true;
+        }
+      });
+
+      // 笔记类型变更事件
+      noteTypeSelect.addEventListener("change", () => {
+        const newNoteType = noteTypeSelect.value;
+        const oldNoteType = card.noteType;
+        
+        // 保存新的笔记类型
+        card.noteType = newNoteType;
+        
+        // 处理内容变更
+        if (newNoteType === "Cloze") {
+          // 切换到Cloze类型，还原原始答案
+          card.answer = card.originalAnswer;
+          answerInput.value = card.answer;
+        } else if (oldNoteType === "Cloze" && newNoteType !== "Cloze") {
+          // 从Cloze类型切换到其他类型，移除填空标记
+          card.answer = card.answer.replace(/\{\{c\d+::([^}]+)\}\}/g, "$1");
+          answerInput.value = card.answer;
+        }
+      });
+
       // 注释编辑
       if (card.annotation) {
         const annotationEl = cardContent.createDiv({
@@ -1617,21 +1801,20 @@ class SelectableCardsModal extends Modal {
       }
 
       // 标签编辑
-      if (card.tags && card.tags.length > 0) {
-        const tagsEl = cardContent.createDiv({ cls: "ankify-card-tags" });
-        tagsEl.createEl("strong", { text: "标签: " });
-        const tagsInput = tagsEl.createEl("input", {
-          cls: "ankify-card-input",
-          type: "text",
-          value: card.tags.join(" "),
-        });
-        tagsInput.addEventListener("change", () => {
-          this.cards[index].tags = tagsInput.value
-            .split(/\s+/)
-            .map((tag) => tag.trim())
-            .filter((tag) => tag.length > 0);
-        });
-      }
+      const tagsEl = cardContent.createDiv({ cls: "ankify-card-tags" });
+      tagsEl.createEl("strong", { text: "标签: " });
+      const tagsInput = tagsEl.createEl("input", {
+        cls: "ankify-card-input",
+        type: "text",
+        value: (card.tags || []).join(" "),
+        placeholder: "输入标签，用空格分隔",
+      });
+      tagsInput.addEventListener("change", () => {
+        this.cards[index].tags = tagsInput.value
+          .split(/\s+/)
+          .map((tag) => tag.trim())
+          .filter((tag) => tag.length > 0);
+      });
     });
 
     // 按钮区域
@@ -1822,6 +2005,44 @@ class SelectableCardsModal extends Modal {
       contentTextArea.style.borderRadius = "4px";
       contentTextArea.style.marginBottom = "10px";
       contentTextArea.readOnly = true;
+    }
+
+    // 显示笔记类型字段信息
+    if (Object.keys(this.plugin.noteTypeFields).length > 0) {
+      content.createEl("h4", { text: "笔记类型字段信息:" });
+      const noteTypeFieldsEl = content.createEl("pre", {
+        text: Object.entries(this.plugin.noteTypeFields)
+          .map(([noteType, fields]) => `${noteType}: ${fields.join(", ")}`)
+          .join("\n"),
+      });
+      noteTypeFieldsEl.style.fontFamily = "monospace";
+      noteTypeFieldsEl.style.fontSize = "12px";
+      noteTypeFieldsEl.style.backgroundColor = "#fff";
+      noteTypeFieldsEl.style.border = "1px solid #ddd";
+      noteTypeFieldsEl.style.padding = "8px";
+      noteTypeFieldsEl.style.borderRadius = "4px";
+      noteTypeFieldsEl.style.marginBottom = "10px";
+      noteTypeFieldsEl.style.whiteSpace = "pre-wrap";
+      noteTypeFieldsEl.style.wordBreak = "break-all";
+    }
+
+    // 显示大模型接口的原始返回信息
+    if (this.rawResult) {
+      content.createEl("h4", { text: "大模型接口原始返回信息:" });
+      const rawResultEl = content.createEl("textarea", {
+        cls: "ankify-debug-raw-result",
+        text: this.rawResult,
+      });
+      rawResultEl.style.width = "100%";
+      rawResultEl.style.minHeight = "150px";
+      rawResultEl.style.fontFamily = "monospace";
+      rawResultEl.style.fontSize = "12px";
+      rawResultEl.style.backgroundColor = "#fff";
+      rawResultEl.style.border = "1px solid #ddd";
+      rawResultEl.style.padding = "8px";
+      rawResultEl.style.borderRadius = "4px";
+      rawResultEl.style.marginBottom = "10px";
+      rawResultEl.readOnly = true;
     }
   }
 

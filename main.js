@@ -55,6 +55,10 @@ var DEFAULT_SETTINGS = {
   defaultNoteType: "Basic"
 };
 var AnkifyPlugin = class extends import_obsidian.Plugin {
+  constructor() {
+    super(...arguments);
+    this.noteTypeFields = {};
+  }
   async onload() {
     await this.loadSettings();
     this.addCommand({
@@ -128,7 +132,7 @@ var AnkifyPlugin = class extends import_obsidian.Plugin {
     }
   }
   parseAnkiCards(text) {
-    var _a, _b, _c;
+    var _a, _b, _c, _d;
     const cards = [];
     console.log("\u5F00\u59CB\u89E3\u6790Anki\u5361\u7247\uFF0C\u539F\u59CB\u6587\u672C\u957F\u5EA6:", text.length);
     console.log("\u539F\u59CB\u6587\u672C\u524D500\u5B57\u7B26:", text.substring(0, 500));
@@ -138,20 +142,32 @@ var AnkifyPlugin = class extends import_obsidian.Plugin {
       const cardBlocks = text.split(/\n\s*\n+/).filter((block) => block.trim());
       for (const block of cardBlocks) {
         const lines = block.split("\n").map((line) => line.trim()).filter((line) => line);
-        const card = { question: "", answer: "" };
+        const card = {
+          question: "",
+          answer: "",
+          noteType: this.settings.defaultNoteType,
+          originalAnswer: "",
+          tags: []
+        };
         for (const line of lines) {
           if (line.startsWith("Q:") || line.startsWith("\u95EE:") || line.startsWith("\u95EE\uFF1A")) {
             card.question = line.substring(2).trim();
           } else if (line.startsWith("A:") || line.startsWith("\u7B54:") || line.startsWith("\u7B54\uFF1A")) {
             card.answer = line.substring(2).trim();
+            card.originalAnswer = card.answer;
+            if (this.containsClozeFormat(card.answer)) {
+              card.noteType = "Cloze";
+            }
           } else if (line.startsWith("annotation:") || line.startsWith("\u6CE8\u91CA:") || line.startsWith("\u6CE8\u91CA\uFF1A")) {
             card.annotation = line.substring(line.indexOf(":") + 1).trim();
           } else if (line.startsWith("tags:") || line.startsWith("\u6807\u7B7E:") || line.startsWith("\u6807\u7B7E\uFF1A")) {
             const tagsText = line.substring(line.indexOf(":") + 1).trim();
             if (tagsText.includes("#")) {
-              card.tags = tagsText.split("#").map((tag) => tag.trim()).filter((tag) => tag.length > 0);
+              const newTags = tagsText.split("#").map((tag) => tag.trim()).filter((tag) => tag.length > 0);
+              card.tags = [...card.tags, ...newTags];
             } else {
-              card.tags = tagsText.split(/[\s,]+/).map((tag) => tag.trim()).filter((tag) => tag.length > 0);
+              const newTags = tagsText.split(/[\s,]+/).map((tag) => tag.trim()).filter((tag) => tag.length > 0);
+              card.tags = [...card.tags, ...newTags];
             }
           }
         }
@@ -181,8 +197,14 @@ var AnkifyPlugin = class extends import_obsidian.Plugin {
           if (parts.length >= 2) {
             const card = {
               question: parts[0].trim(),
-              answer: parts[1].trim()
+              answer: parts[1].trim(),
+              noteType: this.settings.defaultNoteType,
+              originalAnswer: parts[1].trim(),
+              tags: []
             };
+            if (this.containsClozeFormat(card.answer)) {
+              card.noteType = "Cloze";
+            }
             if (parts.length >= 3 && parts[2].trim()) {
               card.annotation = parts[2].trim();
             }
@@ -191,9 +213,11 @@ var AnkifyPlugin = class extends import_obsidian.Plugin {
               if (tagsText) {
                 if (tagsText.includes("#")) {
                   const tagParts = tagsText.split("#");
-                  card.tags = tagParts.map((tag) => tag.trim()).filter((tag) => tag.length > 0);
+                  const newTags = tagParts.map((tag) => tag.trim()).filter((tag) => tag.length > 0);
+                  card.tags = [...card.tags, ...newTags];
                 } else {
-                  card.tags = tagsText.split(/[\s,]+/).map((tag) => tag.trim()).filter((tag) => tag.length > 0);
+                  const newTags = tagsText.split(/[\s,]+/).map((tag) => tag.trim()).filter((tag) => tag.length > 0);
+                  card.tags = [...card.tags, ...newTags];
                 }
               }
             }
@@ -206,24 +230,39 @@ var AnkifyPlugin = class extends import_obsidian.Plugin {
           if (qaMatch) {
             const card = {
               question: ((_a = qaMatch[1]) == null ? void 0 : _a.trim()) || "",
-              answer: ((_b = qaMatch[2]) == null ? void 0 : _b.trim()) || ""
+              answer: ((_b = qaMatch[2]) == null ? void 0 : _b.trim()) || "",
+              noteType: this.settings.defaultNoteType,
+              originalAnswer: ((_c = qaMatch[2]) == null ? void 0 : _c.trim()) || "",
+              tags: []
             };
+            if (this.containsClozeFormat(card.answer)) {
+              card.noteType = "Cloze";
+            }
             const annotationMatch = line.match(/(?:annotation:|注释[:：])\s*(.*?)(?:\s*tags:|标签[:：]|$)/i);
             if (annotationMatch) {
-              card.annotation = (_c = annotationMatch[1]) == null ? void 0 : _c.trim();
+              card.annotation = (_d = annotationMatch[1]) == null ? void 0 : _d.trim();
             }
             const tagsMatch = line.match(/(?:tags:|标签[:：])\s*(.*?)$/i);
             if (tagsMatch && tagsMatch[1]) {
-              card.tags = tagsMatch[1].split("#").map((tag) => tag.trim()).filter((tag) => tag.length > 0);
+              const newTags = tagsMatch[1].split("#").map((tag) => tag.trim()).filter((tag) => tag.length > 0);
+              card.tags = [...card.tags, ...newTags];
             }
             cards.push(card);
           } else {
             const splitLine = line.split(":::");
             if (splitLine.length >= 2) {
-              cards.push({
+              const answer = splitLine[1].trim();
+              const card = {
                 question: splitLine[0].trim(),
-                answer: splitLine[1].trim()
-              });
+                answer,
+                noteType: this.settings.defaultNoteType,
+                originalAnswer: answer,
+                tags: []
+              };
+              if (this.containsClozeFormat(card.answer)) {
+                card.noteType = "Cloze";
+              }
+              cards.push(card);
             }
           }
         }
@@ -248,10 +287,67 @@ var AnkifyPlugin = class extends import_obsidian.Plugin {
 \u95EE\u9898\uFF1A${card.question}
 \u7B54\u6848\uFF1A${card.answer}`);
       }
+      const cardNoteType = card.noteType;
       let fields = {};
-      const modelFieldNames = await this.invokeAnkiConnect("modelFieldNames", { modelName: noteType });
-      console.log(`\u7B14\u8BB0\u7C7B\u578B ${noteType} \u7684\u5B57\u6BB5\u540D\u79F0:`, modelFieldNames);
-      if (modelFieldNames.includes("Front") && modelFieldNames.includes("Back")) {
+      const modelFieldNames = await this.invokeAnkiConnect("modelFieldNames", { modelName: cardNoteType });
+      console.log(`\u7B14\u8BB0\u7C7B\u578B ${cardNoteType} \u7684\u5B57\u6BB5\u540D\u79F0:`, modelFieldNames);
+      this.noteTypeFields[cardNoteType] = modelFieldNames;
+      if (cardNoteType === "Cloze" || cardNoteType === "\u586B\u7A7A\u9898") {
+        let mainFieldName;
+        let extraFieldName = null;
+        if (modelFieldNames.includes("Text")) {
+          mainFieldName = "Text";
+          if (modelFieldNames.includes("Back Extra")) {
+            extraFieldName = "Back Extra";
+          } else if (modelFieldNames.includes("Extra")) {
+            extraFieldName = "Extra";
+          } else if (modelFieldNames.includes("Back")) {
+            extraFieldName = "Back";
+          }
+        } else if (modelFieldNames.includes("\u6B63\u9762")) {
+          mainFieldName = "\u6B63\u9762";
+          if (modelFieldNames.includes("\u80CC\u9762 \u989D\u5916")) {
+            extraFieldName = "\u80CC\u9762 \u989D\u5916";
+          } else if (modelFieldNames.includes("\u989D\u5916")) {
+            extraFieldName = "\u989D\u5916";
+          } else if (modelFieldNames.includes("\u80CC\u9762")) {
+            extraFieldName = "\u80CC\u9762";
+          }
+        } else if (modelFieldNames.includes("Back")) {
+          mainFieldName = "Back";
+          if (modelFieldNames.includes("Back Extra")) {
+            extraFieldName = "Back Extra";
+          } else if (modelFieldNames.includes("Extra")) {
+            extraFieldName = "Extra";
+          }
+        } else if (modelFieldNames.length > 0) {
+          mainFieldName = modelFieldNames[0];
+          for (let i = 1; i < modelFieldNames.length; i++) {
+            const field = modelFieldNames[i];
+            if (field === "Back Extra" || field === "\u80CC\u9762 \u989D\u5916" || field === "Extra" || field === "\u989D\u5916" || field === "Back" || field === "\u80CC\u9762") {
+              extraFieldName = field;
+              break;
+            }
+          }
+          if (!extraFieldName && modelFieldNames.length > 1) {
+            extraFieldName = modelFieldNames[1];
+          }
+        } else {
+          throw new Error(`\u65E0\u6CD5\u786E\u5B9ACloze\u7B14\u8BB0\u7C7B\u578B\u7684\u5B57\u6BB5`);
+        }
+        fields = {
+          [mainFieldName]: card.answer
+        };
+        if (extraFieldName && card.annotation) {
+          fields[extraFieldName] = card.annotation;
+          console.log(`\u5C06\u6CE8\u91CA\u653E\u5165\u989D\u5916\u5B57\u6BB5 ${extraFieldName}:`, card.annotation);
+        } else if (card.annotation) {
+          fields[mainFieldName] += `
+<hr>
+<span style="color: rgb(143, 53, 8);">${card.annotation}</span>`;
+          console.log(`\u5C06\u6CE8\u91CA\u8FFD\u52A0\u5230\u4E3B\u8981\u5B57\u6BB5 ${mainFieldName}:`, card.annotation);
+        }
+      } else if (modelFieldNames.includes("Front") && modelFieldNames.includes("Back")) {
         fields = {
           Front: card.question,
           Back: card.answer + (card.annotation ? `
@@ -280,8 +376,14 @@ var AnkifyPlugin = class extends import_obsidian.Plugin {
 <hr>
 <span style="color: rgb(143, 53, 8);">${card.annotation}</span>` : "")
           };
+        } else if (modelFieldNames.length === 1) {
+          fields = {
+            [modelFieldNames[0]]: card.answer + (card.annotation ? `
+<hr>
+<span style="color: rgb(143, 53, 8);">${card.annotation}</span>` : "")
+          };
         } else {
-          throw new Error(`\u65E0\u6CD5\u786E\u5B9A\u7B14\u8BB0\u7C7B\u578B ${noteType} \u7684\u5B57\u6BB5\u6620\u5C04`);
+          throw new Error(`\u65E0\u6CD5\u786E\u5B9A\u7B14\u8BB0\u7C7B\u578B ${cardNoteType} \u7684\u5B57\u6BB5\u6620\u5C04`);
         }
       }
       for (const [key, value] of Object.entries(fields)) {
@@ -289,16 +391,18 @@ var AnkifyPlugin = class extends import_obsidian.Plugin {
           throw new Error(`\u5B57\u6BB5 "${key}" \u4E0D\u80FD\u4E3A\u7A7A`);
         }
       }
+      const userTags = (card.tags || []).filter((tag) => tag !== "ankify");
+      const finalTags = [...userTags, "ankify"];
       const note = {
         deckName,
-        modelName: noteType,
+        modelName: cardNoteType,
         fields,
-        tags: card.tags || [],
+        tags: finalTags,
         options: {
           allowDuplicate: false
         }
       };
-      console.log(`\u7B2C ${index + 1} \u5F20\u5361\u7247\u7684\u5B8C\u6574\u7B14\u8BB0\u5BF9\u8C61:`, note);
+      console.log(`\u7B2C ${index + 1} \u5F20\u5361\u7247\u7684\u6807\u7B7E:`, finalTags);
       return note;
     }));
     try {
@@ -527,6 +631,10 @@ var AnkifyPlugin = class extends import_obsidian.Plugin {
     const newContent = docContent + "\n\n## Anki\u5361\u7247\n\n" + result;
     editor.setValue(newContent);
     new import_obsidian.Notice("Anki\u5361\u7247\u5DF2\u6DFB\u52A0\u5230\u6587\u6863\u672B\u5C3E");
+  }
+  containsClozeFormat(text) {
+    const clozePattern = /\{\{c\d+::[^}]+\}\}/g;
+    return clozePattern.test(text);
   }
   async callVisionAPI(base64Image) {
     var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k;
@@ -1131,6 +1239,12 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
       this.updateCardSelectionDisplay();
     });
     const cardsListEl = cardsContainer.createDiv({ cls: "ankify-cards-list" });
+    const availableNoteTypes = noteTypes.length > 0 ? noteTypes : [
+      "Basic",
+      "Basic (and reversed card)",
+      "Cloze",
+      "Basic (optional reversed card)"
+    ];
     this.cards.forEach((card, index) => {
       const cardEl = cardsListEl.createDiv({ cls: "ankify-card" });
       const checkboxContainer = cardEl.createDiv({
@@ -1165,6 +1279,31 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
       answerInput.addEventListener("change", () => {
         this.cards[index].answer = answerInput.value;
       });
+      const noteTypeContainer2 = cardContent.createDiv({ cls: "ankify-card-note-type" });
+      noteTypeContainer2.createEl("strong", { text: "\u7B14\u8BB0\u7C7B\u578B: " });
+      const noteTypeSelect = noteTypeContainer2.createEl("select");
+      noteTypeSelect.style.marginLeft = "5px";
+      availableNoteTypes.forEach((type) => {
+        const option = noteTypeSelect.createEl("option", {
+          value: type,
+          text: type
+        });
+        if (type === card.noteType) {
+          option.selected = true;
+        }
+      });
+      noteTypeSelect.addEventListener("change", () => {
+        const newNoteType = noteTypeSelect.value;
+        const oldNoteType = card.noteType;
+        card.noteType = newNoteType;
+        if (newNoteType === "Cloze") {
+          card.answer = card.originalAnswer;
+          answerInput.value = card.answer;
+        } else if (oldNoteType === "Cloze" && newNoteType !== "Cloze") {
+          card.answer = card.answer.replace(/\{\{c\d+::([^}]+)\}\}/g, "$1");
+          answerInput.value = card.answer;
+        }
+      });
       if (card.annotation) {
         const annotationEl = cardContent.createDiv({
           cls: "ankify-card-annotation"
@@ -1179,18 +1318,17 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
           this.cards[index].annotation = annotationInput.value;
         });
       }
-      if (card.tags && card.tags.length > 0) {
-        const tagsEl = cardContent.createDiv({ cls: "ankify-card-tags" });
-        tagsEl.createEl("strong", { text: "\u6807\u7B7E: " });
-        const tagsInput = tagsEl.createEl("input", {
-          cls: "ankify-card-input",
-          type: "text",
-          value: card.tags.join(" ")
-        });
-        tagsInput.addEventListener("change", () => {
-          this.cards[index].tags = tagsInput.value.split(/\s+/).map((tag) => tag.trim()).filter((tag) => tag.length > 0);
-        });
-      }
+      const tagsEl = cardContent.createDiv({ cls: "ankify-card-tags" });
+      tagsEl.createEl("strong", { text: "\u6807\u7B7E: " });
+      const tagsInput = tagsEl.createEl("input", {
+        cls: "ankify-card-input",
+        type: "text",
+        value: (card.tags || []).join(" "),
+        placeholder: "\u8F93\u5165\u6807\u7B7E\uFF0C\u7528\u7A7A\u683C\u5206\u9694"
+      });
+      tagsInput.addEventListener("change", () => {
+        this.cards[index].tags = tagsInput.value.split(/\s+/).map((tag) => tag.trim()).filter((tag) => tag.length > 0);
+      });
     });
     const buttonContainer = contentEl.createDiv({
       cls: "ankify-button-container"
@@ -1333,6 +1471,38 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
       contentTextArea.style.borderRadius = "4px";
       contentTextArea.style.marginBottom = "10px";
       contentTextArea.readOnly = true;
+    }
+    if (Object.keys(this.plugin.noteTypeFields).length > 0) {
+      content.createEl("h4", { text: "\u7B14\u8BB0\u7C7B\u578B\u5B57\u6BB5\u4FE1\u606F:" });
+      const noteTypeFieldsEl = content.createEl("pre", {
+        text: Object.entries(this.plugin.noteTypeFields).map(([noteType, fields]) => `${noteType}: ${fields.join(", ")}`).join("\n")
+      });
+      noteTypeFieldsEl.style.fontFamily = "monospace";
+      noteTypeFieldsEl.style.fontSize = "12px";
+      noteTypeFieldsEl.style.backgroundColor = "#fff";
+      noteTypeFieldsEl.style.border = "1px solid #ddd";
+      noteTypeFieldsEl.style.padding = "8px";
+      noteTypeFieldsEl.style.borderRadius = "4px";
+      noteTypeFieldsEl.style.marginBottom = "10px";
+      noteTypeFieldsEl.style.whiteSpace = "pre-wrap";
+      noteTypeFieldsEl.style.wordBreak = "break-all";
+    }
+    if (this.rawResult) {
+      content.createEl("h4", { text: "\u5927\u6A21\u578B\u63A5\u53E3\u539F\u59CB\u8FD4\u56DE\u4FE1\u606F:" });
+      const rawResultEl = content.createEl("textarea", {
+        cls: "ankify-debug-raw-result",
+        text: this.rawResult
+      });
+      rawResultEl.style.width = "100%";
+      rawResultEl.style.minHeight = "150px";
+      rawResultEl.style.fontFamily = "monospace";
+      rawResultEl.style.fontSize = "12px";
+      rawResultEl.style.backgroundColor = "#fff";
+      rawResultEl.style.border = "1px solid #ddd";
+      rawResultEl.style.padding = "8px";
+      rawResultEl.style.borderRadius = "4px";
+      rawResultEl.style.marginBottom = "10px";
+      rawResultEl.readOnly = true;
     }
   }
   onClose() {
