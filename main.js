@@ -1330,6 +1330,120 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
         this.cards[index].tags = tagsInput.value.split(/\s+/).map((tag) => tag.trim()).filter((tag) => tag.length > 0);
       });
     });
+    const batchTagsContainer = contentEl.createDiv({
+      cls: "ankify-batch-tags-container"
+    });
+    batchTagsContainer.style.marginTop = "20px";
+    const batchTagsHeader = batchTagsContainer.createEl("div");
+    batchTagsHeader.style.display = "flex";
+    batchTagsHeader.style.justifyContent = "space-between";
+    batchTagsHeader.style.alignItems = "center";
+    batchTagsHeader.style.cursor = "pointer";
+    batchTagsHeader.style.padding = "10px";
+    batchTagsHeader.style.backgroundColor = "var(--background-secondary)";
+    batchTagsHeader.style.border = "1px solid var(--border-color)";
+    batchTagsHeader.style.borderRadius = "4px";
+    batchTagsHeader.style.color = "var(--text-normal)";
+    const batchTagsTitle = batchTagsHeader.createEl("h4", { text: "\u6279\u91CF\u66FF\u6362\u6807\u7B7E" });
+    batchTagsTitle.style.margin = "0";
+    batchTagsTitle.style.fontSize = "14px";
+    batchTagsTitle.style.color = "var(--text-normal)";
+    const batchTagsToggle = batchTagsHeader.createEl("span", { text: "\u25BC" });
+    batchTagsToggle.style.color = "var(--text-muted)";
+    const batchTagsContent = batchTagsContainer.createEl("div");
+    batchTagsContent.style.display = "none";
+    batchTagsContent.style.padding = "15px";
+    batchTagsContent.style.backgroundColor = "var(--background-secondary)";
+    batchTagsContent.style.border = "1px solid var(--border-color)";
+    batchTagsContent.style.borderTop = "none";
+    batchTagsContent.style.borderRadius = "0 0 4px 4px";
+    batchTagsContent.style.color = "var(--text-normal)";
+    batchTagsHeader.addEventListener("click", () => {
+      if (batchTagsContent.style.display === "none") {
+        batchTagsContent.style.display = "block";
+        batchTagsToggle.textContent = "\u25B2";
+      } else {
+        batchTagsContent.style.display = "none";
+        batchTagsToggle.textContent = "\u25BC";
+      }
+    });
+    const oldTagInput = batchTagsContent.createEl("input", {
+      type: "text",
+      placeholder: "\u8F93\u5165\u8981\u66FF\u6362\u7684\u6807\u7B7E"
+    });
+    oldTagInput.style.width = "100%";
+    oldTagInput.style.padding = "8px";
+    oldTagInput.style.marginBottom = "10px";
+    oldTagInput.style.border = "1px solid var(--border-color)";
+    oldTagInput.style.borderRadius = "4px";
+    oldTagInput.style.backgroundColor = "var(--background-primary)";
+    oldTagInput.style.color = "var(--text-normal)";
+    const newTagInput = batchTagsContent.createEl("input", {
+      type: "text",
+      placeholder: "\u8F93\u5165\u65B0\u7684\u6807\u7B7E"
+    });
+    newTagInput.style.width = "100%";
+    newTagInput.style.padding = "8px";
+    newTagInput.style.marginBottom = "10px";
+    newTagInput.style.border = "1px solid var(--border-color)";
+    newTagInput.style.borderRadius = "4px";
+    newTagInput.style.backgroundColor = "var(--background-primary)";
+    newTagInput.style.color = "var(--text-normal)";
+    const replaceAllCheckbox = batchTagsContent.createEl("input", {
+      type: "checkbox",
+      id: "replace-all-tags"
+    });
+    const replaceAllLabel = batchTagsContent.createEl("label", {
+      text: " \u6574\u4E2A\u66FF\u6362\uFF08\u66FF\u6362\u6240\u6709\u6807\u7B7E\uFF09",
+      for: "replace-all-tags"
+    });
+    replaceAllLabel.style.marginBottom = "15px";
+    replaceAllLabel.style.display = "block";
+    replaceAllLabel.style.color = "var(--text-normal)";
+    const replaceTagsButton = batchTagsContent.createEl("button", {
+      text: "\u66FF\u6362\u6807\u7B7E"
+    });
+    replaceTagsButton.style.padding = "8px 16px";
+    replaceTagsButton.style.backgroundColor = "var(--interactive-accent)";
+    replaceTagsButton.style.color = "var(--text-on-accent)";
+    replaceTagsButton.style.border = "none";
+    replaceTagsButton.style.borderRadius = "4px";
+    replaceTagsButton.style.cursor = "pointer";
+    replaceTagsButton.addEventListener("click", () => {
+      const oldTag = oldTagInput.value.trim();
+      const newTag = newTagInput.value.trim();
+      const replaceAll = replaceAllCheckbox.checked;
+      let changes = 0;
+      this.cards.forEach((card, index) => {
+        if (replaceAll) {
+          const newTags = newTag.split(/\s+/).map((tag) => tag.trim()).filter((tag) => tag.length > 0);
+          this.cards[index].tags = [...newTags];
+          changes++;
+        } else {
+          if (oldTag) {
+            const updatedTags = (card.tags || []).map((tag) => tag === oldTag ? newTag : tag).filter((tag) => tag.length > 0);
+            if (JSON.stringify(updatedTags) !== JSON.stringify(card.tags)) {
+              this.cards[index].tags = updatedTags;
+              changes++;
+            }
+          }
+        }
+      });
+      const allTagsInputs = contentEl.querySelectorAll(".ankify-card-tags input");
+      allTagsInputs.forEach((input, index) => {
+        var _a;
+        input.value = ((_a = this.cards[index].tags) == null ? void 0 : _a.join(" ")) || "";
+      });
+      if (changes > 0) {
+        if (replaceAll) {
+          new import_obsidian.Notice(`\u5DF2\u66FF\u6362\u6240\u6709\u5361\u7247\u7684\u6807\u7B7E\u4E3A: ${newTag || "(\u7A7A)"}`);
+        } else {
+          new import_obsidian.Notice(`\u5DF2\u5C06\u6807\u7B7E "${oldTag}" \u66FF\u6362\u4E3A "${newTag}"\uFF0C\u5171\u4FEE\u6539\u4E86 ${changes} \u5F20\u5361\u7247`);
+        }
+      } else {
+        new import_obsidian.Notice("\u6CA1\u6709\u8FDB\u884C\u4EFB\u4F55\u66FF\u6362");
+      }
+    });
     const buttonContainer = contentEl.createDiv({
       cls: "ankify-button-container"
     });
@@ -1398,20 +1512,24 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
     header.style.alignItems = "center";
     header.style.cursor = "pointer";
     header.style.padding = "10px";
-    header.style.backgroundColor = "#f9f9f9";
-    header.style.border = "1px solid #ddd";
+    header.style.backgroundColor = "var(--background-secondary)";
+    header.style.border = "1px solid var(--border-color)";
     header.style.borderRadius = "4px";
+    header.style.color = "var(--text-normal)";
     const title = header.createEl("h3", { text: "\u8BF7\u6C42\u4FE1\u606F (\u70B9\u51FB\u5C55\u5F00)" });
     title.style.margin = "0";
     title.style.fontSize = "14px";
+    title.style.color = "var(--text-normal)";
     const toggle = header.createEl("span", { text: "\u25BC" });
+    toggle.style.color = "var(--text-muted)";
     const content = requestInfoContainer.createEl("div");
     content.style.display = "none";
     content.style.padding = "10px";
-    content.style.backgroundColor = "#f9f9f9";
-    content.style.border = "1px solid #ddd";
+    content.style.backgroundColor = "var(--background-secondary)";
+    content.style.border = "1px solid var(--border-color)";
     content.style.borderTop = "none";
     content.style.borderRadius = "0 0 4px 4px";
+    content.style.color = "var(--text-normal)";
     header.addEventListener("click", () => {
       if (content.style.display === "none") {
         content.style.display = "block";
@@ -1424,22 +1542,25 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
       }
     });
     if (this.imageInfo) {
-      content.createEl("h4", { text: "\u56FE\u7247\u8DEF\u5F84\u4FE1\u606F:" });
+      const imageInfoHeader = content.createEl("h4", { text: "\u56FE\u7247\u8DEF\u5F84\u4FE1\u606F:" });
+      imageInfoHeader.style.color = "var(--text-normal)";
       const imageInfoEl = content.createEl("pre", {
         text: this.imageInfo
       });
       imageInfoEl.style.fontFamily = "monospace";
       imageInfoEl.style.fontSize = "12px";
-      imageInfoEl.style.backgroundColor = "#fff";
-      imageInfoEl.style.border = "1px solid #ddd";
+      imageInfoEl.style.backgroundColor = "var(--background-primary)";
+      imageInfoEl.style.border = "1px solid var(--border-color)";
       imageInfoEl.style.padding = "8px";
       imageInfoEl.style.borderRadius = "4px";
       imageInfoEl.style.marginBottom = "10px";
       imageInfoEl.style.whiteSpace = "pre-wrap";
       imageInfoEl.style.wordBreak = "break-all";
+      imageInfoEl.style.color = "var(--text-normal)";
     }
     if (this.usedPrompt) {
-      content.createEl("h4", { text: "\u4F7F\u7528\u7684\u63D0\u793A\u8BCD:" });
+      const promptHeader = content.createEl("h4", { text: "\u4F7F\u7528\u7684\u63D0\u793A\u8BCD:" });
+      promptHeader.style.color = "var(--text-normal)";
       const promptTextArea = content.createEl("textarea", {
         cls: "ankify-debug-prompt",
         text: this.usedPrompt
@@ -1448,15 +1569,17 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
       promptTextArea.style.minHeight = "80px";
       promptTextArea.style.fontFamily = "monospace";
       promptTextArea.style.fontSize = "12px";
-      promptTextArea.style.backgroundColor = "#fff";
-      promptTextArea.style.border = "1px solid #ddd";
+      promptTextArea.style.backgroundColor = "var(--background-primary)";
+      promptTextArea.style.border = "1px solid var(--border-color)";
       promptTextArea.style.padding = "8px";
       promptTextArea.style.borderRadius = "4px";
       promptTextArea.style.marginBottom = "10px";
+      promptTextArea.style.color = "var(--text-normal)";
       promptTextArea.readOnly = true;
     }
     if (this.selectedContent) {
-      content.createEl("h4", { text: "\u9009\u4E2D\u7684\u5185\u5BB9:" });
+      const contentHeader = content.createEl("h4", { text: "\u9009\u4E2D\u7684\u5185\u5BB9:" });
+      contentHeader.style.color = "var(--text-normal)";
       const contentTextArea = content.createEl("textarea", {
         cls: "ankify-debug-content",
         text: this.selectedContent
@@ -1465,30 +1588,34 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
       contentTextArea.style.minHeight = "100px";
       contentTextArea.style.fontFamily = "monospace";
       contentTextArea.style.fontSize = "12px";
-      contentTextArea.style.backgroundColor = "#fff";
-      contentTextArea.style.border = "1px solid #ddd";
+      contentTextArea.style.backgroundColor = "var(--background-primary)";
+      contentTextArea.style.border = "1px solid var(--border-color)";
       contentTextArea.style.padding = "8px";
       contentTextArea.style.borderRadius = "4px";
       contentTextArea.style.marginBottom = "10px";
+      contentTextArea.style.color = "var(--text-normal)";
       contentTextArea.readOnly = true;
     }
     if (Object.keys(this.plugin.noteTypeFields).length > 0) {
-      content.createEl("h4", { text: "\u7B14\u8BB0\u7C7B\u578B\u5B57\u6BB5\u4FE1\u606F:" });
+      const noteTypeHeader = content.createEl("h4", { text: "\u7B14\u8BB0\u7C7B\u578B\u5B57\u6BB5\u4FE1\u606F:" });
+      noteTypeHeader.style.color = "var(--text-normal)";
       const noteTypeFieldsEl = content.createEl("pre", {
         text: Object.entries(this.plugin.noteTypeFields).map(([noteType, fields]) => `${noteType}: ${fields.join(", ")}`).join("\n")
       });
       noteTypeFieldsEl.style.fontFamily = "monospace";
       noteTypeFieldsEl.style.fontSize = "12px";
-      noteTypeFieldsEl.style.backgroundColor = "#fff";
-      noteTypeFieldsEl.style.border = "1px solid #ddd";
+      noteTypeFieldsEl.style.backgroundColor = "var(--background-primary)";
+      noteTypeFieldsEl.style.border = "1px solid var(--border-color)";
       noteTypeFieldsEl.style.padding = "8px";
       noteTypeFieldsEl.style.borderRadius = "4px";
       noteTypeFieldsEl.style.marginBottom = "10px";
       noteTypeFieldsEl.style.whiteSpace = "pre-wrap";
       noteTypeFieldsEl.style.wordBreak = "break-all";
+      noteTypeFieldsEl.style.color = "var(--text-normal)";
     }
     if (this.rawResult) {
-      content.createEl("h4", { text: "\u5927\u6A21\u578B\u63A5\u53E3\u539F\u59CB\u8FD4\u56DE\u4FE1\u606F:" });
+      const rawResultHeader = content.createEl("h4", { text: "\u5927\u6A21\u578B\u63A5\u53E3\u539F\u59CB\u8FD4\u56DE\u4FE1\u606F:" });
+      rawResultHeader.style.color = "var(--text-normal)";
       const rawResultEl = content.createEl("textarea", {
         cls: "ankify-debug-raw-result",
         text: this.rawResult
@@ -1497,11 +1624,12 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
       rawResultEl.style.minHeight = "150px";
       rawResultEl.style.fontFamily = "monospace";
       rawResultEl.style.fontSize = "12px";
-      rawResultEl.style.backgroundColor = "#fff";
-      rawResultEl.style.border = "1px solid #ddd";
+      rawResultEl.style.backgroundColor = "var(--background-primary)";
+      rawResultEl.style.border = "1px solid var(--border-color)";
       rawResultEl.style.padding = "8px";
       rawResultEl.style.borderRadius = "4px";
       rawResultEl.style.marginBottom = "10px";
+      rawResultEl.style.color = "var(--text-normal)";
       rawResultEl.readOnly = true;
     }
   }
