@@ -1,0 +1,2079 @@
+import {
+  App,
+  Editor,
+  MarkdownView,
+  Modal,
+  Notice,
+  Plugin,
+  PluginSettingTab,
+  Setting,
+} from "obsidian";
+
+// Anki卡片接口
+interface AnkiCard {
+  question: string;
+  answer: string;
+  annotation?: string;
+  tags?: string[];
+}
+
+// 默认设置
+interface AnkifySettings {
+  // API设置
+  apiModel: string; // 选择的API模型
+  deepseekApiKey: string;
+  openaiApiKey: string;
+  claudeApiKey: string;
+  // 自定义API设置
+  customApiUrl: string;
+  customApiKey: string;
+  customModelName: string;
+  customApiVersion: string;
+  // 通用设置
+  customPrompt: string;
+  visionPrompt: string; // 图片识别提示词
+  debugMode: boolean; // Debug模式
+  maxImageSize: number; // 图片最大尺寸（像素）
+  imageQuality: number; // 图片压缩质量（0-1）
+  insertToDocument: boolean; // 是否直接插入文档而不是弹窗
+  ankiConnectUrl: string; // Anki Connect API地址
+  defaultDeck: string; // 默认牌组
+  defaultNoteType: string; // 默认笔记类型
+}
+
+const DEFAULT_SETTINGS: AnkifySettings = {
+  // API设置
+  apiModel: "deepseek", // 默认使用DeepSeek
+  deepseekApiKey: "",
+  openaiApiKey: "",
+  claudeApiKey: "",
+  // 自定义API设置
+  customApiUrl: "https://api.example.com/v1/chat/completions",
+  customApiKey: "",
+  customModelName: "custom-model",
+  customApiVersion: "",
+  // 通用设置
+  customPrompt:
+    '请基于以下内容创建Anki卡片，格式为"问题:::答案"，每个卡片一行。提取关键概念和知识点。\n\n',
+  visionPrompt:
+    '请识别这张图片中的内容，并基于图片内容创建Anki卡片，格式为"问题:::答案"，每个卡片一行。提取图片中的关键概念和知识点。',
+  debugMode: false, // 默认关闭Debug模式
+  maxImageSize: 1024, // 图片最大尺寸1024px
+  imageQuality: 0.8, // 图片质量80%
+  insertToDocument: false, // 默认使用弹窗
+  ankiConnectUrl: "http://127.0.0.1:8765", // Anki Connect默认地址
+  defaultDeck: "Default", // 默认牌组
+  defaultNoteType: "Basic", // 默认笔记类型
+};
+
+export default class AnkifyPlugin extends Plugin {
+  settings: AnkifySettings;
+
+  async onload() {
+    await this.loadSettings();
+
+    // 在编辑器菜单中添加一个命令
+    this.addCommand({
+      id: "generate-anki-cards",
+      name: "生成Anki卡片",
+      editorCallback: (editor: Editor, view: MarkdownView) => {
+        this.processContent(editor, view);
+      },
+    });
+
+    // 添加设置面板
+    this.addSettingTab(new AnkifySettingTab(this.app, this));
+
+    // 在编辑器工具栏添加一个按钮
+    this.addRibbonIcon("dice", "Ankify选中内容", (evt: MouseEvent) => {
+      const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+      if (view) {
+        this.processContent(view.editor, view);
+      } else {
+        new Notice("请先打开一个Markdown文件");
+      }
+    });
+  }
+
+  onunload() {}
+
+  async loadSettings() {
+    this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+  }
+
+  async saveSettings() {
+    await this.saveData(this.settings);
+  }
+
+  // 调用Anki Connect API
+  async invokeAnkiConnect(action: string, params = {}) {
+    const requestBody = {
+      action,
+      version: 6,
+      params,
+    };
+
+    console.log("发送Anki Connect请求:", {
+      url: this.settings.ankiConnectUrl,
+      action,
+      params,
+    });
+
+    const response = await fetch(this.settings.ankiConnectUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Anki Connect请求失败: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    console.log("Anki Connect响应:", data);
+
+    if (data.error) {
+      throw new Error(`Anki Connect错误: ${data.error}`);
+    }
+
+    return data.result;
+  }
+
+  // 获取可用的牌组列表
+  async getDeckNames() {
+    try {
+      return await this.invokeAnkiConnect("deckNames");
+    } catch (error) {
+      console.error("获取牌组列表失败:", error);
+      new Notice(
+        "获取Anki牌组列表失败，请确保Anki已启动且安装了Anki Connect插件"
+      );
+      return [];
+    }
+  }
+
+  // 获取可用的笔记类型列表
+  async getNoteTypes() {
+    try {
+      return await this.invokeAnkiConnect("modelNames");
+    } catch (error) {
+      console.error("获取笔记类型列表失败:", error);
+      return [];
+    }
+  }
+
+  // 解析生成的Anki卡片文本
+  parseAnkiCards(text: string): AnkiCard[] {
+    const cards: AnkiCard[] = [];
+
+    console.log("开始解析Anki卡片，原始文本长度:", text.length);
+    console.log("原始文本前500字符:", text.substring(0, 500));
+
+    // 检查是否是多行格式（每个字段一行，卡片间有空行）
+    const isMultiLineFormat = /Q:.*\nA:.*(\nannotation:.*)?(\ntags:.*)?/i.test(
+      text
+    );
+
+    if (isMultiLineFormat) {
+      console.log("检测到多行格式数据");
+
+      // 通过空行或多个换行符分割不同的卡片
+      const cardBlocks = text.split(/\n\s*\n+/).filter((block) => block.trim());
+
+      for (const block of cardBlocks) {
+        const lines = block
+          .split("\n")
+          .map((line) => line.trim())
+          .filter((line) => line);
+        const card: AnkiCard = { question: "", answer: "" };
+
+        for (const line of lines) {
+          if (line.startsWith("Q:") || line.startsWith("问:") || line.startsWith("问：")) {
+            card.question = line.substring(2).trim();
+          } else if (line.startsWith("A:") || line.startsWith("答:") || line.startsWith("答：")) {
+            card.answer = line.substring(2).trim();
+          } else if (line.startsWith("annotation:") || line.startsWith("注释:") || line.startsWith("注释：")) {
+            card.annotation = line.substring(line.indexOf(':') + 1).trim();
+          } else if (line.startsWith("tags:") || line.startsWith("标签:") || line.startsWith("标签：")) {
+            const tagsText = line.substring(line.indexOf(':') + 1).trim();
+            // 处理标签
+            if (tagsText.includes("#")) {
+              // 带#格式：#tag1 #tag2
+              card.tags = tagsText
+                .split("#")
+                .map((tag) => tag.trim())
+                .filter((tag) => tag.length > 0);
+            } else {
+              // 不带#格式
+              card.tags = tagsText
+                .split(/[\s,]+/)
+                .map((tag) => tag.trim())
+                .filter((tag) => tag.length > 0);
+            }
+          }
+        }
+
+        // 确保卡片至少有问题和答案
+        if (card.question && card.answer) {
+          cards.push(card);
+        }
+      }
+    } else {
+      // 检查是否是表格格式
+      const lines = text.split("\n").filter((line) => line.trim());
+
+      // 如果没有内容，直接返回空数组
+      if (lines.length === 0) {
+        return cards;
+      }
+
+      // 检查表格格式（第一行包含Q、A、annotation、tags等标题）
+      const headerLine = lines[0].trim();
+      const isTableFormat = /^Q[\t\s]+A[\t\s]+annotation[\t\s]+tags$/i.test(
+        headerLine
+      );
+
+      if (isTableFormat) {
+        console.log("检测到表格格式数据");
+        // 跳过标题行，解析表格内容
+        for (let i = 1; i < lines.length; i++) {
+          const line = lines[i].trim();
+          if (!line) continue;
+
+          // 尝试按制表符分割
+          let parts: string[];
+          if (line.includes("\t")) {
+            parts = line.split("\t");
+          } else {
+            // 使用正则表达式匹配连续空格分隔的部分
+            parts = line.split(/\s{2,}/);
+          }
+
+          if (parts.length >= 2) {
+            const card: AnkiCard = {
+              question: parts[0].trim(),
+              answer: parts[1].trim(),
+            };
+
+            if (parts.length >= 3 && parts[2].trim()) {
+              card.annotation = parts[2].trim();
+            }
+
+            if (parts.length >= 4 && parts[3].trim()) {
+              // 处理标签 - 支持带#和不带#的格式
+              const tagsText = parts[3].trim();
+              if (tagsText) {
+                if (tagsText.includes("#")) {
+                  // 带#格式：#tag1 #tag2
+                  const tagParts = tagsText.split("#");
+                  card.tags = tagParts
+                    .map((tag) => tag.trim())
+                    .filter((tag) => tag.length > 0);
+                } else {
+                  // 不带#格式，假设用空格或逗号分隔
+                  card.tags = tagsText
+                    .split(/[\s,]+/)
+                    .map((tag) => tag.trim())
+                    .filter((tag) => tag.length > 0);
+                }
+              }
+            }
+
+            cards.push(card);
+          }
+        }
+      } else {
+        // 原有的解析逻辑
+        for (const line of lines) {
+          // 支持中英文格式：Q: 问题 A: 答案 或 问: 问题 答: 答案
+          const qaMatch = line.match(
+            /(?:Q:|问[:：])\s*(.*?)\s*(?:A:|答[:：])\s*(.*?)(?:\s*annotation:|注释[:：]|$|\s*tags:|标签[:：])/i
+          );
+          if (qaMatch) {
+            const card: AnkiCard = {
+              question: qaMatch[1]?.trim() || "",
+              answer: qaMatch[2]?.trim() || "",
+            };
+
+            // 查找注释
+            const annotationMatch = line.match(
+              /(?:annotation:|注释[:：])\s*(.*?)(?:\s*tags:|标签[:：]|$)/i
+            );
+            if (annotationMatch) {
+              card.annotation = annotationMatch[1]?.trim();
+            }
+
+            // 查找标签
+            const tagsMatch = line.match(/(?:tags:|标签[:：])\s*(.*?)$/i);
+            if (tagsMatch && tagsMatch[1]) {
+              // 解析标签，格式为 #tag1 #tag2
+              card.tags = tagsMatch[1]
+                .split("#")
+                .map((tag) => tag.trim())
+                .filter((tag) => tag.length > 0);
+            }
+
+            cards.push(card);
+          } else {
+            // 尝试匹配问题:::答案格式
+            const splitLine = line.split(":::");
+            if (splitLine.length >= 2) {
+              cards.push({
+                question: splitLine[0].trim(),
+                answer: splitLine[1].trim(),
+              });
+            }
+          }
+        }
+      }
+    }
+
+    console.log(`解析出 ${cards.length} 张卡片`, cards);
+    return cards;
+  }
+
+  // 添加卡片到Anki
+  async addNotesToAnki(cards: AnkiCard[], deckName: string, noteType: string) {
+    // 验证输入参数
+    if (!deckName || !noteType) {
+      throw new Error("牌组名称和笔记类型不能为空");
+    }
+
+    console.log("准备添加卡片到Anki:", {
+      deckName,
+      noteType,
+      cardCount: cards.length,
+      firstCard: cards[0],
+    });
+
+    const notes = await Promise.all(
+      cards.map(async (card, index) => {
+        // 验证卡片内容
+        if (!card.question || !card.answer) {
+          throw new Error(
+            `卡片内容不完整：\n问题：${card.question}\n答案：${card.answer}`
+          );
+        }
+
+        // 根据笔记类型构建字段映射
+        let fields: Record<string, string> = {};
+
+        // 获取笔记类型的字段名称
+        const modelFieldNames = await this.invokeAnkiConnect(
+          "modelFieldNames",
+          { modelName: noteType }
+        );
+        console.log(`笔记类型 ${noteType} 的字段名称:`, modelFieldNames);
+
+        // 根据字段名称进行映射
+        if (
+          modelFieldNames.includes("Front") &&
+          modelFieldNames.includes("Back")
+        ) {
+          fields = {
+            Front: card.question,
+            Back:
+              card.answer +
+              (card.annotation
+                ? `\n<hr>\n<span style="color: rgb(143, 53, 8);">${card.annotation}</span>`
+                : ""),
+          };
+        } else if (
+          modelFieldNames.includes("正面") &&
+          modelFieldNames.includes("背面")
+        ) {
+          fields = {
+            正面: card.question,
+            背面:
+              card.answer +
+              (card.annotation
+                ? `\n<hr>\n<span style="color: rgb(143, 53, 8);">${card.annotation}</span>`
+                : ""),
+          };
+        } else if (
+          modelFieldNames.includes("Text") &&
+          modelFieldNames.includes("Extra")
+        ) {
+          fields = {
+            Text: card.question,
+            Extra:
+              card.answer +
+              (card.annotation
+                ? `\n<hr>\n<span style="color: rgb(143, 53, 8);">${card.annotation}</span>`
+                : ""),
+          };
+        } else {
+          // 如果无法确定字段名称，尝试使用第一个字段作为问题，第二个字段作为答案
+          if (modelFieldNames.length >= 2) {
+            fields = {
+              [modelFieldNames[0]]: card.question,
+              [modelFieldNames[1]]:
+                card.answer +
+                (card.annotation
+                  ? `\n<hr>\n<span style="color: rgb(143, 53, 8);">${card.annotation}</span>`
+                  : ""),
+            };
+          } else {
+            throw new Error(`无法确定笔记类型 ${noteType} 的字段映射`);
+          }
+        }
+
+        // 验证字段映射
+        for (const [key, value] of Object.entries(fields)) {
+          if (!value || value.trim() === "") {
+            throw new Error(`字段 "${key}" 不能为空`);
+          }
+        }
+
+        const note = {
+          deckName,
+          modelName: noteType,
+          fields,
+          tags: card.tags || [],
+          options: {
+            allowDuplicate: false,
+          },
+        };
+
+        console.log(`第 ${index + 1} 张卡片的完整笔记对象:`, note);
+        return note;
+      })
+    );
+
+    // 批量添加笔记
+    try {
+      console.log("正在添加笔记到Anki:", {
+        deckName,
+        noteType,
+        noteCount: notes.length,
+        firstNote: notes[0],
+      });
+
+      const result = await this.invokeAnkiConnect("addNotes", { notes });
+
+      // 检查结果
+      if (!result || !Array.isArray(result)) {
+        throw new Error("Anki Connect返回了无效的结果");
+      }
+
+      // 检查是否有失败的笔记
+      const failedNotes = result.filter((id) => id === null);
+      if (failedNotes.length > 0) {
+        console.warn(`有 ${failedNotes.length} 张卡片添加失败`);
+      }
+
+      return result;
+    } catch (error) {
+      console.error("添加笔记失败:", error);
+      throw new Error(`添加笔记失败: ${error.message}`);
+    }
+  }
+
+  // 解析Markdown图片路径
+  parseImagePath(text: string): string | null {
+    // 匹配 Markdown 图片格式: ![alt](path)
+    const imageRegex = /!\[([^\]]*)\]\(([^)]+)\)/;
+    const match = text.match(imageRegex);
+    return match ? match[2] : null;
+  }
+
+  // 读取图片并转换为base64
+  async readImageAsBase64(imagePath: string, currentFilePath: string): Promise<{ base64: string, actualPath: string }> {
+    try {
+      const vault = this.app.vault;
+      const currentFile = this.app.workspace.getActiveFile();
+
+      if (!currentFile) {
+        throw new Error("无法获取当前文件");
+      }
+
+      console.log("开始读取图片:", {
+        原始路径: imagePath,
+        当前文件: currentFile.path,
+        当前文件目录: currentFile.parent?.path
+      });
+
+      let fullPath = imagePath;
+
+      // 首先尝试直接读取（可能是相对于vault根目录的路径）
+      let file = vault.getAbstractFileByPath(imagePath);
+
+      if (!file && !imagePath.startsWith('/')) {
+        // 如果直接读取失败，尝试相对于当前文件目录
+        const currentDir = currentFile.parent?.path || '';
+        fullPath = currentDir ? `${currentDir}/${imagePath}` : imagePath;
+        console.log("尝试相对路径:", fullPath);
+        file = vault.getAbstractFileByPath(fullPath);
+      }
+
+      if (!file) {
+        // 最后尝试：移除开头的 ./
+        if (imagePath.startsWith('./')) {
+          const cleanPath = imagePath.substring(2);
+          const currentDir = currentFile.parent?.path || '';
+          fullPath = currentDir ? `${currentDir}/${cleanPath}` : cleanPath;
+          console.log("尝试清理后的路径:", fullPath);
+          file = vault.getAbstractFileByPath(fullPath);
+        }
+      }
+
+      if (!file) {
+        console.error("所有路径尝试失败，vault所有文件:", vault.getFiles().map(f => f.path));
+        throw new Error(`找不到图片文件。\n尝试的路径: ${imagePath}, ${fullPath}\n请检查图片路径是否正确`);
+      }
+
+      const actualPath = file.path;
+      console.log("成功找到文件:", actualPath);
+
+      // 读取二进制数据
+      const arrayBuffer = await vault.readBinary(file as any);
+
+      // 转换为base64
+      const base64Data = this.arrayBufferToBase64(arrayBuffer);
+
+      // 获取文件扩展名以确定MIME类型
+      const ext = imagePath.split('.').pop()?.toLowerCase();
+      const mimeType = this.getMimeType(ext || '');
+
+      console.log("图片读取成功，大小:", arrayBuffer.byteLength, "bytes");
+
+      return {
+        base64: `data:${mimeType};base64,${base64Data}`,
+        actualPath: actualPath
+      };
+    } catch (error) {
+      console.error("读取图片失败:", error);
+      throw new Error(`读取图片失败: ${error.message}`);
+    }
+  }
+
+  // ArrayBuffer转Base64
+  arrayBufferToBase64(buffer: ArrayBuffer): string {
+    let binary = '';
+    const bytes = new Uint8Array(buffer);
+    for (let i = 0; i < bytes.byteLength; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary);
+  }
+
+  // 获取MIME类型
+  getMimeType(ext: string): string {
+    const mimeTypes: Record<string, string> = {
+      'png': 'image/png',
+      'jpg': 'image/jpeg',
+      'jpeg': 'image/jpeg',
+      'gif': 'image/gif',
+      'webp': 'image/webp',
+      'bmp': 'image/bmp'
+    };
+    return mimeTypes[ext] || 'image/png';
+  }
+
+  // 压缩图片
+  async compressImage(base64Image: string): Promise<string> {
+    return new Promise((resolve, reject) => {
+      try {
+        const img = new Image();
+
+        img.onload = () => {
+          // 计算压缩后的尺寸
+          let width = img.width;
+          let height = img.height;
+          const maxSize = this.settings.maxImageSize;
+
+          if (width > maxSize || height > maxSize) {
+            if (width > height) {
+              height = (height * maxSize) / width;
+              width = maxSize;
+            } else {
+              width = (width * maxSize) / height;
+              height = maxSize;
+            }
+          }
+
+          // 创建canvas进行压缩
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+
+          if (!ctx) {
+            reject(new Error('无法创建canvas上下文'));
+            return;
+          }
+
+          ctx.drawImage(img, 0, 0, width, height);
+
+          // 转换为base64，使用指定的质量
+          const compressedBase64 = canvas.toDataURL('image/jpeg', this.settings.imageQuality);
+
+          console.log('图片压缩完成:', {
+            原始尺寸: `${img.width}x${img.height}`,
+            压缩后尺寸: `${width}x${height}`,
+            原始大小: Math.round(base64Image.length / 1024) + 'KB',
+            压缩后大小: Math.round(compressedBase64.length / 1024) + 'KB'
+          });
+
+          resolve(compressedBase64);
+        };
+
+        img.onerror = () => {
+          reject(new Error('图片加载失败'));
+        };
+
+        img.src = base64Image;
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }
+
+  async processContent(editor: Editor, view: MarkdownView) {
+    // 修改为处理选中的文本，而不是整篇文章
+    const selectedText = editor.getSelection();
+
+    if (!selectedText) {
+      new Notice("请先选择要处理的文本内容");
+      return;
+    }
+
+    // 检查是否为图片路径
+    const imagePath = this.parseImagePath(selectedText);
+    if (imagePath) {
+      // 处理图片识别，传递用户实际选中的文本
+      await this.processImage(imagePath, selectedText, editor, view);
+      return;
+    }
+
+    // 检查选择的模型对应的API密钥是否已设置
+    let apiKey = "";
+    const model = this.settings.apiModel;
+
+    if (model === "deepseek") {
+      apiKey = this.settings.deepseekApiKey;
+    } else if (model === "openai") {
+      apiKey = this.settings.openaiApiKey;
+    } else if (model === "claude") {
+      apiKey = this.settings.claudeApiKey;
+    } else if (model === "custom") {
+      apiKey = this.settings.customApiKey;
+      // 检查自定义API URL
+      if (!this.settings.customApiUrl) {
+        new Notice("请先设置自定义API URL");
+        return;
+      }
+      // 检查自定义模型名称
+      if (!this.settings.customModelName) {
+        new Notice("请先设置自定义模型名称");
+        return;
+      }
+    }
+
+    if (!apiKey) {
+      const modelName = model === "deepseek" ? "DeepSeek" :
+                        model === "openai" ? "OpenAI" :
+                        model === "claude" ? "Claude" : "自定义API";
+      new Notice(`请先设置${modelName}密钥`);
+      return;
+    }
+
+    // 立即弹窗显示
+    const usedPrompt = this.settings.customPrompt + selectedText;
+    new SelectableCardsModal(
+      this.app,
+      [],
+      "",
+      this,
+      editor,
+      usedPrompt,
+      "",
+      selectedText,
+      async () => {
+        // API调用函数
+        try {
+          const result = await this.callModelAPI(selectedText);
+          return { result, cards: this.parseAnkiCards(result) };
+        } catch (error) {
+          console.error("API调用失败:", error);
+          throw error;
+        }
+      },
+      this.settings.insertToDocument
+    ).open();
+  }
+
+  // 处理图片识别
+  async processImage(imagePath: string, selectedText: string, editor: Editor, view: MarkdownView) {
+    try {
+      const currentFile = this.app.workspace.getActiveFile();
+      if (!currentFile) {
+        throw new Error("无法获取当前文件");
+      }
+
+      const usedPrompt = this.settings.visionPrompt;
+      const imageInfo = `原始路径: ${imagePath}\n当前文件: ${currentFile.path}`;
+
+      // 立即弹窗显示
+      new SelectableCardsModal(
+        this.app,
+        [],
+        "",
+        this,
+        editor,
+        usedPrompt,
+        imageInfo,
+        selectedText,  // 显示用户实际选中的内容
+        async () => {
+          // API调用函数
+          try {
+            // 读取图片并转为base64
+            const { base64: base64Image, actualPath } = await this.readImageAsBase64(imagePath, currentFile.path);
+
+            // 更新图片路径信息
+            const updatedImageInfo = `原始路径: ${imagePath}\n实际读取路径: ${actualPath}\n当前文件: ${currentFile.path}`;
+
+            // 压缩图片以减少token使用
+            const compressedImage = await this.compressImage(base64Image);
+
+            // 调用Vision API
+            const result = await this.callVisionAPI(compressedImage);
+
+            return {
+              result,
+              cards: this.parseAnkiCards(result),
+              imageInfo: updatedImageInfo
+            };
+          } catch (error) {
+            console.error("图片识别失败:", error);
+            throw error;
+          }
+        },
+        this.settings.insertToDocument
+      ).open();
+    } catch (error) {
+      console.error("图片识别失败:", error);
+      new Notice("图片识别失败：" + error.message);
+    }
+  }
+
+  // 新增方法：将结果追加到文档末尾
+  appendResultToDocument(editor: Editor, result: string) {
+    const docContent = editor.getValue();
+    const newContent = docContent + "\n\n## Anki卡片\n\n" + result;
+    editor.setValue(newContent);
+    new Notice("Anki卡片已添加到文档末尾");
+  }
+
+  async callVisionAPI(base64Image: string): Promise<string> {
+    const model = this.settings.apiModel;
+    let apiUrl = "";
+    let headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    let requestBody: any = {};
+
+    // 使用专门的图片识别提示词
+    const visionPrompt = this.settings.visionPrompt;
+
+    // 根据选择的模型设置API请求参数
+    if (model === "deepseek") {
+      // DeepSeek 的图片识别格式
+      apiUrl = "https://api.deepseek.com/v1/chat/completions";
+      headers["Authorization"] = `Bearer ${this.settings.deepseekApiKey}`;
+
+      // 提取纯base64数据（移除 data:image/xxx;base64, 前缀）
+      const base64Data = base64Image.includes('base64,')
+        ? base64Image.split('base64,')[1]
+        : base64Image;
+
+      console.log('DeepSeek图片识别 - base64数据长度:', base64Data.length);
+      console.log('DeepSeek图片识别 - base64前100字符:', base64Data.substring(0, 100));
+
+      // DeepSeek 需要将 content 序列化为 JSON 字符串
+      const contentJson = JSON.stringify([
+        {
+          type: "text",
+          text: visionPrompt
+        },
+        {
+          type: "image",
+          image: {
+            data: base64Data,
+            format: "base64"
+          }
+        }
+      ]);
+
+      requestBody = {
+        model: "deepseek-chat",
+        messages: [
+          {
+            role: "user",
+            content: contentJson
+          }
+        ],
+        temperature: 0.7,
+      };
+
+      console.log('DeepSeek API 请求体（不含图片数据）:', {
+        model: requestBody.model,
+        temperature: requestBody.temperature,
+        contentLength: contentJson.length
+      });
+    } else if (model === "openai") {
+      apiUrl = "https://api.openai.com/v1/chat/completions";
+      headers["Authorization"] = `Bearer ${this.settings.openaiApiKey}`;
+      requestBody = {
+        model: "gpt-4-vision-preview", // GPT-4 Vision
+        messages: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "text",
+                text: visionPrompt
+              },
+              {
+                type: "image_url",
+                image_url: {
+                  url: base64Image
+                }
+              }
+            ]
+          }
+        ],
+        max_tokens: 1000,
+        temperature: 0.7,
+      };
+    } else if (model === "claude") {
+      apiUrl = "https://api.anthropic.com/v1/messages";
+      headers["x-api-key"] = this.settings.claudeApiKey;
+      headers["anthropic-version"] = "2023-06-01";
+
+      // 提取base64数据和媒体类型
+      const imageDataMatch = base64Image.match(/data:(image\/\w+);base64,(.+)/);
+      const mediaType = imageDataMatch ? imageDataMatch[1] : "image/png";
+      const imageData = imageDataMatch ? imageDataMatch[2] : base64Image;
+
+      requestBody = {
+        model: "claude-3-haiku-20240307",
+        messages: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "image",
+                source: {
+                  type: "base64",
+                  media_type: mediaType,
+                  data: imageData
+                }
+              },
+              {
+                type: "text",
+                text: visionPrompt
+              }
+            ]
+          }
+        ],
+        max_tokens: 1000,
+        temperature: 0.7,
+      };
+    } else if (model === "custom") {
+      // 自定义API - 尝试OpenAI格式
+      apiUrl = this.settings.customApiUrl;
+      headers["Authorization"] = `Bearer ${this.settings.customApiKey}`;
+
+      if (this.settings.customApiVersion) {
+        headers["api-version"] = this.settings.customApiVersion;
+      }
+
+      requestBody = {
+        model: this.settings.customModelName,
+        messages: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "text",
+                text: visionPrompt
+              },
+              {
+                type: "image_url",
+                image_url: {
+                  url: base64Image
+                }
+              }
+            ]
+          }
+        ],
+        temperature: 0.7,
+      };
+    } else {
+      throw new Error("不支持的模型类型");
+    }
+
+    // 发送API请求
+    const startTime = Date.now();
+    const response = await fetch(apiUrl, {
+      method: "POST",
+      headers: headers,
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error?.message || "请求失败");
+    }
+
+    const data = await response.json();
+    const endTime = Date.now();
+    console.log(`${model.toUpperCase()} Vision API响应时间: ${endTime - startTime}ms`);
+
+    // 根据不同API响应格式获取结果
+    let result = "";
+    if (model === "deepseek" || model === "openai") {
+      result = data.choices[0]?.message?.content || "无法识别图片内容";
+    } else if (model === "claude") {
+      result = data.content[0]?.text || "无法识别图片内容";
+    } else if (model === "custom") {
+      if (data.choices && data.choices[0]?.message?.content) {
+        result = data.choices[0].message.content;
+      } else if (data.content && data.content[0]?.text) {
+        result = data.content[0].text;
+      } else if (data.response) {
+        result = data.response;
+      } else if (data.text || data.content || data.result || data.output || data.generated_text) {
+        result = data.text || data.content || data.result || data.output || data.generated_text;
+      } else {
+        console.warn("无法从API响应中提取内容，返回完整响应:", data);
+        result = JSON.stringify(data, null, 2);
+      }
+    }
+
+    return result;
+  }
+
+  async callModelAPI(content: string): Promise<string> {
+    const prompt = this.settings.customPrompt + content;
+    const startTime = Date.now();
+    const model = this.settings.apiModel;
+    let apiUrl = "";
+    let headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    let requestBody: any = {};
+
+    // 根据选择的模型设置API请求参数
+    if (model === "deepseek") {
+      apiUrl = "https://api.deepseek.com/v1/chat/completions";
+      headers["Authorization"] = `Bearer ${this.settings.deepseekApiKey}`;
+      requestBody = {
+        model: "deepseek-chat",
+        messages: [
+          {
+            role: "user",
+            content: prompt,
+          },
+        ],
+        temperature: 0.7,
+      };
+    } else if (model === "openai") {
+      apiUrl = "https://api.openai.com/v1/chat/completions";
+      headers["Authorization"] = `Bearer ${this.settings.openaiApiKey}`;
+      requestBody = {
+        model: "gpt-3.5-turbo",
+        messages: [
+          {
+            role: "user",
+            content: prompt,
+          },
+        ],
+        temperature: 0.7,
+      };
+    } else if (model === "claude") {
+      apiUrl = "https://api.anthropic.com/v1/messages";
+      headers["x-api-key"] = this.settings.claudeApiKey;
+      headers["anthropic-version"] = "2023-06-01";
+      requestBody = {
+        model: "claude-3-haiku-20240307",
+        messages: [
+          {
+            role: "user",
+            content: prompt,
+          },
+        ],
+        max_tokens: 1000,
+        temperature: 0.7,
+      };
+    } else if (model === "custom") {
+      // 使用自定义API设置
+      apiUrl = this.settings.customApiUrl;
+      headers["Authorization"] = `Bearer ${this.settings.customApiKey}`;
+      
+      // 如果有指定API版本，添加到请求头
+      if (this.settings.customApiVersion) {
+        headers["api-version"] = this.settings.customApiVersion;
+      }
+      
+      // 根据URL猜测API类型并设置合适的请求体
+      if (apiUrl.includes("openai")) {
+        requestBody = {
+          model: this.settings.customModelName,
+          messages: [
+            {
+              role: "user",
+              content: prompt,
+            },
+          ],
+          temperature: 0.7,
+        };
+      } else if (apiUrl.includes("anthropic")) {
+        requestBody = {
+          model: this.settings.customModelName,
+          messages: [
+            {
+              role: "user",
+              content: prompt,
+            },
+          ],
+          max_tokens: 1000,
+          temperature: 0.7,
+        };
+      } else {
+        // 默认格式（类似OpenAI）
+        requestBody = {
+          model: this.settings.customModelName,
+          messages: [
+            {
+              role: "user",
+              content: prompt,
+            },
+          ],
+          temperature: 0.7,
+        };
+      }
+    } else {
+      throw new Error("不支持的模型类型");
+    }
+
+    // 发送API请求
+    const response = await fetch(apiUrl, {
+      method: "POST",
+      headers: headers,
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error?.message || "请求失败");
+    }
+
+    const data = await response.json();
+    const endTime = Date.now();
+    console.log(`${model.toUpperCase()} API响应时间: ${endTime - startTime}ms`);
+    
+    // 根据不同API响应格式获取结果
+    let result = "";
+    if (model === "deepseek" || model === "openai") {
+      result = data.choices[0]?.message?.content || "无法生成卡片内容";
+    } else if (model === "claude") {
+      result = data.content[0]?.text || "无法生成卡片内容";
+    } else if (model === "custom") {
+      // 尝试从不同的响应结构中提取内容
+      if (data.choices && data.choices[0]?.message?.content) {
+        // OpenAI格式
+        result = data.choices[0].message.content;
+      } else if (data.content && data.content[0]?.text) {
+        // Claude格式
+        result = data.content[0].text;
+      } else if (data.response) {
+        // 某些API可能直接返回response字段
+        result = data.response;
+      } else if (data.text || data.content || data.result || data.output || data.generated_text) {
+        // 其他可能的字段名
+        result = data.text || data.content || data.result || data.output || data.generated_text;
+      } else {
+        // 找不到合适的字段，返回整个响应作为JSON字符串
+        console.warn("无法从API响应中提取内容，返回完整响应:", data);
+        result = JSON.stringify(data, null, 2);
+      }
+    }
+    
+    return result;
+  }
+}
+
+// 卡片选择模态框
+class SelectableCardsModal extends Modal {
+  cards: AnkiCard[];
+  rawResult: string;
+  plugin: AnkifyPlugin;
+  editor: Editor;
+  selectedCards: boolean[];
+  deckName: string;
+  noteType: string;
+  deckSelect: HTMLSelectElement;
+  noteTypeSelect: HTMLSelectElement;
+  loadingEl: HTMLElement;
+  usedPrompt: string; // 实际使用的提示词
+  imageInfo: string; // 图片路径信息
+  selectedContent: string; // 选中的内容
+  apiCallFn: (() => Promise<{ result: string; cards: AnkiCard[]; imageInfo?: string }>) | null; // API调用函数
+  insertToDocument: boolean; // 是否直接插入文档
+
+  constructor(
+    app: App,
+    cards: AnkiCard[],
+    rawResult: string,
+    plugin: AnkifyPlugin,
+    editor: Editor,
+    usedPrompt: string = "",
+    imageInfo: string = "",
+    selectedContent: string = "",
+    apiCallFn: (() => Promise<{ result: string; cards: AnkiCard[]; imageInfo?: string }>) | null = null,
+    insertToDocument: boolean = false
+  ) {
+    super(app);
+    this.cards = cards;
+    this.rawResult = rawResult;
+    this.plugin = plugin;
+    this.editor = editor;
+    this.selectedCards = cards.map(() => true); // 默认全选
+    this.deckName = plugin.settings.defaultDeck;
+    this.noteType = plugin.settings.defaultNoteType;
+    this.usedPrompt = usedPrompt;
+    this.imageInfo = imageInfo;
+    this.selectedContent = selectedContent;
+    this.apiCallFn = apiCallFn;
+    this.insertToDocument = insertToDocument;
+  }
+
+  onOpen() {
+    const { contentEl } = this;
+    contentEl.empty();
+
+    // 设置模态框为常驻
+    this.modalEl.style.position = "fixed";
+    this.modalEl.style.top = "50%";
+    this.modalEl.style.left = "50%";
+    this.modalEl.style.transform = "translate(-50%, -50%)";
+    this.modalEl.style.width = "80%";
+    this.modalEl.style.maxWidth = "800px";
+    this.modalEl.style.maxHeight = "80vh";
+    this.modalEl.style.overflow = "auto";
+
+    // 先显示调试信息和加载状态
+    this.loadContent();
+  }
+
+  async loadContent() {
+    const { contentEl } = this;
+    contentEl.createEl("h2", { text: "Anki卡片生成" });
+
+    // 显示调试信息区域（始终显示）
+    const debugContainer = contentEl.createDiv({ cls: "ankify-debug-info" });
+    debugContainer.createEl("h3", { text: "请求信息" });
+    debugContainer.style.marginBottom = "20px";
+    debugContainer.style.padding = "10px";
+    debugContainer.style.backgroundColor = "#f9f9f9";
+    debugContainer.style.border = "1px solid #ddd";
+    debugContainer.style.borderRadius = "4px";
+
+    // 显示图片路径信息（保存元素引用以便后续更新）
+    let imageInfoEl: HTMLPreElement | null = null;
+    if (this.imageInfo) {
+      debugContainer.createEl("h4", { text: "图片路径信息:" });
+      imageInfoEl = debugContainer.createEl("pre", {
+        text: this.imageInfo,
+      });
+      imageInfoEl.style.fontFamily = "monospace";
+      imageInfoEl.style.fontSize = "12px";
+      imageInfoEl.style.backgroundColor = "#fff";
+      imageInfoEl.style.border = "1px solid #ddd";
+      imageInfoEl.style.padding = "8px";
+      imageInfoEl.style.borderRadius = "4px";
+      imageInfoEl.style.marginBottom = "10px";
+      imageInfoEl.style.whiteSpace = "pre-wrap";
+      imageInfoEl.style.wordBreak = "break-all";
+    }
+
+    // 显示提示词
+    if (this.usedPrompt) {
+      debugContainer.createEl("h4", { text: "使用的提示词:" });
+      const promptTextArea = debugContainer.createEl("textarea", {
+        cls: "ankify-debug-prompt",
+        text: this.usedPrompt,
+      });
+      promptTextArea.style.width = "100%";
+      promptTextArea.style.minHeight = "80px";
+      promptTextArea.style.fontFamily = "monospace";
+      promptTextArea.style.fontSize = "12px";
+      promptTextArea.style.backgroundColor = "#fff";
+      promptTextArea.style.border = "1px solid #ddd";
+      promptTextArea.style.padding = "8px";
+      promptTextArea.style.borderRadius = "4px";
+      promptTextArea.style.marginBottom = "10px";
+      promptTextArea.readOnly = true;
+    }
+
+    // 显示选中的内容
+    if (this.selectedContent) {
+      debugContainer.createEl("h4", { text: "选中的内容:" });
+      const contentTextArea = debugContainer.createEl("textarea", {
+        cls: "ankify-debug-content",
+        text: this.selectedContent,
+      });
+      contentTextArea.style.width = "100%";
+      contentTextArea.style.minHeight = "100px";
+      contentTextArea.style.fontFamily = "monospace";
+      contentTextArea.style.fontSize = "12px";
+      contentTextArea.style.backgroundColor = "#fff";
+      contentTextArea.style.border = "1px solid #ddd";
+      contentTextArea.style.padding = "8px";
+      contentTextArea.style.borderRadius = "4px";
+      contentTextArea.style.marginBottom = "10px";
+      contentTextArea.readOnly = true;
+    }
+
+    // 创建加载区域
+    const loadingContainer = contentEl.createDiv({ cls: "ankify-loading-container" });
+    loadingContainer.style.textAlign = "center";
+    loadingContainer.style.padding = "20px";
+
+    const loadingSpinner = loadingContainer.createEl("div", { cls: "ankify-loading-spinner" });
+    loadingSpinner.style.fontSize = "24px";
+    loadingSpinner.style.marginBottom = "10px";
+    loadingSpinner.textContent = "⏳";
+
+    const loadingText = loadingContainer.createEl("div", { text: "正在生成Anki卡片，请稍候..." });
+    loadingText.style.fontSize = "14px";
+    loadingText.style.color = "#666";
+
+    // 如果有API调用函数，执行它
+    if (this.apiCallFn) {
+      try {
+        const apiResult = await this.apiCallFn();
+        this.rawResult = apiResult.result;
+        this.cards = apiResult.cards;
+
+        // 如果有更新的图片信息，更新显示
+        if (apiResult.imageInfo && imageInfoEl) {
+          this.imageInfo = apiResult.imageInfo;
+          imageInfoEl.textContent = apiResult.imageInfo;
+        }
+
+        // 移除加载区域
+        loadingContainer.remove();
+
+        // 如果设置了直接插入文档
+        if (this.insertToDocument) {
+          this.appendResultToDocument(this.editor, this.rawResult);
+          this.close();
+          return;
+        }
+
+        // 渲染卡片内容
+        await this.renderCards();
+      } catch (error) {
+        loadingContainer.remove();
+        contentEl.createEl("p", {
+          text: `生成失败: ${error.message}`,
+          cls: "ankify-error"
+        }).style.color = "red";
+
+        // 显示错误调试信息
+        this.renderDebugInfo(true);
+      }
+    } else {
+      // 没有API调用函数，直接渲染已有的卡片
+      loadingContainer.remove();
+      await this.renderCards();
+    }
+  }
+
+  // 渲染卡片内容
+  async renderCards() {
+    const { contentEl } = this;
+
+    if (this.cards.length === 0) {
+      contentEl.createEl("p", {
+        text: "未能解析出有效的Anki卡片，请检查生成结果格式。",
+      });
+
+      // 显示原始结果和编辑选项
+      const rawResultEl = contentEl.createDiv({ cls: "ankify-raw-result" });
+      const textAreaEl = rawResultEl.createEl("textarea", {
+        cls: "ankify-editable-result",
+        text: this.rawResult,
+      });
+      textAreaEl.style.width = "100%";
+      textAreaEl.style.height = "100px";
+
+      const buttonContainer = contentEl.createDiv({
+        cls: "ankify-button-container",
+      });
+      const copyButton = buttonContainer.createEl("button", {
+        text: "复制内容",
+      });
+      copyButton.addEventListener("click", () => {
+        navigator.clipboard.writeText(textAreaEl.value);
+        new Notice("已复制到剪贴板");
+      });
+
+      const insertButton = buttonContainer.createEl("button", {
+        text: "插入到文档",
+      });
+      insertButton.addEventListener("click", () => {
+        const docContent = this.editor.getValue();
+        const newContent =
+          docContent + "\n\n## Anki卡片\n\n" + textAreaEl.value;
+        this.editor.setValue(newContent);
+        new Notice("内容已添加到文档末尾");
+        this.close();
+      });
+
+      // 解析失败时也显示调试信息
+      const debugContainer = contentEl.createDiv({ cls: "ankify-debug-info" });
+      debugContainer.createEl("h3", { text: "调试信息" });
+      debugContainer.style.marginTop = "20px";
+      debugContainer.style.padding = "10px";
+      debugContainer.style.backgroundColor = "#f9f9f9";
+      debugContainer.style.border = "1px solid #ddd";
+      debugContainer.style.borderRadius = "4px";
+
+      // 显示图片路径信息
+      if (this.imageInfo) {
+        debugContainer.createEl("h4", { text: "图片路径信息:" });
+        const imageInfoEl = debugContainer.createEl("pre", {
+          text: this.imageInfo,
+        });
+        imageInfoEl.style.fontFamily = "monospace";
+        imageInfoEl.style.fontSize = "12px";
+        imageInfoEl.style.backgroundColor = "#fff";
+        imageInfoEl.style.border = "1px solid #ddd";
+        imageInfoEl.style.padding = "8px";
+        imageInfoEl.style.borderRadius = "4px";
+        imageInfoEl.style.marginBottom = "10px";
+        imageInfoEl.style.whiteSpace = "pre-wrap";
+        imageInfoEl.style.wordBreak = "break-all";
+      }
+
+      // 显示提示词
+      if (this.usedPrompt) {
+        debugContainer.createEl("h4", { text: "使用的提示词:" });
+        const promptTextArea = debugContainer.createEl("textarea", {
+          cls: "ankify-debug-prompt",
+          text: this.usedPrompt,
+        });
+        promptTextArea.style.width = "100%";
+        promptTextArea.style.minHeight = "80px";
+        promptTextArea.style.fontFamily = "monospace";
+        promptTextArea.style.fontSize = "12px";
+        promptTextArea.style.backgroundColor = "#fff";
+        promptTextArea.style.border = "1px solid #ddd";
+        promptTextArea.style.padding = "8px";
+        promptTextArea.style.borderRadius = "4px";
+        promptTextArea.style.marginBottom = "10px";
+        promptTextArea.readOnly = true;
+      }
+
+      // 显示AI原始返回结果
+      debugContainer.createEl("h4", { text: "AI原始返回结果:" });
+      const resultTextArea = debugContainer.createEl("textarea", {
+        cls: "ankify-debug-result",
+        text: this.rawResult,
+      });
+      resultTextArea.style.width = "100%";
+      resultTextArea.style.minHeight = "150px";
+      resultTextArea.style.fontFamily = "monospace";
+      resultTextArea.style.fontSize = "12px";
+      resultTextArea.style.backgroundColor = "#fff";
+      resultTextArea.style.border = "1px solid #ddd";
+      resultTextArea.style.padding = "8px";
+      resultTextArea.style.borderRadius = "4px";
+      resultTextArea.readOnly = true;
+
+      // 添加复制按钮
+      const copyDebugButton = debugContainer.createEl("button", {
+        text: "复制原始结果",
+      });
+      copyDebugButton.style.marginTop = "5px";
+      copyDebugButton.addEventListener("click", () => {
+        navigator.clipboard.writeText(this.rawResult);
+        new Notice("已复制原始结果到剪贴板");
+      });
+
+      return;
+    }
+
+    // Anki设置区域
+    const ankiSettingsEl = contentEl.createDiv({ cls: "ankify-anki-settings" });
+
+    // 获取可用牌组
+    let decks: string[] = [];
+    try {
+      decks = await this.plugin.getDeckNames();
+    } catch (error) {
+      // 如果获取失败，添加一个提示
+      ankiSettingsEl.createEl("p", {
+        cls: "ankify-error",
+        text: "无法连接到Anki。请确保Anki已经启动，且已安装Anki Connect插件。",
+      });
+    }
+
+    // 牌组选择器
+    const deckContainer = ankiSettingsEl.createDiv({
+      cls: "ankify-setting-item",
+    });
+    deckContainer.createEl("label", { text: "选择牌组：" });
+    this.deckSelect = deckContainer.createEl("select");
+
+    if (decks.length > 0) {
+      // 添加可用牌组选项
+      decks.forEach((deck) => {
+        const option = this.deckSelect.createEl("option", {
+          value: deck,
+          text: deck,
+        });
+        if (deck === this.plugin.settings.defaultDeck) {
+          option.selected = true;
+          this.deckName = deck;
+        }
+      });
+    } else {
+      // 如果没有获取到牌组，添加默认选项
+      this.deckSelect.createEl("option", {
+        value: this.deckName,
+        text: this.deckName,
+      });
+    }
+
+    this.deckSelect.addEventListener("change", () => {
+      this.deckName = this.deckSelect.value;
+    });
+
+    // 笔记类型选择器
+    const noteTypes = await this.plugin.getNoteTypes();
+    const noteTypeContainer = ankiSettingsEl.createDiv({
+      cls: "ankify-setting-item",
+    });
+    noteTypeContainer.createEl("label", { text: "笔记类型：" });
+    this.noteTypeSelect = noteTypeContainer.createEl("select");
+
+    if (noteTypes.length > 0) {
+      noteTypes.forEach((type: string) => {
+        const option = this.noteTypeSelect.createEl("option", {
+          value: type,
+          text: type,
+        });
+        if (type === this.plugin.settings.defaultNoteType) {
+          option.selected = true;
+          this.noteType = type;
+        }
+      });
+    } else {
+      // 默认笔记类型选项
+      const basicTypes = [
+        "Basic",
+        "Basic (and reversed card)",
+        "Cloze",
+        "Basic (optional reversed card)",
+      ];
+      basicTypes.forEach((type) => {
+        const option = this.noteTypeSelect.createEl("option", {
+          value: type,
+          text: type,
+        });
+        if (type === this.plugin.settings.defaultNoteType) {
+          option.selected = true;
+          this.noteType = type;
+        }
+      });
+    }
+
+    this.noteTypeSelect.addEventListener("change", () => {
+      this.noteType = this.noteTypeSelect.value;
+    });
+
+    // 卡片选择区域
+    const cardsContainer = contentEl.createDiv({
+      cls: "ankify-cards-container",
+    });
+
+    // 添加全选/全不选按钮
+    const selectAllContainer = cardsContainer.createDiv({
+      cls: "ankify-select-all",
+    });
+    const selectAllCheckbox = selectAllContainer.createEl("input", {
+      type: "checkbox",
+    });
+    selectAllCheckbox.checked = true;
+    selectAllContainer.createEl("label", { text: "全选/全不选" });
+
+    selectAllCheckbox.addEventListener("change", () => {
+      this.selectedCards = this.selectedCards.map(
+        () => selectAllCheckbox.checked
+      );
+      this.updateCardSelectionDisplay();
+    });
+
+    // 卡片列表
+    const cardsListEl = cardsContainer.createDiv({ cls: "ankify-cards-list" });
+
+    this.cards.forEach((card, index) => {
+      const cardEl = cardsListEl.createDiv({ cls: "ankify-card" });
+
+      // 添加选择框
+      const checkboxContainer = cardEl.createDiv({
+        cls: "ankify-card-checkbox",
+      });
+      const checkbox = checkboxContainer.createEl("input", {
+        type: "checkbox",
+        attr: { id: `card-checkbox-${index}` },
+      });
+      checkbox.checked = this.selectedCards[index];
+
+      checkbox.addEventListener("change", () => {
+        this.selectedCards[index] = checkbox.checked;
+      });
+
+      // 卡片内容展示
+      const cardContent = cardEl.createDiv({ cls: "ankify-card-content" });
+
+      // 问题编辑
+      const questionEl = cardContent.createDiv({ cls: "ankify-card-question" });
+      questionEl.createEl("strong", { text: "问题: " });
+      const questionInput = questionEl.createEl("input", {
+        cls: "ankify-card-input",
+        type: "text",
+        value: card.question,
+      });
+      questionInput.addEventListener("change", () => {
+        this.cards[index].question = questionInput.value;
+      });
+
+      // 答案编辑
+      const answerEl = cardContent.createDiv({ cls: "ankify-card-answer" });
+      answerEl.createEl("strong", { text: "答案: " });
+      const answerInput = answerEl.createEl("input", {
+        cls: "ankify-card-input",
+        type: "text",
+        value: card.answer,
+      });
+      answerInput.addEventListener("change", () => {
+        this.cards[index].answer = answerInput.value;
+      });
+
+      // 注释编辑
+      if (card.annotation) {
+        const annotationEl = cardContent.createDiv({
+          cls: "ankify-card-annotation",
+        });
+        annotationEl.createEl("strong", { text: "注释: " });
+        const annotationInput = annotationEl.createEl("input", {
+          cls: "ankify-card-input",
+          type: "text",
+          value: card.annotation,
+        });
+        annotationInput.addEventListener("change", () => {
+          this.cards[index].annotation = annotationInput.value;
+        });
+      }
+
+      // 标签编辑
+      if (card.tags && card.tags.length > 0) {
+        const tagsEl = cardContent.createDiv({ cls: "ankify-card-tags" });
+        tagsEl.createEl("strong", { text: "标签: " });
+        const tagsInput = tagsEl.createEl("input", {
+          cls: "ankify-card-input",
+          type: "text",
+          value: card.tags.join(" "),
+        });
+        tagsInput.addEventListener("change", () => {
+          this.cards[index].tags = tagsInput.value
+            .split(/\s+/)
+            .map((tag) => tag.trim())
+            .filter((tag) => tag.length > 0);
+        });
+      }
+    });
+
+    // 按钮区域
+    const buttonContainer = contentEl.createDiv({
+      cls: "ankify-button-container",
+    });
+
+    // 添加到Anki按钮
+    const addToAnkiButton = buttonContainer.createEl("button", {
+      cls: "ankify-primary-button",
+      text: "添加到Anki",
+    });
+
+    addToAnkiButton.addEventListener("click", async () => {
+      // 获取选中的卡片
+      const selectedCardsList = this.cards.filter(
+        (_, index) => this.selectedCards[index]
+      );
+
+      if (selectedCardsList.length === 0) {
+        new Notice("请至少选择一张卡片");
+        return;
+      }
+
+      try {
+        // 显示加载提示
+        const loadingNotice = new Notice("正在添加卡片到Anki...", 0);
+        const result = await this.plugin.addNotesToAnki(
+          selectedCardsList,
+          this.deckName,
+          this.noteType
+        );
+
+        // 记住用户的选择作为默认值
+        this.plugin.settings.defaultDeck = this.deckName;
+        this.plugin.settings.defaultNoteType = this.noteType;
+        await this.plugin.saveSettings();
+
+        // 显示添加成功的卡片数量
+        const successCount = result.filter((id: any) => id !== null).length;
+        loadingNotice.hide();
+        new Notice(
+          `成功添加 ${successCount}/${selectedCardsList.length} 张卡片到Anki`
+        );
+        this.close();
+      } catch (error) {
+        new Notice(`添加卡片失败: ${error.message}`);
+      }
+    });
+
+    // 复制内容按钮
+    const copyButton = buttonContainer.createEl("button", {
+      text: "复制全部内容",
+    });
+    copyButton.addEventListener("click", () => {
+      navigator.clipboard.writeText(this.rawResult);
+      new Notice("已复制原始内容到剪贴板");
+    });
+
+    // 插入到文档按钮
+    const insertButton = buttonContainer.createEl("button", {
+      text: "插入到文档",
+    });
+    insertButton.addEventListener("click", () => {
+      const docContent = this.editor.getValue();
+      const newContent = docContent + "\n\n## Anki卡片\n\n" + this.rawResult;
+      this.editor.setValue(newContent);
+      new Notice("内容已添加到文档末尾");
+      this.close();
+    });
+
+    // Debug模式 或 解析失败时：显示详细信息
+    if (this.plugin.settings.debugMode || this.cards.length === 0) {
+      const debugContainer = contentEl.createDiv({ cls: "ankify-debug-info" });
+      debugContainer.createEl("h3", { text: "调试信息" });
+      debugContainer.style.marginTop = "20px";
+      debugContainer.style.padding = "10px";
+      debugContainer.style.backgroundColor = "#f9f9f9";
+      debugContainer.style.border = "1px solid #ddd";
+      debugContainer.style.borderRadius = "4px";
+
+      // 显示图片路径信息
+      if (this.imageInfo) {
+        debugContainer.createEl("h4", { text: "图片路径信息:" });
+        const imageInfoEl = debugContainer.createEl("pre", {
+          text: this.imageInfo,
+        });
+        imageInfoEl.style.fontFamily = "monospace";
+        imageInfoEl.style.fontSize = "12px";
+        imageInfoEl.style.backgroundColor = "#fff";
+        imageInfoEl.style.border = "1px solid #ddd";
+        imageInfoEl.style.padding = "8px";
+        imageInfoEl.style.borderRadius = "4px";
+        imageInfoEl.style.marginBottom = "10px";
+        imageInfoEl.style.whiteSpace = "pre-wrap";
+        imageInfoEl.style.wordBreak = "break-all";
+      }
+
+      // 显示提示词
+      if (this.usedPrompt) {
+        debugContainer.createEl("h4", { text: "使用的提示词:" });
+        const promptTextArea = debugContainer.createEl("textarea", {
+          cls: "ankify-debug-prompt",
+          text: this.usedPrompt,
+        });
+        promptTextArea.style.width = "100%";
+        promptTextArea.style.minHeight = "80px";
+        promptTextArea.style.fontFamily = "monospace";
+        promptTextArea.style.fontSize = "12px";
+        promptTextArea.style.backgroundColor = "#fff";
+        promptTextArea.style.border = "1px solid #ddd";
+        promptTextArea.style.padding = "8px";
+        promptTextArea.style.borderRadius = "4px";
+        promptTextArea.style.marginBottom = "10px";
+        promptTextArea.readOnly = true;
+      }
+
+      // 显示AI原始返回结果
+      debugContainer.createEl("h4", { text: "AI原始返回结果:" });
+      const resultTextArea = debugContainer.createEl("textarea", {
+        cls: "ankify-debug-result",
+        text: this.rawResult,
+      });
+      resultTextArea.style.width = "100%";
+      resultTextArea.style.minHeight = "150px";
+      resultTextArea.style.fontFamily = "monospace";
+      resultTextArea.style.fontSize = "12px";
+      resultTextArea.style.backgroundColor = "#fff";
+      resultTextArea.style.border = "1px solid #ddd";
+      resultTextArea.style.padding = "8px";
+      resultTextArea.style.borderRadius = "4px";
+      resultTextArea.readOnly = true;
+
+      // 添加复制按钮
+      const copyDebugButton = debugContainer.createEl("button", {
+        text: "复制原始结果",
+      });
+      copyDebugButton.style.marginTop = "5px";
+      copyDebugButton.addEventListener("click", () => {
+        navigator.clipboard.writeText(this.rawResult);
+        new Notice("已复制原始结果到剪贴板");
+      });
+    }
+  }
+
+  // 将结果追加到文档末尾
+  appendResultToDocument(editor: Editor, result: string) {
+    const docContent = editor.getValue();
+    const newContent = docContent + "\n\n## Anki卡片\n\n" + result;
+    editor.setValue(newContent);
+    new Notice("Anki卡片已添加到文档末尾");
+  }
+
+  // 渲染调试信息
+  renderDebugInfo(isError: boolean = false) {
+    const { contentEl } = this;
+
+    const debugContainer = contentEl.createDiv({ cls: "ankify-debug-info" });
+    debugContainer.createEl("h3", { text: isError ? "错误调试信息" : "AI返回结果" });
+    debugContainer.style.marginTop = "20px";
+    debugContainer.style.padding = "10px";
+    debugContainer.style.backgroundColor = "#f9f9f9";
+    debugContainer.style.border = "1px solid #ddd";
+    debugContainer.style.borderRadius = "4px";
+
+    // 显示AI原始返回结果
+    debugContainer.createEl("h4", { text: "AI原始返回结果:" });
+    const resultTextArea = debugContainer.createEl("textarea", {
+      cls: "ankify-debug-result",
+      text: this.rawResult,
+    });
+    resultTextArea.style.width = "100%";
+    resultTextArea.style.minHeight = "150px";
+    resultTextArea.style.fontFamily = "monospace";
+    resultTextArea.style.fontSize = "12px";
+    resultTextArea.style.backgroundColor = "#fff";
+    resultTextArea.style.border = "1px solid #ddd";
+    resultTextArea.style.padding = "8px";
+    resultTextArea.style.borderRadius = "4px";
+    resultTextArea.readOnly = true;
+
+    // 添加复制按钮
+    const copyDebugButton = debugContainer.createEl("button", {
+      text: "复制原始结果",
+    });
+    copyDebugButton.style.marginTop = "5px";
+    copyDebugButton.addEventListener("click", () => {
+      navigator.clipboard.writeText(this.rawResult);
+      new Notice("已复制原始结果到剪贴板");
+    });
+  }
+
+  // 更新卡片选择框状态
+  updateCardSelectionDisplay() {
+    this.selectedCards.forEach((isSelected, index) => {
+      const checkbox = document.getElementById(
+        `card-checkbox-${index}`
+      ) as HTMLInputElement;
+      if (checkbox) {
+        checkbox.checked = isSelected;
+      }
+    });
+  }
+
+  onClose() {
+    const { contentEl } = this;
+    contentEl.empty();
+  }
+}
+
+// 设置面板
+class AnkifySettingTab extends PluginSettingTab {
+  plugin: AnkifyPlugin;
+
+  constructor(app: App, plugin: AnkifyPlugin) {
+    super(app, plugin);
+    this.plugin = plugin;
+  }
+
+  display(): void {
+    const { containerEl } = this;
+    containerEl.empty();
+
+    containerEl.createEl("h2", { text: "Ankify 插件设置" });
+
+    // API模型选择
+    new Setting(containerEl)
+      .setName("AI模型选择")
+      .setDesc("选择用于生成Anki卡片的AI模型")
+      .addDropdown((dropdown) => {
+        dropdown
+          .addOption("deepseek", "DeepSeek")
+          .addOption("openai", "OpenAI")
+          .addOption("claude", "Claude")
+          .addOption("custom", "自定义API")
+          .setValue(this.plugin.settings.apiModel)
+          .onChange(async (value) => {
+            this.plugin.settings.apiModel = value;
+            await this.plugin.saveSettings();
+            // 刷新设置页面以显示相应的API密钥设置
+            this.display();
+          });
+      });
+
+    // 根据选择的模型显示相应的API密钥设置
+    if (this.plugin.settings.apiModel === "deepseek") {
+      new Setting(containerEl)
+        .setName("DeepSeek API 密钥")
+        .setDesc("输入您的DeepSeek API密钥")
+        .addText((text) =>
+          text
+            .setPlaceholder("sk-...")
+            .setValue(this.plugin.settings.deepseekApiKey)
+            .onChange(async (value) => {
+              this.plugin.settings.deepseekApiKey = value;
+              await this.plugin.saveSettings();
+            })
+        );
+    } else if (this.plugin.settings.apiModel === "openai") {
+      new Setting(containerEl)
+        .setName("OpenAI API 密钥")
+        .setDesc("输入您的OpenAI API密钥")
+        .addText((text) =>
+          text
+            .setPlaceholder("sk-...")
+            .setValue(this.plugin.settings.openaiApiKey)
+            .onChange(async (value) => {
+              this.plugin.settings.openaiApiKey = value;
+              await this.plugin.saveSettings();
+            })
+        );
+    } else if (this.plugin.settings.apiModel === "claude") {
+      new Setting(containerEl)
+        .setName("Claude API 密钥")
+        .setDesc("输入您的Claude API密钥")
+        .addText((text) =>
+          text
+            .setPlaceholder("sk-...")
+            .setValue(this.plugin.settings.claudeApiKey)
+            .onChange(async (value) => {
+              this.plugin.settings.claudeApiKey = value;
+              await this.plugin.saveSettings();
+            })
+        );
+    } else if (this.plugin.settings.apiModel === "custom") {
+      // 自定义API设置
+      containerEl.createEl("h3", { text: "自定义API设置" });
+      
+      new Setting(containerEl)
+        .setName("API URL")
+        .setDesc("输入自定义API的完整URL")
+        .addText((text) =>
+          text
+            .setPlaceholder("https://api.example.com/v1/chat/completions")
+            .setValue(this.plugin.settings.customApiUrl)
+            .onChange(async (value) => {
+              this.plugin.settings.customApiUrl = value;
+              await this.plugin.saveSettings();
+            })
+        );
+        
+      new Setting(containerEl)
+        .setName("API 密钥")
+        .setDesc("输入自定义API的密钥")
+        .addText((text) =>
+          text
+            .setPlaceholder("sk-...")
+            .setValue(this.plugin.settings.customApiKey)
+            .onChange(async (value) => {
+              this.plugin.settings.customApiKey = value;
+              await this.plugin.saveSettings();
+            })
+        );
+        
+      new Setting(containerEl)
+        .setName("模型名称")
+        .setDesc("输入要使用的模型名称")
+        .addText((text) =>
+          text
+            .setPlaceholder("model-name")
+            .setValue(this.plugin.settings.customModelName)
+            .onChange(async (value) => {
+              this.plugin.settings.customModelName = value;
+              await this.plugin.saveSettings();
+            })
+        );
+        
+      new Setting(containerEl)
+        .setName("API 版本 (可选)")
+        .setDesc("如果需要指定API版本，请在此输入")
+        .addText((text) =>
+          text
+            .setPlaceholder("例如：2023-06-01")
+            .setValue(this.plugin.settings.customApiVersion)
+            .onChange(async (value) => {
+              this.plugin.settings.customApiVersion = value;
+              await this.plugin.saveSettings();
+            })
+        );
+    }
+
+    new Setting(containerEl)
+      .setName("自定义Prompt")
+      .setDesc("设置生成Anki卡片的提示词（用于文本内容）")
+      .addTextArea(
+        (text) =>
+          (text
+            .setPlaceholder(
+              '请基于以下内容创建Anki卡片，格式为"问题:::答案"...'
+            )
+            .setValue(this.plugin.settings.customPrompt)
+            .onChange(async (value) => {
+              this.plugin.settings.customPrompt = value;
+              await this.plugin.saveSettings();
+            }).inputEl.style.minHeight = "80px")
+      );
+
+    new Setting(containerEl)
+      .setName("图片识别Prompt")
+      .setDesc("设置识别图片内容并生成Anki卡片的提示词")
+      .addTextArea(
+        (text) =>
+          (text
+            .setPlaceholder(
+              '请识别这张图片中的内容，并基于图片内容创建Anki卡片...'
+            )
+            .setValue(this.plugin.settings.visionPrompt)
+            .onChange(async (value) => {
+              this.plugin.settings.visionPrompt = value;
+              await this.plugin.saveSettings();
+            }).inputEl.style.minHeight = "80px")
+      );
+
+    // Debug模式开关
+    new Setting(containerEl)
+      .setName("Debug模式")
+      .setDesc("启用后，在卡片选择界面底部显示实际使用的提示词和AI返回结果，用于调试")
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.debugMode)
+          .onChange(async (value) => {
+            this.plugin.settings.debugMode = value;
+            await this.plugin.saveSettings();
+          })
+      );
+
+    // 新增设置：是否直接插入文档
+    new Setting(containerEl)
+      .setName("直接插入文档")
+      .setDesc("启用后，生成的Anki卡片将直接插入到文档末尾，而不是显示在弹窗中")
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.insertToDocument)
+          .onChange(async (value) => {
+            this.plugin.settings.insertToDocument = value;
+            await this.plugin.saveSettings();
+          })
+      );
+
+    // 图片识别设置
+    containerEl.createEl("h3", { text: "图片识别设置" });
+
+    new Setting(containerEl)
+      .setName("图片最大尺寸")
+      .setDesc("图片识别前会压缩到此尺寸（像素），减少token消耗。推荐：512-1024")
+      .addText((text) =>
+        text
+          .setPlaceholder("1024")
+          .setValue(String(this.plugin.settings.maxImageSize))
+          .onChange(async (value) => {
+            const size = parseInt(value);
+            if (!isNaN(size) && size > 0) {
+              this.plugin.settings.maxImageSize = size;
+              await this.plugin.saveSettings();
+            }
+          })
+      );
+
+    new Setting(containerEl)
+      .setName("图片压缩质量")
+      .setDesc("图片压缩质量（0.1-1.0），越低文件越小但质量越差。推荐：0.7-0.9")
+      .addText((text) =>
+        text
+          .setPlaceholder("0.8")
+          .setValue(String(this.plugin.settings.imageQuality))
+          .onChange(async (value) => {
+            const quality = parseFloat(value);
+            if (!isNaN(quality) && quality >= 0.1 && quality <= 1.0) {
+              this.plugin.settings.imageQuality = quality;
+              await this.plugin.saveSettings();
+            }
+          })
+      );
+
+    // Anki Connect 相关设置
+    containerEl.createEl("h3", { text: "Anki Connect 设置" });
+
+    new Setting(containerEl)
+      .setName("Anki Connect URL")
+      .setDesc("Anki Connect API的地址，默认为 http://127.0.0.1:8765")
+      .addText((text) =>
+        text
+          .setPlaceholder("http://127.0.0.1:8765")
+          .setValue(this.plugin.settings.ankiConnectUrl)
+          .onChange(async (value) => {
+            this.plugin.settings.ankiConnectUrl = value;
+            await this.plugin.saveSettings();
+          })
+      );
+
+    new Setting(containerEl)
+      .setName("默认牌组")
+      .setDesc("添加卡片时的默认牌组名称")
+      .addText((text) =>
+        text
+          .setPlaceholder("Default")
+          .setValue(this.plugin.settings.defaultDeck)
+          .onChange(async (value) => {
+            this.plugin.settings.defaultDeck = value;
+            await this.plugin.saveSettings();
+          })
+      );
+
+    new Setting(containerEl)
+      .setName("默认笔记类型")
+      .setDesc("添加卡片时的默认笔记类型")
+      .addText((text) =>
+        text
+          .setPlaceholder("Basic")
+          .setValue(this.plugin.settings.defaultNoteType)
+          .onChange(async (value) => {
+            this.plugin.settings.defaultNoteType = value;
+            await this.plugin.saveSettings();
+          })
+      );
+  }
+}
