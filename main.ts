@@ -1759,9 +1759,11 @@ class SelectableCardsModal extends Modal {
       // 答案编辑
       const answerEl = cardContent.createDiv({ cls: "ankify-card-answer" });
       answerEl.createEl("strong", { text: `答案${index + 1}: ` });
+      // 将<br>标签替换为实际换行符，便于编辑
+      const displayAnswer = card.answer.replace(/<br\s*\/?>/gi, "\n");
       const answerTextarea = answerEl.createEl("textarea", {
         cls: "ankify-card-textarea",
-        text: card.answer,
+        text: displayAnswer,
       });
       answerTextarea.style.width = "100%";
       answerTextarea.style.minHeight = "100px";
@@ -1773,7 +1775,9 @@ class SelectableCardsModal extends Modal {
       answerTextarea.style.fontFamily = "inherit";
       answerTextarea.style.resize = "vertical";
       answerTextarea.addEventListener("change", () => {
-        this.cards[index].answer = answerTextarea.value;
+        // 将实际换行符转换回<br>标签，保持数据一致性
+        const storedAnswer = answerTextarea.value.replace(/\n/g, "<br>");
+        this.cards[index].answer = storedAnswer;
       });
 
       // 填空按钮（仅在Cloze类型时显示）
@@ -1827,9 +1831,12 @@ class SelectableCardsModal extends Modal {
           const newText = text.substring(0, start) + `{{c${newNumber}::${selectedText}}}` + text.substring(end);
           answerTextarea.value = newText;
           
+          // 将实际换行符转换回<br>标签，保持数据一致性
+          const storedText = newText.replace(/\n/g, "<br>");
+          
           // 更新卡片数据
-          card.answer = newText;
-          card.originalAnswer = newText; // 同时更新原始答案
+          card.answer = storedText;
+          card.originalAnswer = storedText; // 同时更新原始答案
           
           // 重新聚焦并设置光标位置
           answerTextarea.focus();
@@ -1870,11 +1877,13 @@ class SelectableCardsModal extends Modal {
         if (newNoteType === "Cloze") {
           // 切换到Cloze类型，还原原始答案
           card.answer = card.originalAnswer;
-          answerTextarea.value = card.answer;
+          // 将<br>标签替换为实际换行符，便于编辑
+          answerTextarea.value = card.answer.replace(/<br\s*\/?>/gi, "\n");
         } else if (oldNoteType === "Cloze" && newNoteType !== "Cloze") {
           // 从Cloze类型切换到其他类型，移除填空标记
           card.answer = card.answer.replace(/\{\{c\d+::([^}]+)\}\}/g, "$1");
-          answerTextarea.value = card.answer;
+          // 将<br>标签替换为实际换行符，便于编辑
+          answerTextarea.value = card.answer.replace(/<br\s*\/?>/gi, "\n");
         }
       });
 

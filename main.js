@@ -1287,9 +1287,10 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
       });
       const answerEl = cardContent.createDiv({ cls: "ankify-card-answer" });
       answerEl.createEl("strong", { text: `\u7B54\u6848${index + 1}: ` });
+      const displayAnswer = card.answer.replace(/<br\s*\/?>/gi, "\n");
       const answerTextarea = answerEl.createEl("textarea", {
         cls: "ankify-card-textarea",
-        text: card.answer
+        text: displayAnswer
       });
       answerTextarea.style.width = "100%";
       answerTextarea.style.minHeight = "100px";
@@ -1301,7 +1302,8 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
       answerTextarea.style.fontFamily = "inherit";
       answerTextarea.style.resize = "vertical";
       answerTextarea.addEventListener("change", () => {
-        this.cards[index].answer = answerTextarea.value;
+        const storedAnswer = answerTextarea.value.replace(/\n/g, "<br>");
+        this.cards[index].answer = storedAnswer;
       });
       const blankButton = answerEl.createEl("button", {
         text: "\u586B\u7A7A"
@@ -1340,8 +1342,9 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
           const newNumber = maxNumber + 1;
           const newText = text.substring(0, start) + `{{c${newNumber}::${selectedText}}}` + text.substring(end);
           answerTextarea.value = newText;
-          card.answer = newText;
-          card.originalAnswer = newText;
+          const storedText = newText.replace(/\n/g, "<br>");
+          card.answer = storedText;
+          card.originalAnswer = storedText;
           answerTextarea.focus();
           const newCursorPos = start + `{{c${newNumber}::${selectedText}}}`.length;
           answerTextarea.setSelectionRange(newCursorPos, newCursorPos);
@@ -1367,10 +1370,10 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
         updateBlankButtonVisibility();
         if (newNoteType === "Cloze") {
           card.answer = card.originalAnswer;
-          answerTextarea.value = card.answer;
+          answerTextarea.value = card.answer.replace(/<br\s*\/?>/gi, "\n");
         } else if (oldNoteType === "Cloze" && newNoteType !== "Cloze") {
           card.answer = card.answer.replace(/\{\{c\d+::([^}]+)\}\}/g, "$1");
-          answerTextarea.value = card.answer;
+          answerTextarea.value = card.answer.replace(/<br\s*\/?>/gi, "\n");
         }
       });
       if (card.annotation) {
