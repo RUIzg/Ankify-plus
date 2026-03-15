@@ -1759,13 +1759,21 @@ class SelectableCardsModal extends Modal {
       // 答案编辑
       const answerEl = cardContent.createDiv({ cls: "ankify-card-answer" });
       answerEl.createEl("strong", { text: `答案${index + 1}: ` });
-      const answerInput = answerEl.createEl("input", {
-        cls: "ankify-card-input",
-        type: "text",
-        value: card.answer,
+      const answerTextarea = answerEl.createEl("textarea", {
+        cls: "ankify-card-textarea",
+        text: card.answer,
       });
-      answerInput.addEventListener("change", () => {
-        this.cards[index].answer = answerInput.value;
+      answerTextarea.style.width = "100%";
+      answerTextarea.style.minHeight = "100px";
+      answerTextarea.style.padding = "8px";
+      answerTextarea.style.border = "1px solid var(--border-color)";
+      answerTextarea.style.borderRadius = "4px";
+      answerTextarea.style.backgroundColor = "var(--background-primary)";
+      answerTextarea.style.color = "var(--text-normal)";
+      answerTextarea.style.fontFamily = "inherit";
+      answerTextarea.style.resize = "vertical";
+      answerTextarea.addEventListener("change", () => {
+        this.cards[index].answer = answerTextarea.value;
       });
 
       // 笔记类型选择器
@@ -1797,11 +1805,11 @@ class SelectableCardsModal extends Modal {
         if (newNoteType === "Cloze") {
           // 切换到Cloze类型，还原原始答案
           card.answer = card.originalAnswer;
-          answerInput.value = card.answer;
+          answerTextarea.value = card.answer;
         } else if (oldNoteType === "Cloze" && newNoteType !== "Cloze") {
           // 从Cloze类型切换到其他类型，移除填空标记
           card.answer = card.answer.replace(/\{\{c\d+::([^}]+)\}\}/g, "$1");
-          answerInput.value = card.answer;
+          answerTextarea.value = card.answer;
         }
       });
 
