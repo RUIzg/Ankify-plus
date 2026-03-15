@@ -2,17 +2,58 @@
 
 这是一个 Obsidian 插件，可以使用 DeepSeek API 将当前笔记内容转换为 Anki 卡片。
 
-## 功能
+
+
+## 在ankify基础上增加的扩展功能 
+
+- 增加了支持豆包等模型，以及配置自定义url 
+
+- 增加了识图功能  
+
+- 增加了anki卡每个卡单独设置卡片类型的功能  
+
+- 自动识别填空格式：如果回答内容包含 `{{c序号::内容}}` 格式，自动默认选择 Cloze 填空类型
+
+- 智能填空按钮：在 Cloze 类型卡片编辑时，可选中文本点击"填空"按钮自动生成 `{{c序号::选中文本}}` 格式，自动维护序号递增
+
+- 批量替换标签功能：支持统一替换所有卡片的标签，可选择单个替换或全部替换
+
+- 答案文本框优化：将答案输入框改为多行文本框，支持自动换行和 `<br>` 标签与换行符的自动转换
+
+- 卡片标题显示序列号：问题/答案标题显示序号（如"问题1:"、"答案1:"）
+
+- 选择数量实时统计：全选按钮旁显示已选择卡片数量（如"已选择 3/5"），支持动态更新
+
+- Cloze 类型卡片内容合并：问题和答案合并写入到单个字段
+
+- 主题适配：所有界面元素支持夜间模式，自动适配 Obsidian 主题颜色
+
+- 请求信息折叠面板：弹窗底部显示可折叠的请求信息面板，包含图片路径、提示词、选中内容和大模型原始返回信息
+
+- Anki Connect 测试按钮：支持测试 Anki Connect 连接状态
+
+- 添加 "ankify" 固定标签：自动为所有生成的卡片添加 "ankify" 标签
+
+- 批量标签替换界面：可收缩的标签批量替换区域，支持单个标签替换和全部替换
+
+  
+
+## 功能（原ankify）
 
 - 一键将 Obsidian 笔记内容发送到 DeepSeek AI
+
 - 根据自定义提示词生成 Anki 卡片
+
 - 支持个性化提示词设置
+
 - 便捷的复制功能，方便导入到 Anki
+
+  
 
 ## 效果展示
 
 <img width="1440" alt="image" src="https://github.com/user-attachments/assets/9335edc7-8815-4a97-b294-c171809a2e91" />
-<img width="1440" alt="image" src="https://github.com/user-attachments/assets/0acaf79c-4603-4a08-bddd-8d595b7605ba" />
+<img width="1440" alt="image" src="https://github.com/user-attachments/assets/0acaf76f-4603-4a08-bddd-8d595b7605ba" />
 <img width="1440" alt="image" src="https://github.com/user-attachments/assets/c39aafa4-f3c9-4ad2-b74c-f2889146fe22" />
 <img width="640" alt="image" src="https://github.com/user-attachments/assets/b75ebbdd-cb6e-47f7-99f8-38d436d83bea" />
 
