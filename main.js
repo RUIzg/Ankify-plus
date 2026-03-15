@@ -1374,9 +1374,22 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
           option.selected = true;
         }
       });
-      const backExtraEl = cardContent.createDiv({ cls: "ankify-card-back-extra" });
-      backExtraEl.createEl("strong", { text: "Back Extra: " });
-      const backExtraTextarea = backExtraEl.createEl("textarea", {
+      const backExtraContainer = cardContent.createDiv({ cls: "ankify-card-back-extra-container" });
+      backExtraContainer.style.marginTop = "10px";
+      const backExtraHeader = backExtraContainer.createEl("div");
+      backExtraHeader.style.display = "flex";
+      backExtraHeader.style.alignItems = "center";
+      backExtraHeader.style.cursor = "pointer";
+      backExtraHeader.style.padding = "5px 0";
+      const backExtraToggle = backExtraHeader.createEl("span", { text: "\u25B6" });
+      backExtraToggle.style.marginRight = "5px";
+      backExtraToggle.style.color = "var(--text-muted)";
+      backExtraToggle.style.fontSize = "12px";
+      backExtraHeader.createEl("strong", { text: "Back Extra" });
+      const backExtraContent = backExtraContainer.createDiv({ cls: "ankify-card-back-extra" });
+      backExtraContent.style.display = "none";
+      backExtraContent.style.marginTop = "5px";
+      const backExtraTextarea = backExtraContent.createEl("textarea", {
         cls: "ankify-card-textarea",
         text: card.backExtra || ""
       });
@@ -1393,11 +1406,20 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
         const storedBackExtra = backExtraTextarea.value.replace(/\n/g, "<br>");
         this.cards[index].backExtra = storedBackExtra;
       });
+      backExtraHeader.addEventListener("click", () => {
+        if (backExtraContent.style.display === "none") {
+          backExtraContent.style.display = "block";
+          backExtraToggle.textContent = "\u25BC";
+        } else {
+          backExtraContent.style.display = "none";
+          backExtraToggle.textContent = "\u25B6";
+        }
+      });
       const updateBackExtraVisibility = () => {
         if (card.noteType === "Cloze") {
-          backExtraEl.style.display = "block";
+          backExtraContainer.style.display = "block";
         } else {
-          backExtraEl.style.display = "none";
+          backExtraContainer.style.display = "none";
         }
       };
       updateBackExtraVisibility();

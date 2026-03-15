@@ -1876,10 +1876,30 @@ class SelectableCardsModal extends Modal {
         }
       });
 
-      // Back Extra 文本框（仅在Cloze类型时显示）
-      const backExtraEl = cardContent.createDiv({ cls: "ankify-card-back-extra" });
-      backExtraEl.createEl("strong", { text: "Back Extra: " });
-      const backExtraTextarea = backExtraEl.createEl("textarea", {
+      // Back Extra 文本框（仅在Cloze类型时显示，默认折叠）
+      const backExtraContainer = cardContent.createDiv({ cls: "ankify-card-back-extra-container" });
+      backExtraContainer.style.marginTop = "10px";
+      
+      // Back Extra 标题和折叠按钮
+      const backExtraHeader = backExtraContainer.createEl("div");
+      backExtraHeader.style.display = "flex";
+      backExtraHeader.style.alignItems = "center";
+      backExtraHeader.style.cursor = "pointer";
+      backExtraHeader.style.padding = "5px 0";
+      
+      const backExtraToggle = backExtraHeader.createEl("span", { text: "▶" });
+      backExtraToggle.style.marginRight = "5px";
+      backExtraToggle.style.color = "var(--text-muted)";
+      backExtraToggle.style.fontSize = "12px";
+      
+      backExtraHeader.createEl("strong", { text: "Back Extra" });
+      
+      // Back Extra 内容区域（默认隐藏）
+      const backExtraContent = backExtraContainer.createDiv({ cls: "ankify-card-back-extra" });
+      backExtraContent.style.display = "none";
+      backExtraContent.style.marginTop = "5px";
+      
+      const backExtraTextarea = backExtraContent.createEl("textarea", {
         cls: "ankify-card-textarea",
         text: card.backExtra || "",
       });
@@ -1898,12 +1918,23 @@ class SelectableCardsModal extends Modal {
         this.cards[index].backExtra = storedBackExtra;
       });
       
-      // 控制Back Extra文本框显示状态
+      // 切换折叠状态
+      backExtraHeader.addEventListener("click", () => {
+        if (backExtraContent.style.display === "none") {
+          backExtraContent.style.display = "block";
+          backExtraToggle.textContent = "▼";
+        } else {
+          backExtraContent.style.display = "none";
+          backExtraToggle.textContent = "▶";
+        }
+      });
+      
+      // 控制Back Extra容器显示状态
       const updateBackExtraVisibility = () => {
         if (card.noteType === "Cloze") {
-          backExtraEl.style.display = "block";
+          backExtraContainer.style.display = "block";
         } else {
-          backExtraEl.style.display = "none";
+          backExtraContainer.style.display = "none";
         }
       };
       
