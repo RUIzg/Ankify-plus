@@ -50,3 +50,5 @@ build/
 
 # Logs
 *.log 
+# Data files
+data.json
