@@ -45,6 +45,10 @@ interface AnkifySettings {
   ankiConnectUrl: string; // Anki Connect API地址
   defaultDeck: string; // 默认牌组
   defaultNoteType: string; // 默认笔记类型
+  // 返回结果解析设置
+  questionMarker: string; // 问题标记符，如 %question%
+  answerMarker: string; // 回答标记符，如 %answer%
+  tagsMarker: string; // 标签标记符，如 %tags%
 }
 
 const DEFAULT_SETTINGS: AnkifySettings = {
@@ -64,15 +68,19 @@ const DEFAULT_SETTINGS: AnkifySettings = {
   customApiVersion: "",
   // 通用设置
   customPrompt:
-    '请基于以下内容创建Anki卡片，格式为"问题:::答案"，每个卡片一行。提取关键概念和知识点。\n\n',
+    '请基于以下内容创建Anki卡片，格式为"%question%:问题 %answer%:答案 %tags%:#标签"，每个卡片一行。提取关键概念和知识点。\n\n',
   visionPrompt:
-    '请识别这张图片中的内容，并基于图片内容创建Anki卡片，格式为"问题:::答案"，每个卡片一行。提取图片中的关键概念和知识点。',
+    '请识别这张图片中的内容，并基于图片内容创建Anki卡片，格式为"%question%:问题 %answer%:答案 %tags%:#标签"，每个卡片一行。提取图片中的关键概念和知识点。',
   maxImageSize: 1024, // 图片最大尺寸1024px
   imageQuality: 0.8, // 图片质量80%
   insertToDocument: false, // 默认使用弹窗
   ankiConnectUrl: "http://127.0.0.1:8765", // Anki Connect默认地址
   defaultDeck: "Default", // 默认牌组
   defaultNoteType: "Basic", // 默认笔记类型
+  // 返回结果解析设置
+  questionMarker: "%question%", // 问题标记符
+  answerMarker: "%answer%", // 回答标记符
+  tagsMarker: "%tags%", // 标签标记符
 };
 
 export default class AnkifyPlugin extends Plugin {
@@ -182,21 +190,34 @@ export default class AnkifyPlugin extends Plugin {
     console.log("原始文本前500字符:", text.substring(0, 500));
 
     // 检查是否是多行格式（每个字段一行，卡片间有空行）
-    const isMultiLineFormat = /Q:.*\nA:.*(\nannotation:.*)?(\ntags:.*)?/i.test(
+    const questionMarker = this.settings.questionMarker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const answerMarker = this.settings.answerMarker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const tagsMarker = this.settings.tagsMarker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const isMultiLineFormat = new RegExp(`${questionMarker}.*\\n\\s*${answerMarker}.*(\\n\\s*annotation:.*)?(\\n\\s*${tagsMarker}.*)?`, "i").test(
       text
     );
 
     if (isMultiLineFormat) {
       console.log("检测到多行格式数据");
 
-      // 通过空行或多个换行符分割不同的卡片
-      const cardBlocks = text.split(/\n\s*\n+/).filter((block) => block.trim());
+      // 通过标记符分割不同的卡片
+      const questionMarkerPattern = new RegExp(questionMarker, "gi");
+      const matches = Array.from(text.matchAll(questionMarkerPattern));
+      
+      if (matches.length === 0) {
+        return cards;
+      }
 
-      for (const block of cardBlocks) {
-        const lines = block
-          .split("\n")
-          .map((line) => line.trim())
-          .filter((line) => line);
+      for (let i = 0; i < matches.length; i++) {
+        const startMatch = matches[i];
+        const endMatch = matches[i + 1];
+        
+        // 提取当前卡片的内容
+        const cardStart = startMatch.index;
+        const cardEnd = endMatch ? endMatch.index : text.length;
+        const cardText = text.substring(cardStart, cardEnd).trim();
+        
+        const lines = cardText.split("\n").map((line) => line.trim()).filter((line) => line);
         const card: AnkiCard = { 
           question: "", 
           answer: "",
@@ -206,10 +227,10 @@ export default class AnkifyPlugin extends Plugin {
         };
 
         for (const line of lines) {
-          if (line.startsWith("Q:") || line.startsWith("问:") || line.startsWith("问：")) {
-            card.question = line.substring(2).trim();
-          } else if (line.startsWith("A:") || line.startsWith("答:") || line.startsWith("答：")) {
-            card.answer = line.substring(2).trim();
+          if (line.startsWith(questionMarker)) {
+            card.question = line.substring(questionMarker.length).trim();
+          } else if (line.startsWith(answerMarker)) {
+            card.answer = line.substring(answerMarker.length).trim();
             card.originalAnswer = card.answer; // 保存原始答案
             
             // 检测是否包含填空格式
@@ -218,8 +239,8 @@ export default class AnkifyPlugin extends Plugin {
             }
           } else if (line.startsWith("annotation:") || line.startsWith("注释:") || line.startsWith("注释：")) {
             card.annotation = line.substring(line.indexOf(':') + 1).trim();
-          } else if (line.startsWith("tags:") || line.startsWith("标签:") || line.startsWith("标签：")) {
-            const tagsText = line.substring(line.indexOf(':') + 1).trim();
+          } else if (line.startsWith(tagsMarker)) {
+            const tagsText = line.substring(tagsMarker.length).trim();
             // 处理标签 - 追加到现有标签数组
             if (tagsText.includes("#")) {
               // 带#格式：#tag1 #tag2
@@ -253,9 +274,9 @@ export default class AnkifyPlugin extends Plugin {
         return cards;
       }
 
-      // 检查表格格式（第一行包含Q、A、annotation、tags等标题）
+      // 检查表格格式（第一行包含%question%、%answer%、annotation、%tags%等标题）
       const headerLine = lines[0].trim();
-      const isTableFormat = /^Q[\t\s]+A[\t\s]+annotation[\t\s]+tags$/i.test(
+      const isTableFormat = new RegExp(`^${questionMarker}[\\t\\s]+${answerMarker}[\\t\\s]+annotation[\\t\\s]+${tagsMarker}$`, "i").test(
         headerLine
       );
 
@@ -321,9 +342,9 @@ export default class AnkifyPlugin extends Plugin {
       } else {
         // 原有的解析逻辑
         for (const line of lines) {
-          // 支持中英文格式：Q: 问题 A: 答案 或 问: 问题 答: 答案
+          // 支持新格式：%question% 问题 %answer% 答案
           const qaMatch = line.match(
-            /(?:Q:|问[:：])\s*(.*?)\s*(?:A:|答[:：])\s*(.*?)(?:\s*annotation:|注释[:：]|$|\s*tags:|标签[:：])/i
+            new RegExp(`(?:${questionMarker})\\s*(.*?)\\s*(?:${answerMarker})\\s*(.*?)(?:\\s*annotation:|注释[:：]|$|\\s*${tagsMarker})`, "i")
           );
           if (qaMatch) {
             const card: AnkiCard = {
@@ -348,7 +369,7 @@ export default class AnkifyPlugin extends Plugin {
             }
 
             // 查找标签
-            const tagsMatch = line.match(/(?:tags:|标签[:：])\s*(.*?)$/i);
+            const tagsMatch = line.match(new RegExp(`(?:${tagsMarker})\\s*(.*?)$`, "i"));
             if (tagsMatch && tagsMatch[1]) {
               // 解析标签，格式为 #tag1 #tag2，追加到现有标签数组
               const newTags = tagsMatch[1]
@@ -2641,7 +2662,7 @@ class AnkifySettingTab extends PluginSettingTab {
         (text) =>
           (text
             .setPlaceholder(
-              '请基于以下内容创建Anki卡片，格式为"问题:::答案"...'
+              '请基于以下内容创建Anki卡片，格式为"%question%:问题 %answer%:答案 %tags%:#标签"...'
             )
             .setValue(this.plugin.settings.customPrompt)
             .onChange(async (value) => {
@@ -2938,6 +2959,48 @@ class AnkifySettingTab extends PluginSettingTab {
           .setValue(this.plugin.settings.insertToDocument)
           .onChange(async (value) => {
             this.plugin.settings.insertToDocument = value;
+            await this.plugin.saveSettings();
+          })
+      );
+
+    // ========== 返回结果解析 ==========
+    containerEl.createEl("h3", { text: "返回结果解析" });
+
+    new Setting(containerEl)
+      .setName("问题标记符")
+      .setDesc("用于识别返回结果中的问题字段，例如：%question%")
+      .addText((text) =>
+        text
+          .setPlaceholder("%question%")
+          .setValue(this.plugin.settings.questionMarker)
+          .onChange(async (value) => {
+            this.plugin.settings.questionMarker = value;
+            await this.plugin.saveSettings();
+          })
+      );
+
+    new Setting(containerEl)
+      .setName("回答标记符")
+      .setDesc("用于识别返回结果中的回答字段，例如：%answer%")
+      .addText((text) =>
+        text
+          .setPlaceholder("%answer%")
+          .setValue(this.plugin.settings.answerMarker)
+          .onChange(async (value) => {
+            this.plugin.settings.answerMarker = value;
+            await this.plugin.saveSettings();
+          })
+      );
+
+    new Setting(containerEl)
+      .setName("标签标记符")
+      .setDesc("用于识别返回结果中的标签字段，例如：%tags%")
+      .addText((text) =>
+        text
+          .setPlaceholder("%tags%")
+          .setValue(this.plugin.settings.tagsMarker)
+          .onChange(async (value) => {
+            this.plugin.settings.tagsMarker = value;
             await this.plugin.saveSettings();
           })
       );

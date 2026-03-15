@@ -45,14 +45,17 @@ var DEFAULT_SETTINGS = {
   customApiKey: "",
   customModelName: "custom-model",
   customApiVersion: "",
-  customPrompt: '\u8BF7\u57FA\u4E8E\u4EE5\u4E0B\u5185\u5BB9\u521B\u5EFAAnki\u5361\u7247\uFF0C\u683C\u5F0F\u4E3A"\u95EE\u9898:::\u7B54\u6848"\uFF0C\u6BCF\u4E2A\u5361\u7247\u4E00\u884C\u3002\u63D0\u53D6\u5173\u952E\u6982\u5FF5\u548C\u77E5\u8BC6\u70B9\u3002\n\n',
-  visionPrompt: '\u8BF7\u8BC6\u522B\u8FD9\u5F20\u56FE\u7247\u4E2D\u7684\u5185\u5BB9\uFF0C\u5E76\u57FA\u4E8E\u56FE\u7247\u5185\u5BB9\u521B\u5EFAAnki\u5361\u7247\uFF0C\u683C\u5F0F\u4E3A"\u95EE\u9898:::\u7B54\u6848"\uFF0C\u6BCF\u4E2A\u5361\u7247\u4E00\u884C\u3002\u63D0\u53D6\u56FE\u7247\u4E2D\u7684\u5173\u952E\u6982\u5FF5\u548C\u77E5\u8BC6\u70B9\u3002',
+  customPrompt: '\u8BF7\u57FA\u4E8E\u4EE5\u4E0B\u5185\u5BB9\u521B\u5EFAAnki\u5361\u7247\uFF0C\u683C\u5F0F\u4E3A"%question%:\u95EE\u9898 %answer%:\u7B54\u6848 %tags%:#\u6807\u7B7E"\uFF0C\u6BCF\u4E2A\u5361\u7247\u4E00\u884C\u3002\u63D0\u53D6\u5173\u952E\u6982\u5FF5\u548C\u77E5\u8BC6\u70B9\u3002\n\n',
+  visionPrompt: '\u8BF7\u8BC6\u522B\u8FD9\u5F20\u56FE\u7247\u4E2D\u7684\u5185\u5BB9\uFF0C\u5E76\u57FA\u4E8E\u56FE\u7247\u5185\u5BB9\u521B\u5EFAAnki\u5361\u7247\uFF0C\u683C\u5F0F\u4E3A"%question%:\u95EE\u9898 %answer%:\u7B54\u6848 %tags%:#\u6807\u7B7E"\uFF0C\u6BCF\u4E2A\u5361\u7247\u4E00\u884C\u3002\u63D0\u53D6\u56FE\u7247\u4E2D\u7684\u5173\u952E\u6982\u5FF5\u548C\u77E5\u8BC6\u70B9\u3002',
   maxImageSize: 1024,
   imageQuality: 0.8,
   insertToDocument: false,
   ankiConnectUrl: "http://127.0.0.1:8765",
   defaultDeck: "Default",
-  defaultNoteType: "Basic"
+  defaultNoteType: "Basic",
+  questionMarker: "%question%",
+  answerMarker: "%answer%",
+  tagsMarker: "%tags%"
 };
 var AnkifyPlugin = class extends import_obsidian.Plugin {
   constructor() {
@@ -136,12 +139,24 @@ var AnkifyPlugin = class extends import_obsidian.Plugin {
     const cards = [];
     console.log("\u5F00\u59CB\u89E3\u6790Anki\u5361\u7247\uFF0C\u539F\u59CB\u6587\u672C\u957F\u5EA6:", text.length);
     console.log("\u539F\u59CB\u6587\u672C\u524D500\u5B57\u7B26:", text.substring(0, 500));
-    const isMultiLineFormat = /Q:.*\nA:.*(\nannotation:.*)?(\ntags:.*)?/i.test(text);
+    const questionMarker = this.settings.questionMarker.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const answerMarker = this.settings.answerMarker.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const tagsMarker = this.settings.tagsMarker.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const isMultiLineFormat = new RegExp(`${questionMarker}.*\\n\\s*${answerMarker}.*(\\n\\s*annotation:.*)?(\\n\\s*${tagsMarker}.*)?`, "i").test(text);
     if (isMultiLineFormat) {
       console.log("\u68C0\u6D4B\u5230\u591A\u884C\u683C\u5F0F\u6570\u636E");
-      const cardBlocks = text.split(/\n\s*\n+/).filter((block) => block.trim());
-      for (const block of cardBlocks) {
-        const lines = block.split("\n").map((line) => line.trim()).filter((line) => line);
+      const questionMarkerPattern = new RegExp(questionMarker, "gi");
+      const matches = Array.from(text.matchAll(questionMarkerPattern));
+      if (matches.length === 0) {
+        return cards;
+      }
+      for (let i = 0; i < matches.length; i++) {
+        const startMatch = matches[i];
+        const endMatch = matches[i + 1];
+        const cardStart = startMatch.index;
+        const cardEnd = endMatch ? endMatch.index : text.length;
+        const cardText = text.substring(cardStart, cardEnd).trim();
+        const lines = cardText.split("\n").map((line) => line.trim()).filter((line) => line);
         const card = {
           question: "",
           answer: "",
@@ -150,18 +165,18 @@ var AnkifyPlugin = class extends import_obsidian.Plugin {
           tags: []
         };
         for (const line of lines) {
-          if (line.startsWith("Q:") || line.startsWith("\u95EE:") || line.startsWith("\u95EE\uFF1A")) {
-            card.question = line.substring(2).trim();
-          } else if (line.startsWith("A:") || line.startsWith("\u7B54:") || line.startsWith("\u7B54\uFF1A")) {
-            card.answer = line.substring(2).trim();
+          if (line.startsWith(questionMarker)) {
+            card.question = line.substring(questionMarker.length).trim();
+          } else if (line.startsWith(answerMarker)) {
+            card.answer = line.substring(answerMarker.length).trim();
             card.originalAnswer = card.answer;
             if (this.containsClozeFormat(card.answer)) {
               card.noteType = "Cloze";
             }
           } else if (line.startsWith("annotation:") || line.startsWith("\u6CE8\u91CA:") || line.startsWith("\u6CE8\u91CA\uFF1A")) {
             card.annotation = line.substring(line.indexOf(":") + 1).trim();
-          } else if (line.startsWith("tags:") || line.startsWith("\u6807\u7B7E:") || line.startsWith("\u6807\u7B7E\uFF1A")) {
-            const tagsText = line.substring(line.indexOf(":") + 1).trim();
+          } else if (line.startsWith(tagsMarker)) {
+            const tagsText = line.substring(tagsMarker.length).trim();
             if (tagsText.includes("#")) {
               const newTags = tagsText.split("#").map((tag) => tag.trim()).filter((tag) => tag.length > 0);
               card.tags = [...card.tags, ...newTags];
@@ -181,7 +196,7 @@ var AnkifyPlugin = class extends import_obsidian.Plugin {
         return cards;
       }
       const headerLine = lines[0].trim();
-      const isTableFormat = /^Q[\t\s]+A[\t\s]+annotation[\t\s]+tags$/i.test(headerLine);
+      const isTableFormat = new RegExp(`^${questionMarker}[\\t\\s]+${answerMarker}[\\t\\s]+annotation[\\t\\s]+${tagsMarker}$`, "i").test(headerLine);
       if (isTableFormat) {
         console.log("\u68C0\u6D4B\u5230\u8868\u683C\u683C\u5F0F\u6570\u636E");
         for (let i = 1; i < lines.length; i++) {
@@ -226,7 +241,7 @@ var AnkifyPlugin = class extends import_obsidian.Plugin {
         }
       } else {
         for (const line of lines) {
-          const qaMatch = line.match(/(?:Q:|问[:：])\s*(.*?)\s*(?:A:|答[:：])\s*(.*?)(?:\s*annotation:|注释[:：]|$|\s*tags:|标签[:：])/i);
+          const qaMatch = line.match(new RegExp(`(?:${questionMarker})\\s*(.*?)\\s*(?:${answerMarker})\\s*(.*?)(?:\\s*annotation:|\u6CE8\u91CA[:\uFF1A]|$|\\s*${tagsMarker})`, "i"));
           if (qaMatch) {
             const card = {
               question: ((_a = qaMatch[1]) == null ? void 0 : _a.trim()) || "",
@@ -242,7 +257,7 @@ var AnkifyPlugin = class extends import_obsidian.Plugin {
             if (annotationMatch) {
               card.annotation = (_d = annotationMatch[1]) == null ? void 0 : _d.trim();
             }
-            const tagsMatch = line.match(/(?:tags:|标签[:：])\s*(.*?)$/i);
+            const tagsMatch = line.match(new RegExp(`(?:${tagsMarker})\\s*(.*?)$`, "i"));
             if (tagsMatch && tagsMatch[1]) {
               const newTags = tagsMatch[1].split("#").map((tag) => tag.trim()).filter((tag) => tag.length > 0);
               card.tags = [...card.tags, ...newTags];
@@ -1883,7 +1898,7 @@ var AnkifySettingTab = class extends import_obsidian.PluginSettingTab {
         await this.plugin.saveSettings();
       }));
     }
-    new import_obsidian.Setting(containerEl).setName("\u6587\u672C\u5185\u5BB9Prompt").setDesc("\u8BBE\u7F6E\u751F\u6210Anki\u5361\u7247\u7684\u63D0\u793A\u8BCD\uFF08\u7528\u4E8E\u6587\u672C\u5185\u5BB9\uFF09").addTextArea((text) => text.setPlaceholder('\u8BF7\u57FA\u4E8E\u4EE5\u4E0B\u5185\u5BB9\u521B\u5EFAAnki\u5361\u7247\uFF0C\u683C\u5F0F\u4E3A"\u95EE\u9898:::\u7B54\u6848"...').setValue(this.plugin.settings.customPrompt).onChange(async (value) => {
+    new import_obsidian.Setting(containerEl).setName("\u6587\u672C\u5185\u5BB9Prompt").setDesc("\u8BBE\u7F6E\u751F\u6210Anki\u5361\u7247\u7684\u63D0\u793A\u8BCD\uFF08\u7528\u4E8E\u6587\u672C\u5185\u5BB9\uFF09").addTextArea((text) => text.setPlaceholder('\u8BF7\u57FA\u4E8E\u4EE5\u4E0B\u5185\u5BB9\u521B\u5EFAAnki\u5361\u7247\uFF0C\u683C\u5F0F\u4E3A"%question%:\u95EE\u9898 %answer%:\u7B54\u6848 %tags%:#\u6807\u7B7E"...').setValue(this.plugin.settings.customPrompt).onChange(async (value) => {
       this.plugin.settings.customPrompt = value;
       await this.plugin.saveSettings();
     }).inputEl.style.minHeight = "80px");
@@ -2083,6 +2098,19 @@ ${error.message}`;
     }));
     new import_obsidian.Setting(containerEl).setName("\u76F4\u63A5\u63D2\u5165\u6587\u6863").setDesc("\u542F\u7528\u540E\uFF0C\u751F\u6210\u7684Anki\u5361\u7247\u5C06\u76F4\u63A5\u63D2\u5165\u5230\u6587\u6863\u672B\u5C3E\uFF0C\u800C\u4E0D\u662F\u663E\u793A\u5728\u5F39\u7A97\u4E2D").addToggle((toggle) => toggle.setValue(this.plugin.settings.insertToDocument).onChange(async (value) => {
       this.plugin.settings.insertToDocument = value;
+      await this.plugin.saveSettings();
+    }));
+    containerEl.createEl("h3", { text: "\u8FD4\u56DE\u7ED3\u679C\u89E3\u6790" });
+    new import_obsidian.Setting(containerEl).setName("\u95EE\u9898\u6807\u8BB0\u7B26").setDesc("\u7528\u4E8E\u8BC6\u522B\u8FD4\u56DE\u7ED3\u679C\u4E2D\u7684\u95EE\u9898\u5B57\u6BB5\uFF0C\u4F8B\u5982\uFF1A%question%").addText((text) => text.setPlaceholder("%question%").setValue(this.plugin.settings.questionMarker).onChange(async (value) => {
+      this.plugin.settings.questionMarker = value;
+      await this.plugin.saveSettings();
+    }));
+    new import_obsidian.Setting(containerEl).setName("\u56DE\u7B54\u6807\u8BB0\u7B26").setDesc("\u7528\u4E8E\u8BC6\u522B\u8FD4\u56DE\u7ED3\u679C\u4E2D\u7684\u56DE\u7B54\u5B57\u6BB5\uFF0C\u4F8B\u5982\uFF1A%answer%").addText((text) => text.setPlaceholder("%answer%").setValue(this.plugin.settings.answerMarker).onChange(async (value) => {
+      this.plugin.settings.answerMarker = value;
+      await this.plugin.saveSettings();
+    }));
+    new import_obsidian.Setting(containerEl).setName("\u6807\u7B7E\u6807\u8BB0\u7B26").setDesc("\u7528\u4E8E\u8BC6\u522B\u8FD4\u56DE\u7ED3\u679C\u4E2D\u7684\u6807\u7B7E\u5B57\u6BB5\uFF0C\u4F8B\u5982\uFF1A%tags%").addText((text) => text.setPlaceholder("%tags%").setValue(this.plugin.settings.tagsMarker).onChange(async (value) => {
+      this.plugin.settings.tagsMarker = value;
       await this.plugin.saveSettings();
     }));
   }
