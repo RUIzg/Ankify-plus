@@ -348,6 +348,25 @@ var AnkifyPlugin = class extends import_obsidian.Plugin {
 <span style="color: rgb(143, 53, 8);">${card.annotation}</span>`;
           console.log(`\u5C06\u6CE8\u91CA\u8FFD\u52A0\u5230\u4E3B\u8981\u5B57\u6BB5 ${mainFieldName}:`, card.annotation);
         }
+        console.log(`\u5904\u7406 Back Extra: card.backExtra = "${card.backExtra}", modelFieldNames =`, modelFieldNames);
+        if (card.backExtra) {
+          if (modelFieldNames.includes("Back Extra")) {
+            fields["Back Extra"] = card.backExtra;
+            console.log(`\u5C06 Back Extra \u5185\u5BB9\u653E\u5165 Back Extra \u5B57\u6BB5:`, card.backExtra);
+          } else if (extraFieldName && !card.annotation) {
+            fields[extraFieldName] = card.backExtra;
+            console.log(`\u5C06 Back Extra \u5185\u5BB9\u653E\u5165\u989D\u5916\u5B57\u6BB5 ${extraFieldName}:`, card.backExtra);
+          } else {
+            fields[mainFieldName] += `
+<hr>
+${card.backExtra}`;
+            console.log(`\u5C06 Back Extra \u5185\u5BB9\u8FFD\u52A0\u5230\u4E3B\u8981\u5B57\u6BB5 ${mainFieldName}`);
+          }
+        } else if (modelFieldNames.includes("Back Extra")) {
+          fields["Back Extra"] = "";
+          console.log(`\u6DFB\u52A0\u7A7A\u7684 Back Extra \u5B57\u6BB5`);
+        }
+        console.log(`\u6700\u7EC8\u5B57\u6BB5:`, fields);
       } else if (modelFieldNames.includes("Front") && modelFieldNames.includes("Back")) {
         fields = {
           Front: card.question,
@@ -377,20 +396,12 @@ var AnkifyPlugin = class extends import_obsidian.Plugin {
 <hr>
 <span style="color: rgb(143, 53, 8);">${card.annotation}</span>` : "")
           };
-        } else if (modelFieldNames.length === 1) {
-          const clozeContent = card.question ? `${card.question}
-${card.answer}` : card.answer;
-          fields = {
-            [modelFieldNames[0]]: clozeContent + (card.annotation ? `
-<hr>
-<span style="color: rgb(143, 53, 8);">${card.annotation}</span>` : "")
-          };
         } else {
           throw new Error(`\u65E0\u6CD5\u786E\u5B9A\u7B14\u8BB0\u7C7B\u578B ${cardNoteType} \u7684\u5B57\u6BB5\u6620\u5C04`);
         }
       }
       for (const [key, value] of Object.entries(fields)) {
-        if (!value || value.trim() === "") {
+        if (key !== "Back Extra" && (!value || value.trim() === "")) {
           throw new Error(`\u5B57\u6BB5 "${key}" \u4E0D\u80FD\u4E3A\u7A7A`);
         }
       }
@@ -1363,11 +1374,39 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
           option.selected = true;
         }
       });
+      const backExtraEl = cardContent.createDiv({ cls: "ankify-card-back-extra" });
+      backExtraEl.createEl("strong", { text: "Back Extra: " });
+      const backExtraTextarea = backExtraEl.createEl("textarea", {
+        cls: "ankify-card-textarea",
+        text: card.backExtra || ""
+      });
+      backExtraTextarea.style.width = "100%";
+      backExtraTextarea.style.minHeight = "60px";
+      backExtraTextarea.style.padding = "8px";
+      backExtraTextarea.style.border = "1px solid var(--border-color)";
+      backExtraTextarea.style.borderRadius = "4px";
+      backExtraTextarea.style.backgroundColor = "var(--background-primary)";
+      backExtraTextarea.style.color = "var(--text-normal)";
+      backExtraTextarea.style.fontFamily = "inherit";
+      backExtraTextarea.style.resize = "vertical";
+      backExtraTextarea.addEventListener("input", () => {
+        const storedBackExtra = backExtraTextarea.value.replace(/\n/g, "<br>");
+        this.cards[index].backExtra = storedBackExtra;
+      });
+      const updateBackExtraVisibility = () => {
+        if (card.noteType === "Cloze") {
+          backExtraEl.style.display = "block";
+        } else {
+          backExtraEl.style.display = "none";
+        }
+      };
+      updateBackExtraVisibility();
       noteTypeSelect.addEventListener("change", () => {
         const newNoteType = noteTypeSelect.value;
         const oldNoteType = card.noteType;
         card.noteType = newNoteType;
         updateBlankButtonVisibility();
+        updateBackExtraVisibility();
         if (newNoteType === "Cloze") {
           card.answer = card.originalAnswer;
           answerTextarea.value = card.answer.replace(/<br\s*\/?>/gi, "\n");

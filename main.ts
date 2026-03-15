@@ -17,6 +17,7 @@ interface AnkiCard {
   tags?: string[];
   noteType: string; // 卡片的笔记类型
   originalAnswer: string; // 原始答案（用于切换回填空类型时还原）
+  backExtra?: string; // Back Extra 字段内容
 }
 
 // 默认设置
@@ -496,6 +497,29 @@ export default class AnkifyPlugin extends Plugin {
             fields[mainFieldName] += `\n<hr>\n<span style="color: rgb(143, 53, 8);">${card.annotation}</span>`;
             console.log(`将注释追加到主要字段 ${mainFieldName}:`, card.annotation);
           }
+          
+          // 如果有 Back Extra 内容，添加到字段中（优先使用专门的 Back Extra 字段）
+          console.log(`处理 Back Extra: card.backExtra = "${card.backExtra}", modelFieldNames =`, modelFieldNames);
+          if (card.backExtra) {
+            if (modelFieldNames.includes("Back Extra")) {
+              fields["Back Extra"] = card.backExtra;
+              console.log(`将 Back Extra 内容放入 Back Extra 字段:`, card.backExtra);
+            } else if (extraFieldName && !card.annotation) {
+              // 如果没有专门的 Back Extra 字段，但有其他额外字段且没有注释，使用额外字段
+              fields[extraFieldName] = card.backExtra;
+              console.log(`将 Back Extra 内容放入额外字段 ${extraFieldName}:`, card.backExtra);
+            } else {
+              // 如果没有合适的字段，追加到主要字段
+              fields[mainFieldName] += `\n<hr>\n${card.backExtra}`;
+              console.log(`将 Back Extra 内容追加到主要字段 ${mainFieldName}`);
+            }
+          } else if (modelFieldNames.includes("Back Extra")) {
+            // 即使为空也要添加字段，确保 Anki 能识别
+            fields["Back Extra"] = "";
+            console.log(`添加空的 Back Extra 字段`);
+          }
+          
+          console.log(`最终字段:`, fields);
         } else if (
           modelFieldNames.includes("Front") &&
           modelFieldNames.includes("Back")
@@ -543,24 +567,14 @@ export default class AnkifyPlugin extends Plugin {
                   ? `\n<hr>\n<span style="color: rgb(143, 53, 8);">${card.annotation}</span>`
                   : ""),
             };
-          } else if (modelFieldNames.length === 1) {
-            // 只有一个字段的情况，通常是Cloze类型
-            // 对于Cloze类型，将问题和答案合并写入到单个字段
-            const clozeContent = card.question ? `${card.question}\n${card.answer}` : card.answer;
-            fields = {
-              [modelFieldNames[0]]: clozeContent +
-                (card.annotation
-                  ? `\n<hr>\n<span style="color: rgb(143, 53, 8);">${card.annotation}</span>`
-                  : ""),
-            };
           } else {
             throw new Error(`无法确定笔记类型 ${cardNoteType} 的字段映射`);
           }
         }
 
-        // 验证字段映射
+        // 验证字段映射（Back Extra 字段可以为空）
         for (const [key, value] of Object.entries(fields)) {
-          if (!value || value.trim() === "") {
+          if (key !== "Back Extra" && (!value || value.trim() === "")) {
             throw new Error(`字段 "${key}" 不能为空`);
           }
         }
@@ -1862,6 +1876,40 @@ class SelectableCardsModal extends Modal {
         }
       });
 
+      // Back Extra 文本框（仅在Cloze类型时显示）
+      const backExtraEl = cardContent.createDiv({ cls: "ankify-card-back-extra" });
+      backExtraEl.createEl("strong", { text: "Back Extra: " });
+      const backExtraTextarea = backExtraEl.createEl("textarea", {
+        cls: "ankify-card-textarea",
+        text: card.backExtra || "",
+      });
+      backExtraTextarea.style.width = "100%";
+      backExtraTextarea.style.minHeight = "60px";
+      backExtraTextarea.style.padding = "8px";
+      backExtraTextarea.style.border = "1px solid var(--border-color)";
+      backExtraTextarea.style.borderRadius = "4px";
+      backExtraTextarea.style.backgroundColor = "var(--background-primary)";
+      backExtraTextarea.style.color = "var(--text-normal)";
+      backExtraTextarea.style.fontFamily = "inherit";
+      backExtraTextarea.style.resize = "vertical";
+      backExtraTextarea.addEventListener("input", () => {
+        // 将实际换行符转换回<br>标签，保持数据一致性
+        const storedBackExtra = backExtraTextarea.value.replace(/\n/g, "<br>");
+        this.cards[index].backExtra = storedBackExtra;
+      });
+      
+      // 控制Back Extra文本框显示状态
+      const updateBackExtraVisibility = () => {
+        if (card.noteType === "Cloze") {
+          backExtraEl.style.display = "block";
+        } else {
+          backExtraEl.style.display = "none";
+        }
+      };
+      
+      // 初始显示状态
+      updateBackExtraVisibility();
+
       // 笔记类型变更事件
       noteTypeSelect.addEventListener("change", () => {
         const newNoteType = noteTypeSelect.value;
@@ -1872,6 +1920,8 @@ class SelectableCardsModal extends Modal {
         
         // 更新填空按钮显示状态
         updateBlankButtonVisibility();
+        // 更新Back Extra文本框显示状态
+        updateBackExtraVisibility();
         
         // 处理内容变更
         if (newNoteType === "Cloze") {
