@@ -17,7 +17,7 @@
   "imageQuality": 0.8,
   "insertToDocument": false,
   "ankiConnectUrl": "http://127.0.0.1:8765",
-  "defaultDeck": "002_信息系统项目管理师::05_项目进度管理::8控制进度",
+  "defaultDeck": "d2",
   "defaultNoteType": "Basic",
   "debugMode": true
 }

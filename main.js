@@ -1303,6 +1303,50 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
       answerTextarea.addEventListener("change", () => {
         this.cards[index].answer = answerTextarea.value;
       });
+      const blankButton = answerEl.createEl("button", {
+        text: "\u586B\u7A7A"
+      });
+      blankButton.style.marginLeft = "10px";
+      blankButton.style.padding = "4px 8px";
+      blankButton.style.fontSize = "12px";
+      blankButton.style.backgroundColor = "var(--interactive-accent)";
+      blankButton.style.color = "var(--text-on-accent)";
+      blankButton.style.border = "none";
+      blankButton.style.borderRadius = "4px";
+      blankButton.style.cursor = "pointer";
+      const updateBlankButtonVisibility = () => {
+        if (card.noteType === "Cloze") {
+          blankButton.style.display = "inline-block";
+        } else {
+          blankButton.style.display = "none";
+        }
+      };
+      updateBlankButtonVisibility();
+      blankButton.addEventListener("click", () => {
+        const start = answerTextarea.selectionStart;
+        const end = answerTextarea.selectionEnd;
+        const selectedText = answerTextarea.value.substring(start, end);
+        if (selectedText) {
+          const text = answerTextarea.value;
+          const clozePattern = /\{\{c(\d+)::[^}]+\}\}/g;
+          let maxNumber = 0;
+          let match;
+          while ((match = clozePattern.exec(text)) !== null) {
+            const number = parseInt(match[1], 10);
+            if (number > maxNumber) {
+              maxNumber = number;
+            }
+          }
+          const newNumber = maxNumber + 1;
+          const newText = text.substring(0, start) + `{{c${newNumber}::${selectedText}}}` + text.substring(end);
+          answerTextarea.value = newText;
+          card.answer = newText;
+          card.originalAnswer = newText;
+          answerTextarea.focus();
+          const newCursorPos = start + `{{c${newNumber}::${selectedText}}}`.length;
+          answerTextarea.setSelectionRange(newCursorPos, newCursorPos);
+        }
+      });
       const noteTypeContainer2 = cardContent.createDiv({ cls: "ankify-card-note-type" });
       noteTypeContainer2.createEl("strong", { text: "\u7B14\u8BB0\u7C7B\u578B: " });
       const noteTypeSelect = noteTypeContainer2.createEl("select");
@@ -1320,6 +1364,7 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
         const newNoteType = noteTypeSelect.value;
         const oldNoteType = card.noteType;
         card.noteType = newNoteType;
+        updateBlankButtonVisibility();
         if (newNoteType === "Cloze") {
           card.answer = card.originalAnswer;
           answerTextarea.value = card.answer;

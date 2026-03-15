@@ -1776,6 +1776,68 @@ class SelectableCardsModal extends Modal {
         this.cards[index].answer = answerTextarea.value;
       });
 
+      // 填空按钮（仅在Cloze类型时显示）
+      const blankButton = answerEl.createEl("button", {
+        text: "填空",
+      });
+      blankButton.style.marginLeft = "10px";
+      blankButton.style.padding = "4px 8px";
+      blankButton.style.fontSize = "12px";
+      blankButton.style.backgroundColor = "var(--interactive-accent)";
+      blankButton.style.color = "var(--text-on-accent)";
+      blankButton.style.border = "none";
+      blankButton.style.borderRadius = "4px";
+      blankButton.style.cursor = "pointer";
+      
+      // 控制按钮显示状态
+      const updateBlankButtonVisibility = () => {
+        if (card.noteType === "Cloze") {
+          blankButton.style.display = "inline-block";
+        } else {
+          blankButton.style.display = "none";
+        }
+      };
+      
+      // 初始显示状态
+      updateBlankButtonVisibility();
+      
+      // 点击填空按钮
+      blankButton.addEventListener("click", () => {
+        const start = answerTextarea.selectionStart;
+        const end = answerTextarea.selectionEnd;
+        const selectedText = answerTextarea.value.substring(start, end);
+        
+        if (selectedText) {
+          // 计算当前最大序号
+          const text = answerTextarea.value;
+          const clozePattern = /\{\{c(\d+)::[^}]+\}\}/g;
+          let maxNumber = 0;
+          let match;
+          while ((match = clozePattern.exec(text)) !== null) {
+            const number = parseInt(match[1], 10);
+            if (number > maxNumber) {
+              maxNumber = number;
+            }
+          }
+          
+          // 生成新的序号
+          const newNumber = maxNumber + 1;
+          
+          // 替换选中文本为填空格式
+          const newText = text.substring(0, start) + `{{c${newNumber}::${selectedText}}}` + text.substring(end);
+          answerTextarea.value = newText;
+          
+          // 更新卡片数据
+          card.answer = newText;
+          card.originalAnswer = newText; // 同时更新原始答案
+          
+          // 重新聚焦并设置光标位置
+          answerTextarea.focus();
+          const newCursorPos = start + `{{c${newNumber}::${selectedText}}}`.length;
+          answerTextarea.setSelectionRange(newCursorPos, newCursorPos);
+        }
+      });
+
       // 笔记类型选择器
       const noteTypeContainer = cardContent.createDiv({ cls: "ankify-card-note-type" });
       noteTypeContainer.createEl("strong", { text: "笔记类型: " });
@@ -1800,6 +1862,9 @@ class SelectableCardsModal extends Modal {
         
         // 保存新的笔记类型
         card.noteType = newNoteType;
+        
+        // 更新填空按钮显示状态
+        updateBlankButtonVisibility();
         
         // 处理内容变更
         if (newNoteType === "Cloze") {
