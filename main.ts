@@ -1973,24 +1973,12 @@ class SelectableCardsModal extends Modal {
         this.cards[index].answer = storedAnswer;
       });
 
-      // 编辑工具栏
-      const toolbarEl = answerEl.createDiv({ cls: "ankify-card-toolbar" });
-      toolbarEl.style.marginTop = "10px";
-      toolbarEl.style.padding = "10px";
-      toolbarEl.style.backgroundColor = "var(--background-secondary)";
-      toolbarEl.style.borderRadius = "4px";
-      toolbarEl.style.display = "block";
-
-      // 工具栏内容容器
-      const toolbarContent = toolbarEl.createDiv();
-      toolbarContent.style.display = "flex";
-      toolbarContent.style.alignItems = "center";
-      toolbarContent.style.gap = "15px";
-
       // 填空按钮（仅在Cloze类型时显示）
-      const blankButton = toolbarContent.createEl("button", {
+      const blankButton = answerEl.createEl("button", {
         text: "填空",
       });
+      blankButton.style.marginTop = "5px";
+      blankButton.style.marginRight = "10px";
       blankButton.style.padding = "4px 8px";
       blankButton.style.fontSize = "12px";
       blankButton.style.backgroundColor = "var(--interactive-accent)";
@@ -1998,30 +1986,24 @@ class SelectableCardsModal extends Modal {
       blankButton.style.border = "none";
       blankButton.style.borderRadius = "4px";
       blankButton.style.cursor = "pointer";
-      blankButton.style.whiteSpace = "nowrap";
-      
+
       // 颜色选择器
-      const colorContainer = toolbarContent.createDiv();
-      colorContainer.style.display = "flex";
-      colorContainer.style.alignItems = "center";
-      colorContainer.style.gap = "8px";
-      
-      colorContainer.createEl("span", { text: "颜色: " });
-      
-      const colorOptions = colorContainer.createDiv();
-      colorOptions.style.display = "flex";
-      colorOptions.style.alignItems = "center";
-      colorOptions.style.gap = "4px";
+      const colorLabel = answerEl.createEl("span", {
+        text: "颜色: "
+      });
+      colorLabel.style.marginRight = "8px";
       
       const colors = ["#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4", "#FFEAA7", "#DDA0DD", "#98D8C8", "#F7DC6F", "#BB8FCE", "#85C1E9"];
       colors.forEach(color => {
-        const colorOption = colorOptions.createEl("div", {
+        const colorOption = answerEl.createEl("div", {
           style: {
             width: "20px",
             height: "20px",
             backgroundColor: color,
             borderRadius: "50%",
             cursor: "pointer",
+            display: "inline-block",
+            margin: "0 2px",
             border: "1px solid var(--border-color)"
           }
         });

@@ -1450,19 +1450,11 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
         const storedAnswer = answerTextarea.value.replace(/\n/g, "<br>");
         this.cards[index].answer = storedAnswer;
       });
-      const toolbarEl = answerEl.createDiv({ cls: "ankify-card-toolbar" });
-      toolbarEl.style.marginTop = "10px";
-      toolbarEl.style.padding = "10px";
-      toolbarEl.style.backgroundColor = "var(--background-secondary)";
-      toolbarEl.style.borderRadius = "4px";
-      toolbarEl.style.display = "block";
-      const toolbarContent = toolbarEl.createDiv();
-      toolbarContent.style.display = "flex";
-      toolbarContent.style.alignItems = "center";
-      toolbarContent.style.gap = "15px";
-      const blankButton = toolbarContent.createEl("button", {
+      const blankButton = answerEl.createEl("button", {
         text: "\u586B\u7A7A"
       });
+      blankButton.style.marginTop = "5px";
+      blankButton.style.marginRight = "10px";
       blankButton.style.padding = "4px 8px";
       blankButton.style.fontSize = "12px";
       blankButton.style.backgroundColor = "var(--interactive-accent)";
@@ -1470,25 +1462,21 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
       blankButton.style.border = "none";
       blankButton.style.borderRadius = "4px";
       blankButton.style.cursor = "pointer";
-      blankButton.style.whiteSpace = "nowrap";
-      const colorContainer = toolbarContent.createDiv();
-      colorContainer.style.display = "flex";
-      colorContainer.style.alignItems = "center";
-      colorContainer.style.gap = "8px";
-      colorContainer.createEl("span", { text: "\u989C\u8272: " });
-      const colorOptions = colorContainer.createDiv();
-      colorOptions.style.display = "flex";
-      colorOptions.style.alignItems = "center";
-      colorOptions.style.gap = "4px";
+      const colorLabel = answerEl.createEl("span", {
+        text: "\u989C\u8272: "
+      });
+      colorLabel.style.marginRight = "8px";
       const colors = ["#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4", "#FFEAA7", "#DDA0DD", "#98D8C8", "#F7DC6F", "#BB8FCE", "#85C1E9"];
       colors.forEach((color) => {
-        const colorOption = colorOptions.createEl("div", {
+        const colorOption = answerEl.createEl("div", {
           style: {
             width: "20px",
             height: "20px",
             backgroundColor: color,
             borderRadius: "50%",
             cursor: "pointer",
+            display: "inline-block",
+            margin: "0 2px",
             border: "1px solid var(--border-color)"
           }
         });
