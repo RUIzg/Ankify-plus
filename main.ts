@@ -1940,115 +1940,13 @@ class SelectableCardsModal extends Modal {
       // 问题编辑
       const questionEl = cardContent.createDiv({ cls: "ankify-card-question" });
       questionEl.createEl("strong", { text: `问题${index + 1}: ` });
-      // 将问题输入框改为textarea以支持多行和富文本
-      const questionTextarea = questionEl.createEl("textarea", {
-        cls: "ankify-card-textarea",
-        text: card.question,
+      const questionInput = questionEl.createEl("input", {
+        cls: "ankify-card-input",
+        type: "text",
+        value: card.question,
       });
-      questionTextarea.style.width = "100%";
-      questionTextarea.style.minHeight = "60px";
-      questionTextarea.style.padding = "8px";
-      questionTextarea.style.border = "1px solid var(--border-color)";
-      questionTextarea.style.borderRadius = "4px";
-      questionTextarea.style.backgroundColor = "var(--background-primary)";
-      questionTextarea.style.color = "var(--text-normal)";
-      questionTextarea.style.fontFamily = "inherit";
-      questionTextarea.style.resize = "vertical";
-      questionTextarea.addEventListener("change", () => {
-        this.cards[index].question = questionTextarea.value;
-      });
-
-      // 问题编辑工具栏
-      const questionToolbarEl = questionEl.createDiv({ cls: "ankify-card-toolbar" });
-      questionToolbarEl.style.display = "flex";
-      questionToolbarEl.style.gap = "10px";
-      questionToolbarEl.style.marginTop = "5px";
-      questionToolbarEl.style.alignItems = "center";
-
-      // 问题颜色选择器按钮
-      const questionColorButton = questionToolbarEl.createEl("button", {
-        text: "标颜色",
-      });
-      questionColorButton.style.padding = "4px 8px";
-      questionColorButton.style.fontSize = "12px";
-      questionColorButton.style.backgroundColor = "var(--background-secondary)";
-      questionColorButton.style.color = "var(--text-normal)";
-      questionColorButton.style.border = "1px solid var(--border-color)";
-      questionColorButton.style.borderRadius = "4px";
-      questionColorButton.style.cursor = "pointer";
-
-      // 问题颜色选择器
-      const questionColorPickerContainer = questionToolbarEl.createDiv({
-        style: { 
-          display: "none", 
-          position: "absolute", 
-          backgroundColor: "var(--background-primary)",
-          border: "1px solid var(--border-color)",
-          borderRadius: "4px",
-          padding: "10px",
-          zIndex: "1000",
-          boxShadow: "0 2px 8px rgba(0, 0, 0, 0.15)"
-        }
-      });
-
-      // 问题颜色选项
-      const questionColors = ["#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4", "#FFEAA7", "#DDA0DD", "#98D8C8", "#F7DC6F", "#BB8FCE", "#85C1E9"];
-      questionColors.forEach(color => {
-        const colorOption = questionColorPickerContainer.createEl("div", {
-          style: {
-            width: "20px",
-            height: "20px",
-            backgroundColor: color,
-            borderRadius: "50%",
-            cursor: "pointer",
-            display: "inline-block",
-            margin: "2px"
-          }
-        });
-        colorOption.addEventListener("click", () => {
-          const start = questionTextarea.selectionStart;
-          const end = questionTextarea.selectionEnd;
-          const selectedText = questionTextarea.value.substring(start, end);
-          
-          if (selectedText) {
-            // 生成带颜色的文本
-            const coloredText = `<span style="color: ${color};">${selectedText}</span>`;
-            const newText = questionTextarea.value.substring(0, start) + coloredText + questionTextarea.value.substring(end);
-            questionTextarea.value = newText;
-            
-            // 更新卡片数据
-            this.cards[index].question = newText;
-            
-            // 重新聚焦并设置光标位置
-            questionTextarea.focus();
-            const newCursorPos = start + coloredText.length;
-            questionTextarea.setSelectionRange(newCursorPos, newCursorPos);
-          }
-          
-          // 隐藏颜色选择器
-          questionColorPickerContainer.style.display = "none";
-        });
-      });
-
-      // 切换问题颜色选择器显示
-      questionColorButton.addEventListener("click", (e) => {
-        e.stopPropagation();
-        if (questionColorPickerContainer.style.display === "none") {
-          questionColorPickerContainer.style.display = "block";
-          // 定位到按钮下方
-          const rect = questionColorButton.getBoundingClientRect();
-          questionColorPickerContainer.style.top = `${rect.bottom + 5}px`;
-          questionColorPickerContainer.style.left = `${rect.left}px`;
-        } else {
-          questionColorPickerContainer.style.display = "none";
-        }
-      });
-
-      // 点击其他地方隐藏问题颜色选择器
-      document.addEventListener("click", (e) => {
-        if (!questionColorButton.contains(e.target as Node) && !questionColorPickerContainer.contains(e.target as Node)) {
-          questionColorPickerContainer.style.display = "none";
-        }
+      questionInput.addEventListener("change", () => {
+        this.cards[index].question = questionInput.value;
       });
 
       // 答案编辑

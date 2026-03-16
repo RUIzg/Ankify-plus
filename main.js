@@ -1422,93 +1422,13 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
       const cardContent = cardEl.createDiv({ cls: "ankify-card-content" });
       const questionEl = cardContent.createDiv({ cls: "ankify-card-question" });
       questionEl.createEl("strong", { text: `\u95EE\u9898${index + 1}: ` });
-      const questionTextarea = questionEl.createEl("textarea", {
-        cls: "ankify-card-textarea",
-        text: card.question
+      const questionInput = questionEl.createEl("input", {
+        cls: "ankify-card-input",
+        type: "text",
+        value: card.question
       });
-      questionTextarea.style.width = "100%";
-      questionTextarea.style.minHeight = "60px";
-      questionTextarea.style.padding = "8px";
-      questionTextarea.style.border = "1px solid var(--border-color)";
-      questionTextarea.style.borderRadius = "4px";
-      questionTextarea.style.backgroundColor = "var(--background-primary)";
-      questionTextarea.style.color = "var(--text-normal)";
-      questionTextarea.style.fontFamily = "inherit";
-      questionTextarea.style.resize = "vertical";
-      questionTextarea.addEventListener("change", () => {
-        this.cards[index].question = questionTextarea.value;
-      });
-      const questionToolbarEl = questionEl.createDiv({ cls: "ankify-card-toolbar" });
-      questionToolbarEl.style.display = "flex";
-      questionToolbarEl.style.gap = "10px";
-      questionToolbarEl.style.marginTop = "5px";
-      questionToolbarEl.style.alignItems = "center";
-      const questionColorButton = questionToolbarEl.createEl("button", {
-        text: "\u6807\u989C\u8272"
-      });
-      questionColorButton.style.padding = "4px 8px";
-      questionColorButton.style.fontSize = "12px";
-      questionColorButton.style.backgroundColor = "var(--background-secondary)";
-      questionColorButton.style.color = "var(--text-normal)";
-      questionColorButton.style.border = "1px solid var(--border-color)";
-      questionColorButton.style.borderRadius = "4px";
-      questionColorButton.style.cursor = "pointer";
-      const questionColorPickerContainer = questionToolbarEl.createDiv({
-        style: {
-          display: "none",
-          position: "absolute",
-          backgroundColor: "var(--background-primary)",
-          border: "1px solid var(--border-color)",
-          borderRadius: "4px",
-          padding: "10px",
-          zIndex: "1000",
-          boxShadow: "0 2px 8px rgba(0, 0, 0, 0.15)"
-        }
-      });
-      const questionColors = ["#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4", "#FFEAA7", "#DDA0DD", "#98D8C8", "#F7DC6F", "#BB8FCE", "#85C1E9"];
-      questionColors.forEach((color) => {
-        const colorOption = questionColorPickerContainer.createEl("div", {
-          style: {
-            width: "20px",
-            height: "20px",
-            backgroundColor: color,
-            borderRadius: "50%",
-            cursor: "pointer",
-            display: "inline-block",
-            margin: "2px"
-          }
-        });
-        colorOption.addEventListener("click", () => {
-          const start = questionTextarea.selectionStart;
-          const end = questionTextarea.selectionEnd;
-          const selectedText = questionTextarea.value.substring(start, end);
-          if (selectedText) {
-            const coloredText = `<span style="color: ${color};">${selectedText}</span>`;
-            const newText = questionTextarea.value.substring(0, start) + coloredText + questionTextarea.value.substring(end);
-            questionTextarea.value = newText;
-            this.cards[index].question = newText;
-            questionTextarea.focus();
-            const newCursorPos = start + coloredText.length;
-            questionTextarea.setSelectionRange(newCursorPos, newCursorPos);
-          }
-          questionColorPickerContainer.style.display = "none";
-        });
-      });
-      questionColorButton.addEventListener("click", (e) => {
-        e.stopPropagation();
-        if (questionColorPickerContainer.style.display === "none") {
-          questionColorPickerContainer.style.display = "block";
-          const rect = questionColorButton.getBoundingClientRect();
-          questionColorPickerContainer.style.top = `${rect.bottom + 5}px`;
-          questionColorPickerContainer.style.left = `${rect.left}px`;
-        } else {
-          questionColorPickerContainer.style.display = "none";
-        }
-      });
-      document.addEventListener("click", (e) => {
-        if (!questionColorButton.contains(e.target) && !questionColorPickerContainer.contains(e.target)) {
-          questionColorPickerContainer.style.display = "none";
-        }
+      questionInput.addEventListener("change", () => {
+        this.cards[index].question = questionInput.value;
       });
       const answerEl = cardContent.createDiv({ cls: "ankify-card-answer" });
       answerEl.createEl("strong", { text: `\u7B54\u6848${index + 1}: ` });
