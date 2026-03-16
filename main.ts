@@ -1967,10 +1967,39 @@ class SelectableCardsModal extends Modal {
       answerTextarea.style.color = "var(--text-normal)";
       answerTextarea.style.fontFamily = "inherit";
       answerTextarea.style.resize = "vertical";
+      // 撤销历史记录
+      const undoHistory: string[] = [answerTextarea.value];
+      
+      // 保存当前状态到历史记录
+      const saveToHistory = () => {
+        undoHistory.push(answerTextarea.value);
+        // 限制历史记录数量，避免内存占用过大
+        if (undoHistory.length > 50) {
+          undoHistory.shift();
+        }
+      };
+      
+      // 撤销操作
+      const undo = () => {
+        if (undoHistory.length > 1) {
+          undoHistory.pop(); // 移除当前状态
+          const previousState = undoHistory[undoHistory.length - 1];
+          answerTextarea.value = previousState;
+          
+          // 更新卡片数据
+          const storedText = previousState.replace(/\n/g, "<br>");
+          card.answer = storedText;
+          card.originalAnswer = storedText;
+          
+          answerTextarea.focus();
+        }
+      };
+
       answerTextarea.addEventListener("change", () => {
         // 将实际换行符转换回<br>标签，保持数据一致性
         const storedAnswer = answerTextarea.value.replace(/\n/g, "<br>");
         this.cards[index].answer = storedAnswer;
+        saveToHistory();
       });
 
       // 操作按钮区域 - 直接在answerEl中创建
@@ -1979,6 +2008,22 @@ class SelectableCardsModal extends Modal {
       actionsContainer.style.display = "flex";
       actionsContainer.style.alignItems = "center";
       actionsContainer.style.gap = "15px";
+
+      // 撤销按钮
+      const undoButton = actionsContainer.createEl("button", {
+        text: "撤销",
+      });
+      undoButton.style.padding = "4px 8px";
+      undoButton.style.fontSize = "12px";
+      undoButton.style.backgroundColor = "var(--background-modifier-border)";
+      undoButton.style.color = "var(--text-normal)";
+      undoButton.style.border = "1px solid var(--border-color)";
+      undoButton.style.borderRadius = "4px";
+      undoButton.style.cursor = "pointer";
+      undoButton.addEventListener("click", (e) => {
+        e.preventDefault();
+        undo();
+      });
 
       // 填空按钮（仅在Cloze类型时显示）
       const blankButton = actionsContainer.createEl("button", {
@@ -2024,6 +2069,9 @@ class SelectableCardsModal extends Modal {
           const selectedText = answerTextarea.value.substring(start, end);
           
           if (selectedText) {
+            // 保存当前状态到历史记录
+            saveToHistory();
+            
             // 生成带颜色的文本
             const coloredText = `<span style="color: ${color};">${selectedText}</span>`;
             const newText = answerTextarea.value.substring(0, start) + coloredText + answerTextarea.value.substring(end);
@@ -2061,6 +2109,9 @@ class SelectableCardsModal extends Modal {
         const selectedText = answerTextarea.value.substring(start, end);
         
         if (selectedText) {
+          // 保存当前状态到历史记录
+          saveToHistory();
+          
           // 计算当前最大序号
           const text = answerTextarea.value;
           const clozePattern = /\{\{c(\d+)::[^}]+\}\}/g;

@@ -1446,15 +1446,48 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
       answerTextarea.style.color = "var(--text-normal)";
       answerTextarea.style.fontFamily = "inherit";
       answerTextarea.style.resize = "vertical";
+      const undoHistory = [answerTextarea.value];
+      const saveToHistory = () => {
+        undoHistory.push(answerTextarea.value);
+        if (undoHistory.length > 50) {
+          undoHistory.shift();
+        }
+      };
+      const undo = () => {
+        if (undoHistory.length > 1) {
+          undoHistory.pop();
+          const previousState = undoHistory[undoHistory.length - 1];
+          answerTextarea.value = previousState;
+          const storedText = previousState.replace(/\n/g, "<br>");
+          card.answer = storedText;
+          card.originalAnswer = storedText;
+          answerTextarea.focus();
+        }
+      };
       answerTextarea.addEventListener("change", () => {
         const storedAnswer = answerTextarea.value.replace(/\n/g, "<br>");
         this.cards[index].answer = storedAnswer;
+        saveToHistory();
       });
       const actionsContainer = answerEl.createDiv();
       actionsContainer.style.marginTop = "10px";
       actionsContainer.style.display = "flex";
       actionsContainer.style.alignItems = "center";
       actionsContainer.style.gap = "15px";
+      const undoButton = actionsContainer.createEl("button", {
+        text: "\u64A4\u9500"
+      });
+      undoButton.style.padding = "4px 8px";
+      undoButton.style.fontSize = "12px";
+      undoButton.style.backgroundColor = "var(--background-modifier-border)";
+      undoButton.style.color = "var(--text-normal)";
+      undoButton.style.border = "1px solid var(--border-color)";
+      undoButton.style.borderRadius = "4px";
+      undoButton.style.cursor = "pointer";
+      undoButton.addEventListener("click", (e) => {
+        e.preventDefault();
+        undo();
+      });
       const blankButton = actionsContainer.createEl("button", {
         text: "\u586B\u7A7A"
       });
@@ -1491,6 +1524,7 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
           const end = answerTextarea.selectionEnd;
           const selectedText = answerTextarea.value.substring(start, end);
           if (selectedText) {
+            saveToHistory();
             const coloredText = `<span style="color: ${color};">${selectedText}</span>`;
             const newText = answerTextarea.value.substring(0, start) + coloredText + answerTextarea.value.substring(end);
             answerTextarea.value = newText;
@@ -1516,6 +1550,7 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
         const end = answerTextarea.selectionEnd;
         const selectedText = answerTextarea.value.substring(start, end);
         if (selectedText) {
+          saveToHistory();
           const text = answerTextarea.value;
           const clozePattern = /\{\{c(\d+)::[^}]+\}\}/g;
           let maxNumber = 0;
