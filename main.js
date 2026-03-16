@@ -147,8 +147,8 @@ var AnkifyPlugin = class extends import_obsidian.Plugin {
       throw new Error(`Anki Connect\u8BF7\u6C42\u5931\u8D25: ${error.message}`);
     }
   }
-  // 发送HTTP请求的辅助方法
-  async sendHttpRequest(url, options) {
+  // 发送HTTP请求的辅助方法（带重试机制）
+  async sendHttpRequest(url, options, retryCount = 3) {
     return new Promise((resolve, reject) => {
       const parsedUrl = new URL(url);
       const isHttps = parsedUrl.protocol === "https:";
@@ -174,8 +174,28 @@ var AnkifyPlugin = class extends import_obsidian.Plugin {
           }
         });
       });
+      req.setTimeout(3e4, () => {
+        req.destroy();
+        if (retryCount > 0) {
+          console.log(`\u8BF7\u6C42\u8D85\u65F6\uFF0C\u6B63\u5728\u91CD\u8BD5... (${retryCount} \u6B21\u5269\u4F59)`);
+          this.sendHttpRequest(url, options, retryCount - 1).then(resolve).catch(reject);
+        } else {
+          reject(new Error("Anki Connect\u8BF7\u6C42\u8D85\u65F6\uFF0C\u8BF7\u68C0\u67E5Anki\u662F\u5426\u6B63\u5728\u8FD0\u884C"));
+        }
+      });
       req.on("error", (error) => {
-        reject(error);
+        if ((error.code === "ECONNRESET" || error.code === "ECONNREFUSED") && retryCount > 0) {
+          console.log(`\u8FDE\u63A5\u9519\u8BEF: ${error.code}\uFF0C\u6B63\u5728\u91CD\u8BD5... (${retryCount} \u6B21\u5269\u4F59)`);
+          setTimeout(() => {
+            this.sendHttpRequest(url, options, retryCount - 1).then(resolve).catch(reject);
+          }, 1e3);
+        } else if (error.code === "ECONNRESET") {
+          reject(new Error("Anki Connect\u8FDE\u63A5\u88AB\u91CD\u7F6E\uFF0C\u8BF7\u68C0\u67E5Anki\u662F\u5426\u6B63\u5728\u8FD0\u884C\u6216Anki Connect\u662F\u5426\u5DF2\u542F\u7528"));
+        } else if (error.code === "ECONNREFUSED") {
+          reject(new Error("Anki Connect\u8FDE\u63A5\u88AB\u62D2\u7EDD\uFF0C\u8BF7\u786E\u4FDDAnki\u5DF2\u542F\u52A8\u4E14Anki Connect\u5DF2\u5B89\u88C5\u5E76\u542F\u7528"));
+        } else {
+          reject(error);
+        }
       });
       req.write(options.body);
       req.end();
@@ -548,15 +568,25 @@ ${card.backExtra}`;
         noteCount: notes.length,
         firstNote: notes[0]
       });
-      const result = await this.invokeAnkiConnect("addNotes", { notes });
-      if (!result || !Array.isArray(result)) {
-        throw new Error("Anki Connect\u8FD4\u56DE\u4E86\u65E0\u6548\u7684\u7ED3\u679C");
+      const batchSize = 10;
+      const allResults = [];
+      for (let i = 0; i < notes.length; i += batchSize) {
+        const batch = notes.slice(i, i + batchSize);
+        console.log(`\u5904\u7406\u7B2C ${Math.floor(i / batchSize) + 1} \u6279\uFF0C\u5171 ${batch.length} \u5F20\u5361\u7247`);
+        const result = await this.invokeAnkiConnect("addNotes", { notes: batch });
+        if (!result || !Array.isArray(result)) {
+          throw new Error("Anki Connect\u8FD4\u56DE\u4E86\u65E0\u6548\u7684\u7ED3\u679C");
+        }
+        allResults.push(...result);
+        const failedNotes = result.filter((id) => id === null);
+        if (failedNotes.length > 0) {
+          console.warn(`\u7B2C ${Math.floor(i / batchSize) + 1} \u6279\u4E2D\u6709 ${failedNotes.length} \u5F20\u5361\u7247\u6DFB\u52A0\u5931\u8D25`);
+        }
+        if (i + batchSize < notes.length) {
+          await new Promise((resolve) => setTimeout(resolve, 100));
+        }
       }
-      const failedNotes = result.filter((id) => id === null);
-      if (failedNotes.length > 0) {
-        console.warn(`\u6709 ${failedNotes.length} \u5F20\u5361\u7247\u6DFB\u52A0\u5931\u8D25`);
-      }
-      return result;
+      return allResults;
     } catch (error) {
       console.error("\u6DFB\u52A0\u7B14\u8BB0\u5931\u8D25:", error);
       throw new Error(`\u6DFB\u52A0\u7B14\u8BB0\u5931\u8D25: ${error.message}`);

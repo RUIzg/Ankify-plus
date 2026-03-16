@@ -163,12 +163,12 @@ export default class AnkifyPlugin extends Plugin {
     }
   }
 
-  // 发送HTTP请求的辅助方法
+  // 发送HTTP请求的辅助方法（带重试机制）
   async sendHttpRequest(url: string, options: {
     method: string;
     headers: Record<string, string>;
     body: string;
-  }): Promise<any> {
+  }, retryCount = 3): Promise<any> {
     return new Promise((resolve, reject) => {
       const parsedUrl = new URL(url);
       const isHttps = parsedUrl.protocol === "https:";
@@ -199,8 +199,36 @@ export default class AnkifyPlugin extends Plugin {
         });
       });
 
+      // 设置超时时间为30秒，避免连接被重置
+      req.setTimeout(30000, () => {
+        req.destroy();
+        if (retryCount > 0) {
+          console.log(`请求超时，正在重试... (${retryCount} 次剩余)`);
+          this.sendHttpRequest(url, options, retryCount - 1)
+            .then(resolve)
+            .catch(reject);
+        } else {
+          reject(new Error("Anki Connect请求超时，请检查Anki是否正在运行"));
+        }
+      });
+
       req.on("error", (error) => {
-        reject(error);
+        // 处理连接错误，添加重试机制
+        if ((error.code === "ECONNRESET" || error.code === "ECONNREFUSED") && retryCount > 0) {
+          console.log(`连接错误: ${error.code}，正在重试... (${retryCount} 次剩余)`);
+          // 延迟1秒后重试，避免立即重试导致的问题
+          setTimeout(() => {
+            this.sendHttpRequest(url, options, retryCount - 1)
+              .then(resolve)
+              .catch(reject);
+          }, 1000);
+        } else if (error.code === "ECONNRESET") {
+          reject(new Error("Anki Connect连接被重置，请检查Anki是否正在运行或Anki Connect是否已启用"));
+        } else if (error.code === "ECONNREFUSED") {
+          reject(new Error("Anki Connect连接被拒绝，请确保Anki已启动且Anki Connect已安装并启用"));
+        } else {
+          reject(error);
+        }
       });
 
       req.write(options.body);
@@ -683,7 +711,7 @@ export default class AnkifyPlugin extends Plugin {
       })
     );
 
-    // 批量添加笔记
+    // 批量添加笔记（分批处理，每批最多10张卡片）
     try {
       console.log("正在添加笔记到Anki:", {
         deckName,
@@ -692,20 +720,36 @@ export default class AnkifyPlugin extends Plugin {
         firstNote: notes[0],
       });
 
-      const result = await this.invokeAnkiConnect("addNotes", { notes });
+      const batchSize = 10;
+      const allResults: number[] = [];
 
-      // 检查结果
-      if (!result || !Array.isArray(result)) {
-        throw new Error("Anki Connect返回了无效的结果");
+      // 分批处理卡片
+      for (let i = 0; i < notes.length; i += batchSize) {
+        const batch = notes.slice(i, i + batchSize);
+        console.log(`处理第 ${Math.floor(i / batchSize) + 1} 批，共 ${batch.length} 张卡片`);
+        
+        const result = await this.invokeAnkiConnect("addNotes", { notes: batch });
+
+        // 检查结果
+        if (!result || !Array.isArray(result)) {
+          throw new Error("Anki Connect返回了无效的结果");
+        }
+
+        allResults.push(...result);
+
+        // 检查是否有失败的笔记
+        const failedNotes = result.filter((id) => id === null);
+        if (failedNotes.length > 0) {
+          console.warn(`第 ${Math.floor(i / batchSize) + 1} 批中有 ${failedNotes.length} 张卡片添加失败`);
+        }
+
+        // 每批之间休息100ms，避免请求过于频繁
+        if (i + batchSize < notes.length) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
       }
 
-      // 检查是否有失败的笔记
-      const failedNotes = result.filter((id) => id === null);
-      if (failedNotes.length > 0) {
-        console.warn(`有 ${failedNotes.length} 张卡片添加失败`);
-      }
-
-      return result;
+      return allResults;
     } catch (error) {
       console.error("添加笔记失败:", error);
       throw new Error(`添加笔记失败: ${error.message}`);
