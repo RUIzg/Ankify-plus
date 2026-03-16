@@ -1484,8 +1484,11 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
           border: "1px solid var(--border-color)",
           borderRadius: "4px",
           padding: "10px",
-          zIndex: "1000",
-          boxShadow: "0 2px 8px rgba(0, 0, 0, 0.15)"
+          zIndex: "10000",
+          boxShadow: "0 2px 8px rgba(0, 0, 0, 0.15)",
+          top: "100%",
+          left: "0",
+          marginTop: "5px"
         }
       });
       const colors = ["#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4", "#FFEAA7", "#DDA0DD", "#98D8C8", "#F7DC6F", "#BB8FCE", "#85C1E9"];
@@ -1523,9 +1526,6 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
         e.stopPropagation();
         if (colorPickerContainer.style.display === "none") {
           colorPickerContainer.style.display = "block";
-          const rect = colorButton.getBoundingClientRect();
-          colorPickerContainer.style.top = `${rect.bottom + 5}px`;
-          colorPickerContainer.style.left = `${rect.left}px`;
         } else {
           colorPickerContainer.style.display = "none";
         }

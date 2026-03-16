@@ -2014,8 +2014,11 @@ class SelectableCardsModal extends Modal {
           border: "1px solid var(--border-color)",
           borderRadius: "4px",
           padding: "10px",
-          zIndex: "1000",
-          boxShadow: "0 2px 8px rgba(0, 0, 0, 0.15)"
+          zIndex: "10000", // 提高z-index确保显示在最前面
+          boxShadow: "0 2px 8px rgba(0, 0, 0, 0.15)",
+          top: "100%", // 相对于父容器的底部
+          left: "0", // 相对于父容器的左侧
+          marginTop: "5px" // 与按钮保持一定距离
         }
       });
 
@@ -2065,10 +2068,6 @@ class SelectableCardsModal extends Modal {
         e.stopPropagation();
         if (colorPickerContainer.style.display === "none") {
           colorPickerContainer.style.display = "block";
-          // 定位到按钮下方
-          const rect = colorButton.getBoundingClientRect();
-          colorPickerContainer.style.top = `${rect.bottom + 5}px`;
-          colorPickerContainer.style.left = `${rect.left}px`;
         } else {
           colorPickerContainer.style.display = "none";
         }
