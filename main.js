@@ -1551,24 +1551,47 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
         const selectedText = answerTextarea.value.substring(start, end);
         if (selectedText) {
           saveToHistory();
-          const text = answerTextarea.value;
-          const clozePattern = /\{\{c(\d+)::[^}]+\}\}/g;
-          let maxNumber = 0;
+          let text = answerTextarea.value;
+          const clozePattern = /\{\{c(\d+)::([^}]+)\}\}/g;
+          const clozes = [];
           let match;
           while ((match = clozePattern.exec(text)) !== null) {
-            const number = parseInt(match[1], 10);
-            if (number > maxNumber) {
-              maxNumber = number;
+            clozes.push({
+              fullMatch: match[0],
+              content: match[2],
+              startIndex: match.index
+            });
+          }
+          for (let i = clozes.length - 1; i >= 0; i--) {
+            const cloze = clozes[i];
+            const newNumber2 = i + 1;
+            const newCloze = `{{c${newNumber2}::${cloze.content}}}`;
+            let offset = 0;
+            for (let j = clozes.length - 1; j > i; j--) {
+              offset += clozes[j].fullMatch.length - `{{c${j + 1}::${clozes[j].content}}}`.length;
+            }
+            const actualStartIndex = cloze.startIndex + offset;
+            text = text.substring(0, actualStartIndex) + newCloze + text.substring(actualStartIndex + cloze.fullMatch.length);
+          }
+          let newStart = start;
+          let newEnd = end;
+          for (const cloze of clozes) {
+            if (cloze.startIndex < start) {
+              const oldLength = cloze.fullMatch.length;
+              const newNumber2 = clozes.indexOf(cloze) + 1;
+              const newLength = `{{c${newNumber2}::${cloze.content}}}`.length;
+              newStart += newLength - oldLength;
+              newEnd += newLength - oldLength;
             }
           }
-          const newNumber = maxNumber + 1;
-          const newText = text.substring(0, start) + `{{c${newNumber}::${selectedText}}}` + text.substring(end);
+          const newNumber = clozes.length + 1;
+          const newText = text.substring(0, newStart) + `{{c${newNumber}::${selectedText}}}` + text.substring(newEnd);
           answerTextarea.value = newText;
           const storedText = newText.replace(/\n/g, "<br>");
           card.answer = storedText;
           card.originalAnswer = storedText;
           answerTextarea.focus();
-          const newCursorPos = start + `{{c${newNumber}::${selectedText}}}`.length;
+          const newCursorPos = newStart + `{{c${newNumber}::${selectedText}}}`.length;
           answerTextarea.setSelectionRange(newCursorPos, newCursorPos);
         }
       });

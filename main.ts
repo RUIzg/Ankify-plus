@@ -2112,23 +2112,56 @@ class SelectableCardsModal extends Modal {
           // 保存当前状态到历史记录
           saveToHistory();
           
-          // 计算当前最大序号
-          const text = answerTextarea.value;
-          const clozePattern = /\{\{c(\d+)::[^}]+\}\}/g;
-          let maxNumber = 0;
+          let text = answerTextarea.value;
+          
+          // 第一步：收集所有现有的填空，并按出现顺序重新编号
+          const clozePattern = /\{\{c(\d+)::([^}]+)\}\}/g;
+          const clozes: Array<{fullMatch: string, content: string, startIndex: number}> = [];
           let match;
+          
           while ((match = clozePattern.exec(text)) !== null) {
-            const number = parseInt(match[1], 10);
-            if (number > maxNumber) {
-              maxNumber = number;
+            clozes.push({
+              fullMatch: match[0],
+              content: match[2],
+              startIndex: match.index
+            });
+          }
+          
+          // 第二步：从后往前替换，避免索引变化问题
+          // 先重新编号现有的填空
+          for (let i = clozes.length - 1; i >= 0; i--) {
+            const cloze = clozes[i];
+            const newNumber = i + 1;
+            const newCloze = `{{c${newNumber}::${cloze.content}}}`;
+            
+            // 计算替换位置（需要考虑之前的替换导致的偏移）
+            let offset = 0;
+            for (let j = clozes.length - 1; j > i; j--) {
+              offset += (clozes[j].fullMatch.length - `{{c${j + 1}::${clozes[j].content}}}`.length);
+            }
+            
+            const actualStartIndex = cloze.startIndex + offset;
+            text = text.substring(0, actualStartIndex) + newCloze + text.substring(actualStartIndex + cloze.fullMatch.length);
+          }
+          
+          // 第三步：计算新填空应该插入的位置（考虑重新编号后的文本变化）
+          let newStart = start;
+          let newEnd = end;
+          
+          // 计算由于重新编号导致的位置偏移
+          for (const cloze of clozes) {
+            if (cloze.startIndex < start) {
+              const oldLength = cloze.fullMatch.length;
+              const newNumber = clozes.indexOf(cloze) + 1;
+              const newLength = `{{c${newNumber}::${cloze.content}}}`.length;
+              newStart += (newLength - oldLength);
+              newEnd += (newLength - oldLength);
             }
           }
           
-          // 生成新的序号
-          const newNumber = maxNumber + 1;
-          
-          // 替换选中文本为填空格式
-          const newText = text.substring(0, start) + `{{c${newNumber}::${selectedText}}}` + text.substring(end);
+          // 第四步：添加新的填空
+          const newNumber = clozes.length + 1;
+          const newText = text.substring(0, newStart) + `{{c${newNumber}::${selectedText}}}` + text.substring(newEnd);
           answerTextarea.value = newText;
           
           // 将实际换行符转换回<br>标签，保持数据一致性
@@ -2136,11 +2169,11 @@ class SelectableCardsModal extends Modal {
           
           // 更新卡片数据
           card.answer = storedText;
-          card.originalAnswer = storedText; // 同时更新原始答案
+          card.originalAnswer = storedText;
           
           // 重新聚焦并设置光标位置
           answerTextarea.focus();
-          const newCursorPos = start + `{{c${newNumber}::${selectedText}}}`.length;
+          const newCursorPos = newStart + `{{c${newNumber}::${selectedText}}}`.length;
           answerTextarea.setSelectionRange(newCursorPos, newCursorPos);
         }
       });
