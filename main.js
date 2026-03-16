@@ -1455,6 +1455,7 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
       toolbarEl.style.gap = "10px";
       toolbarEl.style.marginTop = "5px";
       toolbarEl.style.alignItems = "center";
+      toolbarEl.style.position = "relative";
       const blankButton = toolbarEl.createEl("button", {
         text: "\u586B\u7A7A"
       });

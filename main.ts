@@ -1979,6 +1979,7 @@ class SelectableCardsModal extends Modal {
       toolbarEl.style.gap = "10px";
       toolbarEl.style.marginTop = "5px";
       toolbarEl.style.alignItems = "center";
+      toolbarEl.style.position = "relative"; // 为颜色选择器提供相对定位的父容器
 
       // 填空按钮（仅在Cloze类型时显示）
       const blankButton = toolbarEl.createEl("button", {
