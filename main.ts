@@ -8,6 +8,8 @@ import {
   PluginSettingTab,
   Setting,
 } from "obsidian";
+import * as http from "http";
+import * as https from "https";
 
 // Anki卡片接口
 interface AnkiCard {
@@ -137,26 +139,101 @@ export default class AnkifyPlugin extends Plugin {
       params,
     });
 
-    const response = await fetch(this.settings.ankiConnectUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(requestBody),
+    try {
+      // 使用Node.js的http/https模块来绕过CORS限制
+      const data = await this.sendHttpRequest(this.settings.ankiConnectUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Content-Length": Buffer.byteLength(JSON.stringify(requestBody)),
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      console.log("Anki Connect响应:", data);
+
+      if (data.error) {
+        throw new Error(`Anki Connect错误: ${data.error}`);
+      }
+
+      return data.result;
+    } catch (error) {
+      console.error("Anki Connect请求失败:", error);
+      throw new Error(`Anki Connect请求失败: ${error.message}`);
+    }
+  }
+
+  // 发送HTTP请求的辅助方法（带重试机制）
+  async sendHttpRequest(url: string, options: {
+    method: string;
+    headers: Record<string, string>;
+    body: string;
+  }, retryCount = 3): Promise<any> {
+    return new Promise((resolve, reject) => {
+      const parsedUrl = new URL(url);
+      const isHttps = parsedUrl.protocol === "https:";
+      const client = isHttps ? https : http;
+
+      const reqOptions = {
+        hostname: parsedUrl.hostname,
+        port: parsedUrl.port || (isHttps ? 443 : 80),
+        path: parsedUrl.pathname + parsedUrl.search,
+        method: options.method,
+        headers: options.headers,
+      };
+
+      const req = client.request(reqOptions, (res) => {
+        let data = "";
+
+        res.on("data", (chunk) => {
+          data += chunk;
+        });
+
+        res.on("end", () => {
+          try {
+            const parsedData = JSON.parse(data);
+            resolve(parsedData);
+          } catch (error) {
+            reject(new Error(`解析响应失败: ${error.message}`));
+          }
+        });
+      });
+
+      // 设置超时时间为30秒，避免连接被重置
+      req.setTimeout(30000, () => {
+        req.destroy();
+        if (retryCount > 0) {
+          console.log(`请求超时，正在重试... (${retryCount} 次剩余)`);
+          this.sendHttpRequest(url, options, retryCount - 1)
+            .then(resolve)
+            .catch(reject);
+        } else {
+          reject(new Error("Anki Connect请求超时，请检查Anki是否正在运行"));
+        }
+      });
+
+      req.on("error", (error) => {
+        // 处理连接错误，添加重试机制
+        if ((error.code === "ECONNRESET" || error.code === "ECONNREFUSED") && retryCount > 0) {
+          console.log(`连接错误: ${error.code}，正在重试... (${retryCount} 次剩余)`);
+          // 延迟1秒后重试，避免立即重试导致的问题
+          setTimeout(() => {
+            this.sendHttpRequest(url, options, retryCount - 1)
+              .then(resolve)
+              .catch(reject);
+          }, 1000);
+        } else if (error.code === "ECONNRESET") {
+          reject(new Error("Anki Connect连接被重置，请检查Anki是否正在运行或Anki Connect是否已启用"));
+        } else if (error.code === "ECONNREFUSED") {
+          reject(new Error("Anki Connect连接被拒绝，请确保Anki已启动且Anki Connect已安装并启用"));
+        } else {
+          reject(error);
+        }
+      });
+
+      req.write(options.body);
+      req.end();
     });
-
-    if (!response.ok) {
-      throw new Error(`Anki Connect请求失败: ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    console.log("Anki Connect响应:", data);
-
-    if (data.error) {
-      throw new Error(`Anki Connect错误: ${data.error}`);
-    }
-
-    return data.result;
   }
 
   // 获取可用的牌组列表
@@ -193,7 +270,7 @@ export default class AnkifyPlugin extends Plugin {
     const questionMarker = this.settings.questionMarker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const answerMarker = this.settings.answerMarker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const tagsMarker = this.settings.tagsMarker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const isMultiLineFormat = new RegExp(`${questionMarker}.*\\n\\s*${answerMarker}.*(\\n\\s*annotation:.*)?(\\n\\s*${tagsMarker}.*)?`, "i").test(
+    const isMultiLineFormat = new RegExp(`${questionMarker}.*\\n\\s*${answerMarker}.*?(\\n\\s*annotation:.*)?(\\n\\s*${tagsMarker}.*)?`, "i").test(
       text
     );
 
@@ -228,9 +305,19 @@ export default class AnkifyPlugin extends Plugin {
 
         for (const line of lines) {
           if (line.startsWith(questionMarker)) {
-            card.question = line.substring(questionMarker.length).trim();
+            let content = line.substring(questionMarker.length).trim();
+            // 处理冒号分隔符
+            if (content.startsWith(":") || content.startsWith("：")) {
+              content = content.substring(1).trim();
+            }
+            card.question = content;
           } else if (line.startsWith(answerMarker)) {
-            card.answer = line.substring(answerMarker.length).trim();
+            let content = line.substring(answerMarker.length).trim();
+            // 处理冒号分隔符
+            if (content.startsWith(":") || content.startsWith("：")) {
+              content = content.substring(1).trim();
+            }
+            card.answer = content;
             card.originalAnswer = card.answer; // 保存原始答案
             
             // 检测是否包含填空格式
@@ -240,7 +327,12 @@ export default class AnkifyPlugin extends Plugin {
           } else if (line.startsWith("annotation:") || line.startsWith("注释:") || line.startsWith("注释：")) {
             card.annotation = line.substring(line.indexOf(':') + 1).trim();
           } else if (line.startsWith(tagsMarker)) {
-            const tagsText = line.substring(tagsMarker.length).trim();
+            let content = line.substring(tagsMarker.length).trim();
+            // 处理冒号分隔符
+            if (content.startsWith(":") || content.startsWith("：")) {
+              content = content.substring(1).trim();
+            }
+            const tagsText = content;
             // 处理标签 - 追加到现有标签数组
             if (tagsText.includes("#")) {
               // 带#格式：#tag1 #tag2
@@ -260,8 +352,8 @@ export default class AnkifyPlugin extends Plugin {
           }
         }
 
-        // 确保卡片至少有问题和答案
-        if (card.question && card.answer) {
+        // 确保卡片至少有问题
+        if (card.question) {
           cards.push(card);
         }
       }
@@ -344,7 +436,7 @@ export default class AnkifyPlugin extends Plugin {
         for (const line of lines) {
           // 支持新格式：%question% 问题 %answer% 答案
           const qaMatch = line.match(
-            new RegExp(`(?:${questionMarker})\\s*(.*?)\\s*(?:${answerMarker})\\s*(.*?)(?:\\s*annotation:|注释[:：]|$|\\s*${tagsMarker})`, "i")
+            new RegExp(`(?:${questionMarker})[:：]?\\s*(.*?)\\s*(?:${answerMarker})[:：]?\\s*(.*?)(?:\\s*annotation:|注释[:：]|$|\\s*${tagsMarker}[:：]?)`, "i")
           );
           if (qaMatch) {
             const card: AnkiCard = {
@@ -369,7 +461,7 @@ export default class AnkifyPlugin extends Plugin {
             }
 
             // 查找标签
-            const tagsMatch = line.match(new RegExp(`(?:${tagsMarker})\\s*(.*?)$`, "i"));
+            const tagsMatch = line.match(new RegExp(`(?:${tagsMarker})[:：]?\\s*(.*?)$`, "i"));
             if (tagsMatch && tagsMatch[1]) {
               // 解析标签，格式为 #tag1 #tag2，追加到现有标签数组
               const newTags = tagsMatch[1]
@@ -426,9 +518,9 @@ export default class AnkifyPlugin extends Plugin {
     const notes = await Promise.all(
       cards.map(async (card, index) => {
         // 验证卡片内容
-        if (!card.question || !card.answer) {
+        if (!card.question) {
           throw new Error(
-            `卡片内容不完整：\n问题：${card.question}\n答案：${card.answer}`
+            `卡片内容不完整：\n问题：${card.question}`
           );
         }
 
@@ -619,7 +711,7 @@ export default class AnkifyPlugin extends Plugin {
       })
     );
 
-    // 批量添加笔记
+    // 批量添加笔记（分批处理，每批最多10张卡片）
     try {
       console.log("正在添加笔记到Anki:", {
         deckName,
@@ -628,20 +720,36 @@ export default class AnkifyPlugin extends Plugin {
         firstNote: notes[0],
       });
 
-      const result = await this.invokeAnkiConnect("addNotes", { notes });
+      const batchSize = 10;
+      const allResults: number[] = [];
 
-      // 检查结果
-      if (!result || !Array.isArray(result)) {
-        throw new Error("Anki Connect返回了无效的结果");
+      // 分批处理卡片
+      for (let i = 0; i < notes.length; i += batchSize) {
+        const batch = notes.slice(i, i + batchSize);
+        console.log(`处理第 ${Math.floor(i / batchSize) + 1} 批，共 ${batch.length} 张卡片`);
+        
+        const result = await this.invokeAnkiConnect("addNotes", { notes: batch });
+
+        // 检查结果
+        if (!result || !Array.isArray(result)) {
+          throw new Error("Anki Connect返回了无效的结果");
+        }
+
+        allResults.push(...result);
+
+        // 检查是否有失败的笔记
+        const failedNotes = result.filter((id) => id === null);
+        if (failedNotes.length > 0) {
+          console.warn(`第 ${Math.floor(i / batchSize) + 1} 批中有 ${failedNotes.length} 张卡片添加失败`);
+        }
+
+        // 每批之间休息100ms，避免请求过于频繁
+        if (i + batchSize < notes.length) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
       }
 
-      // 检查是否有失败的笔记
-      const failedNotes = result.filter((id) => id === null);
-      if (failedNotes.length > 0) {
-        console.warn(`有 ${failedNotes.length} 张卡片添加失败`);
-      }
-
-      return result;
+      return allResults;
     } catch (error) {
       console.error("添加笔记失败:", error);
       throw new Error(`添加笔记失败: ${error.message}`);
@@ -1640,7 +1748,10 @@ class SelectableCardsModal extends Modal {
       cls: "ankify-setting-item",
     });
     deckContainer.createEl("label", { text: "选择牌组：" });
-    this.deckSelect = deckContainer.createEl("select");
+    const deckSelectContainer = deckContainer.createDiv({
+      style: { display: "flex", alignItems: "center", gap: "10px" }
+    });
+    this.deckSelect = deckSelectContainer.createEl("select");
 
     if (decks.length > 0) {
       // 添加可用牌组选项
@@ -1661,6 +1772,53 @@ class SelectableCardsModal extends Modal {
         text: this.deckName,
       });
     }
+
+    const refreshDeckButton = deckSelectContainer.createEl("button", {
+      text: "刷新",
+      attr: { type: "button" },
+      style: { padding: "2px 8px", fontSize: "12px" }
+    });
+
+    refreshDeckButton.addEventListener("click", async () => {
+      refreshDeckButton.disabled = true;
+      refreshDeckButton.textContent = "刷新中...";
+      
+      try {
+        const newDecks = await this.plugin.getDeckNames();
+        const currentValue = this.deckSelect.value;
+        
+        // 清空现有选项
+        this.deckSelect.innerHTML = "";
+        
+        if (newDecks.length > 0) {
+          // 添加新的牌组选项
+          newDecks.forEach((deck) => {
+            const option = this.deckSelect.createEl("option", {
+              value: deck,
+              text: deck,
+            });
+            // 保持之前选择的牌组，如果还存在的话
+            if (deck === currentValue) {
+              option.selected = true;
+              this.deckName = deck;
+            }
+          });
+          new Notice("牌组列表已刷新");
+        } else {
+          // 如果没有获取到牌组，添加默认选项
+          this.deckSelect.createEl("option", {
+            value: this.deckName,
+            text: this.deckName,
+          });
+        }
+      } catch (error) {
+        console.error("刷新牌组失败:", error);
+        new Notice("刷新牌组失败，请确保Anki已启动且安装了Anki Connect插件");
+      } finally {
+        refreshDeckButton.disabled = false;
+        refreshDeckButton.textContent = "刷新";
+      }
+    });
 
     this.deckSelect.addEventListener("change", () => {
       this.deckName = this.deckSelect.value;
