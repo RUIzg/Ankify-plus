@@ -1469,26 +1469,24 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
         text: "\u989C\u8272: "
       });
       colorLabel.style.fontSize = "12px";
+      colorLabel.style.marginLeft = "10px";
       const colors = ["#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4", "#FFEAA7", "#DDA0DD", "#98D8C8", "#F7DC6F", "#BB8FCE", "#85C1E9"];
       colors.forEach((color) => {
-        const colorOption = actionsContainer.createEl("div", {
-          style: {
-            width: "20px",
-            height: "20px",
-            backgroundColor: color,
-            borderRadius: "50%",
-            cursor: "pointer",
-            border: "2px solid var(--border-color)",
-            transition: "all 0.2s ease"
+        const colorOption = actionsContainer.createEl("button", {
+          attr: {
+            title: color
           }
         });
-        colorOption.addEventListener("mouseover", () => {
-          colorOption.style.transform = "scale(1.1)";
-        });
-        colorOption.addEventListener("mouseout", () => {
-          colorOption.style.transform = "scale(1)";
-        });
-        colorOption.addEventListener("click", () => {
+        colorOption.style.width = "20px";
+        colorOption.style.height = "20px";
+        colorOption.style.backgroundColor = color;
+        colorOption.style.borderRadius = "50%";
+        colorOption.style.cursor = "pointer";
+        colorOption.style.border = "2px solid var(--border-color)";
+        colorOption.style.marginLeft = "3px";
+        colorOption.style.padding = "0";
+        colorOption.addEventListener("click", (e) => {
+          e.preventDefault();
           const start = answerTextarea.selectionStart;
           const end = answerTextarea.selectionEnd;
           const selectedText = answerTextarea.value.substring(start, end);

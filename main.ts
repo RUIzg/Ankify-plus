@@ -1997,33 +1997,28 @@ class SelectableCardsModal extends Modal {
         text: "颜色: "
       });
       colorLabel.style.fontSize = "12px";
+      colorLabel.style.marginLeft = "10px";
 
-      // 颜色选项 - 直接在actionsContainer中创建
+      // 颜色选项 - 使用按钮显示
       const colors = ["#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4", "#FFEAA7", "#DDA0DD", "#98D8C8", "#F7DC6F", "#BB8FCE", "#85C1E9"];
       colors.forEach(color => {
-        const colorOption = actionsContainer.createEl("div", {
-          style: {
-            width: "20px",
-            height: "20px",
-            backgroundColor: color,
-            borderRadius: "50%",
-            cursor: "pointer",
-            border: "2px solid var(--border-color)",
-            transition: "all 0.2s ease"
+        const colorOption = actionsContainer.createEl("button", {
+          attr: {
+            title: color
           }
         });
-        
-        // 添加悬停效果
-        colorOption.addEventListener("mouseover", () => {
-          colorOption.style.transform = "scale(1.1)";
-        });
-        
-        colorOption.addEventListener("mouseout", () => {
-          colorOption.style.transform = "scale(1)";
-        });
+        colorOption.style.width = "20px";
+        colorOption.style.height = "20px";
+        colorOption.style.backgroundColor = color;
+        colorOption.style.borderRadius = "50%";
+        colorOption.style.cursor = "pointer";
+        colorOption.style.border = "2px solid var(--border-color)";
+        colorOption.style.marginLeft = "3px";
+        colorOption.style.padding = "0";
         
         // 点击事件
-        colorOption.addEventListener("click", () => {
+        colorOption.addEventListener("click", (e) => {
+          e.preventDefault();
           const start = answerTextarea.selectionStart;
           const end = answerTextarea.selectionEnd;
           const selectedText = answerTextarea.value.substring(start, end);
