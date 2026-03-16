@@ -1450,11 +1450,14 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
         const storedAnswer = answerTextarea.value.replace(/\n/g, "<br>");
         this.cards[index].answer = storedAnswer;
       });
-      const blankButton = answerEl.createEl("button", {
+      const actionsContainer = answerEl.createDiv();
+      actionsContainer.style.marginTop = "10px";
+      actionsContainer.style.display = "flex";
+      actionsContainer.style.alignItems = "center";
+      actionsContainer.style.gap = "15px";
+      const blankButton = actionsContainer.createEl("button", {
         text: "\u586B\u7A7A"
       });
-      blankButton.style.marginTop = "5px";
-      blankButton.style.marginRight = "10px";
       blankButton.style.padding = "4px 8px";
       blankButton.style.fontSize = "12px";
       blankButton.style.backgroundColor = "var(--interactive-accent)";
@@ -1462,23 +1465,28 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
       blankButton.style.border = "none";
       blankButton.style.borderRadius = "4px";
       blankButton.style.cursor = "pointer";
-      const colorLabel = answerEl.createEl("span", {
+      const colorLabel = actionsContainer.createEl("span", {
         text: "\u989C\u8272: "
       });
-      colorLabel.style.marginRight = "8px";
+      colorLabel.style.fontSize = "12px";
       const colors = ["#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4", "#FFEAA7", "#DDA0DD", "#98D8C8", "#F7DC6F", "#BB8FCE", "#85C1E9"];
       colors.forEach((color) => {
-        const colorOption = answerEl.createEl("div", {
+        const colorOption = actionsContainer.createEl("div", {
           style: {
             width: "20px",
             height: "20px",
             backgroundColor: color,
             borderRadius: "50%",
             cursor: "pointer",
-            display: "inline-block",
-            margin: "0 2px",
-            border: "1px solid var(--border-color)"
+            border: "2px solid var(--border-color)",
+            transition: "all 0.2s ease"
           }
+        });
+        colorOption.addEventListener("mouseover", () => {
+          colorOption.style.transform = "scale(1.1)";
+        });
+        colorOption.addEventListener("mouseout", () => {
+          colorOption.style.transform = "scale(1)";
         });
         colorOption.addEventListener("click", () => {
           const start = answerTextarea.selectionStart;

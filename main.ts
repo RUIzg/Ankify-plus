@@ -1973,12 +1973,17 @@ class SelectableCardsModal extends Modal {
         this.cards[index].answer = storedAnswer;
       });
 
+      // 操作按钮区域 - 直接在answerEl中创建
+      const actionsContainer = answerEl.createDiv();
+      actionsContainer.style.marginTop = "10px";
+      actionsContainer.style.display = "flex";
+      actionsContainer.style.alignItems = "center";
+      actionsContainer.style.gap = "15px";
+
       // 填空按钮（仅在Cloze类型时显示）
-      const blankButton = answerEl.createEl("button", {
+      const blankButton = actionsContainer.createEl("button", {
         text: "填空",
       });
-      blankButton.style.marginTop = "5px";
-      blankButton.style.marginRight = "10px";
       blankButton.style.padding = "4px 8px";
       blankButton.style.fontSize = "12px";
       blankButton.style.backgroundColor = "var(--interactive-accent)";
@@ -1987,26 +1992,37 @@ class SelectableCardsModal extends Modal {
       blankButton.style.borderRadius = "4px";
       blankButton.style.cursor = "pointer";
 
-      // 颜色选择器
-      const colorLabel = answerEl.createEl("span", {
+      // 颜色标签
+      const colorLabel = actionsContainer.createEl("span", {
         text: "颜色: "
       });
-      colorLabel.style.marginRight = "8px";
-      
+      colorLabel.style.fontSize = "12px";
+
+      // 颜色选项 - 直接在actionsContainer中创建
       const colors = ["#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4", "#FFEAA7", "#DDA0DD", "#98D8C8", "#F7DC6F", "#BB8FCE", "#85C1E9"];
       colors.forEach(color => {
-        const colorOption = answerEl.createEl("div", {
+        const colorOption = actionsContainer.createEl("div", {
           style: {
             width: "20px",
             height: "20px",
             backgroundColor: color,
             borderRadius: "50%",
             cursor: "pointer",
-            display: "inline-block",
-            margin: "0 2px",
-            border: "1px solid var(--border-color)"
+            border: "2px solid var(--border-color)",
+            transition: "all 0.2s ease"
           }
         });
+        
+        // 添加悬停效果
+        colorOption.addEventListener("mouseover", () => {
+          colorOption.style.transform = "scale(1.1)";
+        });
+        
+        colorOption.addEventListener("mouseout", () => {
+          colorOption.style.transform = "scale(1)";
+        });
+        
+        // 点击事件
         colorOption.addEventListener("click", () => {
           const start = answerTextarea.selectionStart;
           const end = answerTextarea.selectionEnd;
