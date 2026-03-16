@@ -1451,11 +1451,16 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
         this.cards[index].answer = storedAnswer;
       });
       const toolbarEl = answerEl.createDiv({ cls: "ankify-card-toolbar" });
-      toolbarEl.style.display = "flex";
-      toolbarEl.style.gap = "10px";
-      toolbarEl.style.marginTop = "5px";
-      toolbarEl.style.alignItems = "center";
-      const blankButton = toolbarEl.createEl("button", {
+      toolbarEl.style.marginTop = "10px";
+      toolbarEl.style.padding = "10px";
+      toolbarEl.style.backgroundColor = "var(--background-secondary)";
+      toolbarEl.style.borderRadius = "4px";
+      toolbarEl.style.display = "block";
+      const toolbarContent = toolbarEl.createDiv();
+      toolbarContent.style.display = "flex";
+      toolbarContent.style.alignItems = "center";
+      toolbarContent.style.gap = "15px";
+      const blankButton = toolbarContent.createEl("button", {
         text: "\u586B\u7A7A"
       });
       blankButton.style.padding = "4px 8px";
@@ -1465,18 +1470,25 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
       blankButton.style.border = "none";
       blankButton.style.borderRadius = "4px";
       blankButton.style.cursor = "pointer";
-      toolbarEl.createEl("span", { text: "\u989C\u8272: " });
+      blankButton.style.whiteSpace = "nowrap";
+      const colorContainer = toolbarContent.createDiv();
+      colorContainer.style.display = "flex";
+      colorContainer.style.alignItems = "center";
+      colorContainer.style.gap = "8px";
+      colorContainer.createEl("span", { text: "\u989C\u8272: " });
+      const colorOptions = colorContainer.createDiv();
+      colorOptions.style.display = "flex";
+      colorOptions.style.alignItems = "center";
+      colorOptions.style.gap = "4px";
       const colors = ["#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4", "#FFEAA7", "#DDA0DD", "#98D8C8", "#F7DC6F", "#BB8FCE", "#85C1E9"];
       colors.forEach((color) => {
-        const colorOption = toolbarEl.createEl("div", {
+        const colorOption = colorOptions.createEl("div", {
           style: {
             width: "20px",
             height: "20px",
             backgroundColor: color,
             borderRadius: "50%",
             cursor: "pointer",
-            display: "inline-block",
-            margin: "0 2px",
             border: "1px solid var(--border-color)"
           }
         });
