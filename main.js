@@ -1455,7 +1455,6 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
       toolbarEl.style.gap = "10px";
       toolbarEl.style.marginTop = "5px";
       toolbarEl.style.alignItems = "center";
-      toolbarEl.style.position = "relative";
       const blankButton = toolbarEl.createEl("button", {
         text: "\u586B\u7A7A"
       });
@@ -1466,34 +1465,10 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
       blankButton.style.border = "none";
       blankButton.style.borderRadius = "4px";
       blankButton.style.cursor = "pointer";
-      const colorButton = toolbarEl.createEl("button", {
-        text: "\u6807\u989C\u8272"
-      });
-      colorButton.style.padding = "4px 8px";
-      colorButton.style.fontSize = "12px";
-      colorButton.style.backgroundColor = "var(--background-secondary)";
-      colorButton.style.color = "var(--text-normal)";
-      colorButton.style.border = "1px solid var(--border-color)";
-      colorButton.style.borderRadius = "4px";
-      colorButton.style.cursor = "pointer";
-      const colorPickerContainer = toolbarEl.createDiv({
-        style: {
-          display: "none",
-          position: "absolute",
-          backgroundColor: "var(--background-primary)",
-          border: "1px solid var(--border-color)",
-          borderRadius: "4px",
-          padding: "10px",
-          zIndex: "10000",
-          boxShadow: "0 2px 8px rgba(0, 0, 0, 0.15)",
-          top: "100%",
-          left: "0",
-          marginTop: "5px"
-        }
-      });
+      toolbarEl.createEl("span", { text: "\u989C\u8272: " });
       const colors = ["#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4", "#FFEAA7", "#DDA0DD", "#98D8C8", "#F7DC6F", "#BB8FCE", "#85C1E9"];
       colors.forEach((color) => {
-        const colorOption = colorPickerContainer.createEl("div", {
+        const colorOption = toolbarEl.createEl("div", {
           style: {
             width: "20px",
             height: "20px",
@@ -1501,7 +1476,8 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
             borderRadius: "50%",
             cursor: "pointer",
             display: "inline-block",
-            margin: "2px"
+            margin: "0 2px",
+            border: "1px solid var(--border-color)"
           }
         });
         colorOption.addEventListener("click", () => {
@@ -1519,21 +1495,7 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
             const newCursorPos = start + coloredText.length;
             answerTextarea.setSelectionRange(newCursorPos, newCursorPos);
           }
-          colorPickerContainer.style.display = "none";
         });
-      });
-      colorButton.addEventListener("click", (e) => {
-        e.stopPropagation();
-        if (colorPickerContainer.style.display === "none") {
-          colorPickerContainer.style.display = "block";
-        } else {
-          colorPickerContainer.style.display = "none";
-        }
-      });
-      document.addEventListener("click", (e) => {
-        if (!colorButton.contains(e.target) && !colorPickerContainer.contains(e.target)) {
-          colorPickerContainer.style.display = "none";
-        }
       });
       const updateBlankButtonVisibility = () => {
         if (card.noteType === "Cloze") {

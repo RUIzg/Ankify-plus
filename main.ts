@@ -1979,7 +1979,6 @@ class SelectableCardsModal extends Modal {
       toolbarEl.style.gap = "10px";
       toolbarEl.style.marginTop = "5px";
       toolbarEl.style.alignItems = "center";
-      toolbarEl.style.position = "relative"; // 为颜色选择器提供相对定位的父容器
 
       // 填空按钮（仅在Cloze类型时显示）
       const blankButton = toolbarEl.createEl("button", {
@@ -1993,39 +1992,11 @@ class SelectableCardsModal extends Modal {
       blankButton.style.borderRadius = "4px";
       blankButton.style.cursor = "pointer";
       
-      // 颜色选择器按钮
-      const colorButton = toolbarEl.createEl("button", {
-        text: "标颜色",
-      });
-      colorButton.style.padding = "4px 8px";
-      colorButton.style.fontSize = "12px";
-      colorButton.style.backgroundColor = "var(--background-secondary)";
-      colorButton.style.color = "var(--text-normal)";
-      colorButton.style.border = "1px solid var(--border-color)";
-      colorButton.style.borderRadius = "4px";
-      colorButton.style.cursor = "pointer";
-
       // 颜色选择器
-      const colorPickerContainer = toolbarEl.createDiv({
-        style: { 
-          display: "none", 
-          position: "absolute", 
-          backgroundColor: "var(--background-primary)",
-          border: "1px solid var(--border-color)",
-          borderRadius: "4px",
-          padding: "10px",
-          zIndex: "10000", // 提高z-index确保显示在最前面
-          boxShadow: "0 2px 8px rgba(0, 0, 0, 0.15)",
-          top: "100%", // 相对于父容器的底部
-          left: "0", // 相对于父容器的左侧
-          marginTop: "5px" // 与按钮保持一定距离
-        }
-      });
-
-      // 颜色选项
+      toolbarEl.createEl("span", { text: "颜色: " });
       const colors = ["#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4", "#FFEAA7", "#DDA0DD", "#98D8C8", "#F7DC6F", "#BB8FCE", "#85C1E9"];
       colors.forEach(color => {
-        const colorOption = colorPickerContainer.createEl("div", {
+        const colorOption = toolbarEl.createEl("div", {
           style: {
             width: "20px",
             height: "20px",
@@ -2033,7 +2004,8 @@ class SelectableCardsModal extends Modal {
             borderRadius: "50%",
             cursor: "pointer",
             display: "inline-block",
-            margin: "2px"
+            margin: "0 2px",
+            border: "1px solid var(--border-color)"
           }
         });
         colorOption.addEventListener("click", () => {
@@ -2057,27 +2029,7 @@ class SelectableCardsModal extends Modal {
             const newCursorPos = start + coloredText.length;
             answerTextarea.setSelectionRange(newCursorPos, newCursorPos);
           }
-          
-          // 隐藏颜色选择器
-          colorPickerContainer.style.display = "none";
         });
-      });
-
-      // 切换颜色选择器显示
-      colorButton.addEventListener("click", (e) => {
-        e.stopPropagation();
-        if (colorPickerContainer.style.display === "none") {
-          colorPickerContainer.style.display = "block";
-        } else {
-          colorPickerContainer.style.display = "none";
-        }
-      });
-
-      // 点击其他地方隐藏颜色选择器
-      document.addEventListener("click", (e) => {
-        if (!colorButton.contains(e.target as Node) && !colorPickerContainer.contains(e.target as Node)) {
-          colorPickerContainer.style.display = "none";
-        }
       });
       
       // 控制按钮显示状态
