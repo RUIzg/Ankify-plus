@@ -631,7 +631,7 @@ export class AnkifySettingTab extends PluginSettingTab {
         const deckNames = deckTextArea.value
           .split("\n")
           .map((name) => name.trim())
-          .filter((name) => name);
+          .filter((name) => name.length > 0);
 
         if (deckNames.length === 0) {
           new Notice("请输入至少一个Deck名称");
