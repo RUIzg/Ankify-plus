@@ -10,7 +10,9 @@ import {
 } from "obsidian";
 import * as http from "http";
 import * as https from "https";
-import { AnkifySettings, DEFAULT_SETTINGS, AnkiCard } from "./src/constants";
+import { AnkifySettings } from "./src/AnkifySettings";
+import { AnkiCard } from "./src/AnkiCard";
+import { DEFAULT_SETTINGS } from "./src/constants";
 
 export default class AnkifyPlugin extends Plugin {
   settings: AnkifySettings;
