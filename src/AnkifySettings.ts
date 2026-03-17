@@ -1,4 +1,4 @@
-// 类型定义
+// Ankify设置类型定义
 
 export interface AnkifySettings {
   // API设置

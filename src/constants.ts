@@ -1,5 +1,5 @@
 // 默认设置和常量定义
-import { AnkifySettings } from "./types";
+import { AnkifySettings } from "./AnkifySettings";
 
 export const DEFAULT_SETTINGS: AnkifySettings = {
   // API设置
