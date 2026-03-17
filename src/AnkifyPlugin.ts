@@ -7,7 +7,8 @@ import {
 } from "obsidian";
 import * as http from "http";
 import * as https from "https";
-import { AnkifySettings, DEFAULT_SETTINGS, AnkiCard } from "./constants";
+import { AnkifySettings, AnkiCard } from "./types";
+import { DEFAULT_SETTINGS } from "./constants";
 import { CardEditorModal } from "./CardEditorModal";
 import { AnkifySettingTab } from "./AnkifySettingTab";
 
