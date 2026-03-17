@@ -638,22 +638,36 @@ export class AnkifySettingTab extends PluginSettingTab {
           return;
         }
 
+        // 获取Anki中现有的Deck列表
+        const existingDecks = await this.plugin.invokeAnkiConnect("deckNames");
+        const existingDeckSet = new Set(existingDecks);
+
         let successCount = 0;
         let errorCount = 0;
+        const errorMessages: string[] = [];
 
         for (const deckName of deckNames) {
           try {
+            if (existingDeckSet.has(deckName)) {
+              throw new Error(`Deck "${deckName}" 已存在`);
+            }
             await this.plugin.invokeAnkiConnect("createDeck", { deck: deckName });
             successCount++;
           } catch (error) {
             console.error(`创建Deck "${deckName}" 失败:`, error);
             errorCount++;
+            errorMessages.push(`"${deckName}": ${error.message}`);
           }
         }
 
         deckCreationStatus.textContent = "✅";
         deckCreationStatus.style.color = "green";
-        new Notice(`成功创建 ${successCount} 个Deck，失败 ${errorCount} 个`);
+        
+        if (errorMessages.length > 0) {
+          new Notice(`成功创建 ${successCount} 个Deck，失败 ${errorCount} 个\n失败原因:\n${errorMessages.join("\n")}`);
+        } else {
+          new Notice(`成功创建 ${successCount} 个Deck`);
+        }
       } catch (error) {
         console.error("批量创建Deck失败:", error);
         deckCreationStatus.textContent = "❌";
