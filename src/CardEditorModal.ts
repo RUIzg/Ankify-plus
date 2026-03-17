@@ -1,5 +1,5 @@
 import { App, Modal } from "obsidian";
-import { AnkiCard } from "./types";
+import { AnkiCard } from "./AnkiCard";
 import { AnkifyPlugin } from "./AnkifyPlugin";
 
 // 卡片编辑弹窗
