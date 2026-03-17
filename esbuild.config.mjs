@@ -10,20 +10,26 @@ if you want to view the source, please visit the github repository of this plugi
 
 const prod = process.argv[2] === "production";
 
+const buildOptions = {
+  banner: {
+    js: banner,
+  },
+  entryPoints: ["main.ts"],
+  bundle: true,
+  external: ["obsidian", "electron", ...builtins],
+  format: "cjs",
+  target: "es2018",
+  logLevel: "info",
+  sourcemap: prod ? false : "inline",
+  treeShaking: true,
+  outfile: "main.js",
+};
+
+// 只在非 production 模式下添加 watch 选项
+if (!prod) {
+  buildOptions.watch = true;
+}
+
 esbuild
-  .build({
-    banner: {
-      js: banner,
-    },
-    entryPoints: ["main.ts"],
-    bundle: true,
-    external: ["obsidian", "electron", ...builtins],
-    format: "cjs",
-    watch: !prod,
-    target: "es2018",
-    logLevel: "info",
-    sourcemap: prod ? false : "inline",
-    treeShaking: true,
-    outfile: "main.js",
-  })
+  .build(buildOptions)
   .catch(() => process.exit(1));
