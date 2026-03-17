@@ -589,5 +589,80 @@ export class AnkifySettingTab extends PluginSettingTab {
             await this.plugin.saveSettings();
           })
       );
+
+    // ========== 批量增加Anki Deck ==========
+    containerEl.createEl("h3", { text: "批量增加Anki Deck" });
+
+    const deckCreationSetting = new Setting(containerEl)
+      .setName("批量创建Deck")
+      .setDesc("每行输入一个Deck名称，点击按钮批量创建");
+
+    const deckInputContainer = deckCreationSetting.settingEl.createDiv();
+    deckInputContainer.style.marginTop = "10px";
+
+    const deckTextArea = deckInputContainer.createEl("textarea");
+    deckTextArea.placeholder = "输入Deck名称，每行一个\n例如：\n默认牌组\n英语学习\n数学公式";
+    deckTextArea.style.width = "100%";
+    deckTextArea.style.minHeight = "150px";
+    deckTextArea.style.padding = "10px";
+    deckTextArea.style.backgroundColor = "#f5f5f5";
+    deckTextArea.style.border = "1px solid #ddd";
+    deckTextArea.style.borderRadius = "4px";
+
+    const deckButtonContainer = deckInputContainer.createDiv();
+    deckButtonContainer.style.display = "flex";
+    deckButtonContainer.style.alignItems = "center";
+    deckButtonContainer.style.gap = "10px";
+    deckButtonContainer.style.marginTop = "10px";
+
+    const createDeckButton = deckButtonContainer.createEl("button", {
+      text: "批量创建Deck",
+    });
+
+    const deckCreationStatus = deckButtonContainer.createEl("span");
+    deckCreationStatus.style.fontSize = "20px";
+
+    createDeckButton.addEventListener("click", async () => {
+      createDeckButton.disabled = true;
+      createDeckButton.textContent = "创建中...";
+      deckCreationStatus.textContent = "";
+
+      try {
+        const deckNames = deckTextArea.value
+          .split("\n")
+          .map((name) => name.trim())
+          .filter((name) => name);
+
+        if (deckNames.length === 0) {
+          new Notice("请输入至少一个Deck名称");
+          return;
+        }
+
+        let successCount = 0;
+        let errorCount = 0;
+
+        for (const deckName of deckNames) {
+          try {
+            await this.plugin.invokeAnkiConnect("createDeck", { deck: deckName });
+            successCount++;
+          } catch (error) {
+            console.error(`创建Deck "${deckName}" 失败:`, error);
+            errorCount++;
+          }
+        }
+
+        deckCreationStatus.textContent = "✅";
+        deckCreationStatus.style.color = "green";
+        new Notice(`成功创建 ${successCount} 个Deck，失败 ${errorCount} 个`);
+      } catch (error) {
+        console.error("批量创建Deck失败:", error);
+        deckCreationStatus.textContent = "❌";
+        deckCreationStatus.style.color = "red";
+        new Notice(`批量创建Deck失败: ${error.message}`);
+      } finally {
+        createDeckButton.disabled = false;
+        createDeckButton.textContent = "批量创建Deck";
+      }
+    });
   }
 }
