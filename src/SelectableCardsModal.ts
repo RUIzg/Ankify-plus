@@ -814,7 +814,7 @@ export class SelectableCardsModal extends Modal {
     batchTagsHeader.style.borderRadius = "4px";
     batchTagsHeader.style.color = "var(--text-normal)";
     
-    const batchTagsTitle = batchTagsHeader.createEl("h4", { text: "批量替换标签" });
+    const batchTagsTitle = batchTagsHeader.createEl("h4", { text: "替换标签" });
     batchTagsTitle.style.margin = "0";
     batchTagsTitle.style.fontSize = "14px";
     batchTagsTitle.style.color = "var(--text-normal)";
@@ -843,6 +843,25 @@ export class SelectableCardsModal extends Modal {
       }
     });
     
+    // 添加checkbox - 直接替换所有标签
+    const replaceAllContainer = batchTagsContent.createDiv();
+    replaceAllContainer.style.display = "flex";
+    replaceAllContainer.style.alignItems = "center";
+    replaceAllContainer.style.marginBottom = "10px";
+    
+    const replaceAllCheckbox = replaceAllContainer.createEl("input", {
+      type: "checkbox",
+      attr: { id: "replaceAllTags" }
+    });
+    replaceAllCheckbox.style.marginRight = "8px";
+    
+    const replaceAllLabel = replaceAllContainer.createEl("label", {
+      text: "直接替换所有标签",
+      attr: { for: "replaceAllTags" }
+    });
+    replaceAllLabel.style.cursor = "pointer";
+    replaceAllLabel.style.color = "var(--text-normal)";
+    
     // 旧标签输入框
     const oldTagInput = batchTagsContent.createEl("input", {
       type: "text",
@@ -869,6 +888,17 @@ export class SelectableCardsModal extends Modal {
     newTagInput.style.backgroundColor = "var(--background-primary)";
     newTagInput.style.color = "var(--text-normal)";
     
+    // 根据checkbox状态切换旧标签输入框的显示
+    replaceAllCheckbox.addEventListener("change", () => {
+      if (replaceAllCheckbox.checked) {
+        oldTagInput.style.display = "none";
+        newTagInput.placeholder = "输入新的标签（将替换所有卡片的标签）";
+      } else {
+        oldTagInput.style.display = "block";
+        newTagInput.placeholder = "输入新的标签";
+      }
+    });
+    
     // 替换按钮
     const replaceButton = batchTagsContent.createEl("button", {
       text: "替换标签",
@@ -882,31 +912,51 @@ export class SelectableCardsModal extends Modal {
     
     // 替换标签功能
     replaceButton.addEventListener("click", () => {
-      const oldTag = oldTagInput.value.trim();
       const newTag = newTagInput.value.trim();
       
-      if (!oldTag) {
-        new Notice("请输入要替换的标签");
+      if (!newTag) {
+        new Notice("请输入新的标签");
         return;
       }
       
       let replacedCount = 0;
       
-      // 遍历所有卡片，替换标签
-      this.cards.forEach(card => {
-        if (card.tags && card.tags.includes(oldTag)) {
-          card.tags = card.tags.map(tag => tag === oldTag ? newTag : tag);
+      if (replaceAllCheckbox.checked) {
+        // 直接替换所有卡片的标签
+        this.cards.forEach(card => {
+          card.tags = [newTag];
           replacedCount++;
-        }
-      });
-      
-      if (replacedCount > 0) {
+        });
+        
         new Notice(`已替换 ${replacedCount} 张卡片的标签`);
         // 重新渲染卡片，更新标签显示
         contentEl.empty();
         this.loadContent();
       } else {
-        new Notice("未找到要替换的标签");
+        // 替换特定标签
+        const oldTag = oldTagInput.value.trim();
+        
+        if (!oldTag) {
+          new Notice("请输入要替换的标签");
+          return;
+        }
+        
+        // 遍历所有卡片，替换标签
+        this.cards.forEach(card => {
+          if (card.tags && card.tags.includes(oldTag)) {
+            card.tags = card.tags.map(tag => tag === oldTag ? newTag : tag);
+            replacedCount++;
+          }
+        });
+        
+        if (replacedCount > 0) {
+          new Notice(`已替换 ${replacedCount} 张卡片的标签`);
+          // 重新渲染卡片，更新标签显示
+          contentEl.empty();
+          this.loadContent();
+        } else {
+          new Notice("未找到要替换的标签");
+        }
       }
     });
 
