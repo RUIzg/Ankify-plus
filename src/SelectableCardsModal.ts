@@ -819,7 +819,7 @@ export class SelectableCardsModal extends Modal {
     batchTagsHeader.style.alignItems = "center";
     batchTagsHeader.style.justifyContent = "space-between";
     
-    // 左侧标题和checkbox
+    // 左侧区域：标题和checkbox
     const headerLeft = batchTagsHeader.createEl("div");
     headerLeft.style.display = "flex";
     headerLeft.style.alignItems = "center";
@@ -828,12 +828,12 @@ export class SelectableCardsModal extends Modal {
     batchTagsTitle.style.margin = "0";
     batchTagsTitle.style.fontSize = "14px";
     batchTagsTitle.style.color = "var(--text-normal)";
-    batchTagsTitle.style.marginRight = "15px";
     
-    // 添加checkbox - 直接替换所有标签
+    // 添加checkbox - 直接替换所有标签，放在标题右边
     const replaceAllContainer = headerLeft.createEl("div");
     replaceAllContainer.style.display = "flex";
     replaceAllContainer.style.alignItems = "center";
+    replaceAllContainer.style.marginLeft = "15px";
     
     const replaceAllCheckbox = replaceAllContainer.createEl("input", {
       type: "checkbox",
