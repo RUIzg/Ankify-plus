@@ -819,35 +819,10 @@ export class SelectableCardsModal extends Modal {
     batchTagsHeader.style.alignItems = "center";
     batchTagsHeader.style.justifyContent = "space-between";
     
-    // 左侧区域：标题和checkbox
-    const headerLeft = batchTagsHeader.createEl("div");
-    headerLeft.style.display = "flex";
-    headerLeft.style.alignItems = "center";
-    
-    const batchTagsTitle = headerLeft.createEl("h4", { text: "替换标签" });
+    const batchTagsTitle = batchTagsHeader.createEl("h4", { text: "替换标签" });
     batchTagsTitle.style.margin = "0";
     batchTagsTitle.style.fontSize = "14px";
     batchTagsTitle.style.color = "var(--text-normal)";
-    
-    // 添加checkbox - 直接替换所有标签，放在标题右边
-    const replaceAllContainer = headerLeft.createEl("div");
-    replaceAllContainer.style.display = "flex";
-    replaceAllContainer.style.alignItems = "center";
-    replaceAllContainer.style.marginLeft = "15px";
-    
-    const replaceAllCheckbox = replaceAllContainer.createEl("input", {
-      type: "checkbox",
-      attr: { id: "replaceAllTags" }
-    });
-    replaceAllCheckbox.style.marginRight = "5px";
-    
-    const replaceAllLabel = replaceAllContainer.createEl("label", {
-      text: "直接替换所有标签",
-      attr: { for: "replaceAllTags" }
-    });
-    replaceAllLabel.style.cursor = "pointer";
-    replaceAllLabel.style.color = "var(--text-normal)";
-    replaceAllLabel.style.fontSize = "12px";
     
     // 右侧折叠按钮
     const batchTagsToggle = batchTagsHeader.createEl("span", { text: "▼" });
@@ -903,6 +878,42 @@ export class SelectableCardsModal extends Modal {
     newTagInput.style.backgroundColor = "var(--background-primary)";
     newTagInput.style.color = "var(--text-normal)";
     
+    // 按钮和checkbox容器
+    const buttonContainer = batchTagsContent.createEl("div");
+    buttonContainer.style.display = "flex";
+    buttonContainer.style.alignItems = "center";
+    buttonContainer.style.gap = "15px";
+    
+    // 替换按钮
+    const replaceButton = buttonContainer.createEl("button", {
+      text: "替换标签",
+    });
+    replaceButton.style.padding = "8px 16px";
+    replaceButton.style.backgroundColor = "var(--interactive-accent)";
+    replaceButton.style.color = "var(--text-on-accent)";
+    replaceButton.style.border = "none";
+    replaceButton.style.borderRadius = "4px";
+    replaceButton.style.cursor = "pointer";
+    
+    // 添加checkbox - 直接替换所有标签，放在按钮右边
+    const replaceAllContainer = buttonContainer.createEl("div");
+    replaceAllContainer.style.display = "flex";
+    replaceAllContainer.style.alignItems = "center";
+    
+    const replaceAllCheckbox = replaceAllContainer.createEl("input", {
+      type: "checkbox",
+      attr: { id: "replaceAllTags" }
+    });
+    replaceAllCheckbox.style.marginRight = "5px";
+    
+    const replaceAllLabel = replaceAllContainer.createEl("label", {
+      text: "直接替换所有标签",
+      attr: { for: "replaceAllTags" }
+    });
+    replaceAllLabel.style.cursor = "pointer";
+    replaceAllLabel.style.color = "var(--text-normal)";
+    replaceAllLabel.style.fontSize = "12px";
+    
     // 根据checkbox状态切换旧标签输入框的显示
     replaceAllCheckbox.addEventListener("change", () => {
       if (replaceAllCheckbox.checked) {
@@ -913,17 +924,6 @@ export class SelectableCardsModal extends Modal {
         newTagInput.placeholder = "输入新的标签";
       }
     });
-    
-    // 替换按钮
-    const replaceButton = batchTagsContent.createEl("button", {
-      text: "替换标签",
-    });
-    replaceButton.style.padding = "8px 16px";
-    replaceButton.style.backgroundColor = "var(--interactive-accent)";
-    replaceButton.style.color = "var(--text-on-accent)";
-    replaceButton.style.border = "none";
-    replaceButton.style.borderRadius = "4px";
-    replaceButton.style.cursor = "pointer";
     
     // 替换标签功能
     replaceButton.addEventListener("click", () => {
