@@ -814,11 +814,42 @@ export class SelectableCardsModal extends Modal {
     batchTagsHeader.style.borderRadius = "4px";
     batchTagsHeader.style.color = "var(--text-normal)";
     
-    const batchTagsTitle = batchTagsHeader.createEl("h4", { text: "替换标签" });
+    // 设置header为flex布局，方便排列元素
+    batchTagsHeader.style.display = "flex";
+    batchTagsHeader.style.alignItems = "center";
+    batchTagsHeader.style.justifyContent = "space-between";
+    
+    // 左侧标题和checkbox
+    const headerLeft = batchTagsHeader.createEl("div");
+    headerLeft.style.display = "flex";
+    headerLeft.style.alignItems = "center";
+    
+    const batchTagsTitle = headerLeft.createEl("h4", { text: "替换标签" });
     batchTagsTitle.style.margin = "0";
     batchTagsTitle.style.fontSize = "14px";
     batchTagsTitle.style.color = "var(--text-normal)";
+    batchTagsTitle.style.marginRight = "15px";
     
+    // 添加checkbox - 直接替换所有标签
+    const replaceAllContainer = headerLeft.createEl("div");
+    replaceAllContainer.style.display = "flex";
+    replaceAllContainer.style.alignItems = "center";
+    
+    const replaceAllCheckbox = replaceAllContainer.createEl("input", {
+      type: "checkbox",
+      attr: { id: "replaceAllTags" }
+    });
+    replaceAllCheckbox.style.marginRight = "5px";
+    
+    const replaceAllLabel = replaceAllContainer.createEl("label", {
+      text: "直接替换所有标签",
+      attr: { for: "replaceAllTags" }
+    });
+    replaceAllLabel.style.cursor = "pointer";
+    replaceAllLabel.style.color = "var(--text-normal)";
+    replaceAllLabel.style.fontSize = "12px";
+    
+    // 右侧折叠按钮
     const batchTagsToggle = batchTagsHeader.createEl("span", { text: "▼" });
     batchTagsToggle.style.color = "var(--text-muted)";
     
@@ -833,34 +864,18 @@ export class SelectableCardsModal extends Modal {
     batchTagsContent.style.color = "var(--text-normal)";
     
     // 切换折叠状态
-    batchTagsHeader.addEventListener("click", () => {
-      if (batchTagsContent.style.display === "none") {
-        batchTagsContent.style.display = "block";
-        batchTagsToggle.textContent = "▲";
-      } else {
-        batchTagsContent.style.display = "none";
-        batchTagsToggle.textContent = "▼";
+    batchTagsHeader.addEventListener("click", (e) => {
+      // 防止点击checkbox时触发折叠
+      if (!e.target.closest("input[type='checkbox']") && !e.target.closest("label")) {
+        if (batchTagsContent.style.display === "none") {
+          batchTagsContent.style.display = "block";
+          batchTagsToggle.textContent = "▲";
+        } else {
+          batchTagsContent.style.display = "none";
+          batchTagsToggle.textContent = "▼";
+        }
       }
     });
-    
-    // 添加checkbox - 直接替换所有标签
-    const replaceAllContainer = batchTagsContent.createDiv();
-    replaceAllContainer.style.display = "flex";
-    replaceAllContainer.style.alignItems = "center";
-    replaceAllContainer.style.marginBottom = "10px";
-    
-    const replaceAllCheckbox = replaceAllContainer.createEl("input", {
-      type: "checkbox",
-      attr: { id: "replaceAllTags" }
-    });
-    replaceAllCheckbox.style.marginRight = "8px";
-    
-    const replaceAllLabel = replaceAllContainer.createEl("label", {
-      text: "直接替换所有标签",
-      attr: { for: "replaceAllTags" }
-    });
-    replaceAllLabel.style.cursor = "pointer";
-    replaceAllLabel.style.color = "var(--text-normal)";
     
     // 旧标签输入框
     const oldTagInput = batchTagsContent.createEl("input", {
