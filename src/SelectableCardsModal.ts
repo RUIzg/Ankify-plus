@@ -229,17 +229,12 @@ export class SelectableCardsModal extends Modal {
     });
     deckContainer.createEl("label", { text: "选择牌组：" });
     const deckSelectContainer = deckContainer.createDiv({
-      style: { display: "flex", alignItems: "center", gap: "10px" }
+      style: { display: "flex", alignItems: "center", gap: "5px" }
     });
     this.deckSelect = deckSelectContainer.createEl("select");
 
-    // 添加向上和向下按钮
-    const deckButtonsContainer = deckSelectContainer.createDiv({
-      style: { display: "flex", flexDirection: "column", gap: "2px" }
-    });
-
     // 向上按钮
-    const upButton = deckButtonsContainer.createEl("button", {
+    const upButton = deckSelectContainer.createEl("button", {
       text: "↑",
       attr: { type: "button" },
       style: { padding: "2px 6px", fontSize: "10px" }
@@ -256,7 +251,7 @@ export class SelectableCardsModal extends Modal {
     });
 
     // 向下按钮
-    const downButton = deckButtonsContainer.createEl("button", {
+    const downButton = deckSelectContainer.createEl("button", {
       text: "↓",
       attr: { type: "button" },
       style: { padding: "2px 6px", fontSize: "10px" }

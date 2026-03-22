@@ -207,13 +207,10 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
     });
     deckContainer.createEl("label", { text: "\u9009\u62E9\u724C\u7EC4\uFF1A" });
     const deckSelectContainer = deckContainer.createDiv({
-      style: { display: "flex", alignItems: "center", gap: "10px" }
+      style: { display: "flex", alignItems: "center", gap: "5px" }
     });
     this.deckSelect = deckSelectContainer.createEl("select");
-    const deckButtonsContainer = deckSelectContainer.createDiv({
-      style: { display: "flex", flexDirection: "column", gap: "2px" }
-    });
-    const upButton = deckButtonsContainer.createEl("button", {
+    const upButton = deckSelectContainer.createEl("button", {
       text: "\u2191",
       attr: { type: "button" },
       style: { padding: "2px 6px", fontSize: "10px" }
@@ -226,7 +223,7 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
         this.deckSelect.dispatchEvent(event);
       }
     });
-    const downButton = deckButtonsContainer.createEl("button", {
+    const downButton = deckSelectContainer.createEl("button", {
       text: "\u2193",
       attr: { type: "button" },
       style: { padding: "2px 6px", fontSize: "10px" }
