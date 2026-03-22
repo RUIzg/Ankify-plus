@@ -39,7 +39,11 @@ export class SelectableCardsModal extends Modal {
     this.plugin = plugin;
     this.editor = editor;
     this.selectedCards = cards.map(() => true); // 默认全选
+    console.log("初始化时的设置:", plugin.settings);
+    console.log("lastUsedDeck:", plugin.settings.lastUsedDeck);
+    console.log("defaultDeck:", plugin.settings.defaultDeck);
     this.deckName = plugin.settings.lastUsedDeck || plugin.settings.defaultDeck;
+    console.log("最终使用的deckName:", this.deckName);
     this.noteType = plugin.settings.defaultNoteType;
     this.usedPrompt = usedPrompt;
     this.imageInfo = imageInfo;
@@ -228,6 +232,45 @@ export class SelectableCardsModal extends Modal {
       style: { display: "flex", alignItems: "center", gap: "10px" }
     });
     this.deckSelect = deckSelectContainer.createEl("select");
+
+    // 添加向上和向下按钮
+    const deckButtonsContainer = deckSelectContainer.createDiv({
+      style: { display: "flex", flexDirection: "column", gap: "2px" }
+    });
+
+    // 向上按钮
+    const upButton = deckButtonsContainer.createEl("button", {
+      text: "↑",
+      attr: { type: "button" },
+      style: { padding: "2px 6px", fontSize: "10px" }
+    });
+
+    upButton.addEventListener("click", () => {
+      const currentIndex = this.deckSelect.selectedIndex;
+      if (currentIndex > 0) {
+        this.deckSelect.selectedIndex = currentIndex - 1;
+        // 触发 change 事件
+        const event = new Event('change');
+        this.deckSelect.dispatchEvent(event);
+      }
+    });
+
+    // 向下按钮
+    const downButton = deckButtonsContainer.createEl("button", {
+      text: "↓",
+      attr: { type: "button" },
+      style: { padding: "2px 6px", fontSize: "10px" }
+    });
+
+    downButton.addEventListener("click", () => {
+      const currentIndex = this.deckSelect.selectedIndex;
+      if (currentIndex < this.deckSelect.options.length - 1) {
+        this.deckSelect.selectedIndex = currentIndex + 1;
+        // 触发 change 事件
+        const event = new Event('change');
+        this.deckSelect.dispatchEvent(event);
+      }
+    });
 
     if (decks.length > 0) {
       // 添加可用牌组选项
@@ -1026,8 +1069,11 @@ export class SelectableCardsModal extends Modal {
 
         if (successCount > 0) {
           // 保存上次使用的牌组
+          console.log("准备保存上次使用的牌组:", this.deckSelect.value);
           this.plugin.settings.lastUsedDeck = this.deckSelect.value;
+          console.log("设置对象:", this.plugin.settings);
           await this.plugin.saveSettings();
+          console.log("保存成功");
           
           new Notice(`成功添加 ${successCount} 张卡片到Anki`);
           this.close();

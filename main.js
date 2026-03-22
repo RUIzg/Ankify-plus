@@ -74,7 +74,11 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
     this.plugin = plugin;
     this.editor = editor;
     this.selectedCards = cards.map(() => true);
+    console.log("\u521D\u59CB\u5316\u65F6\u7684\u8BBE\u7F6E:", plugin.settings);
+    console.log("lastUsedDeck:", plugin.settings.lastUsedDeck);
+    console.log("defaultDeck:", plugin.settings.defaultDeck);
     this.deckName = plugin.settings.lastUsedDeck || plugin.settings.defaultDeck;
+    console.log("\u6700\u7EC8\u4F7F\u7528\u7684deckName:", this.deckName);
     this.noteType = plugin.settings.defaultNoteType;
     this.usedPrompt = usedPrompt;
     this.imageInfo = imageInfo;
@@ -206,6 +210,35 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
       style: { display: "flex", alignItems: "center", gap: "10px" }
     });
     this.deckSelect = deckSelectContainer.createEl("select");
+    const deckButtonsContainer = deckSelectContainer.createDiv({
+      style: { display: "flex", flexDirection: "column", gap: "2px" }
+    });
+    const upButton = deckButtonsContainer.createEl("button", {
+      text: "\u2191",
+      attr: { type: "button" },
+      style: { padding: "2px 6px", fontSize: "10px" }
+    });
+    upButton.addEventListener("click", () => {
+      const currentIndex = this.deckSelect.selectedIndex;
+      if (currentIndex > 0) {
+        this.deckSelect.selectedIndex = currentIndex - 1;
+        const event = new Event("change");
+        this.deckSelect.dispatchEvent(event);
+      }
+    });
+    const downButton = deckButtonsContainer.createEl("button", {
+      text: "\u2193",
+      attr: { type: "button" },
+      style: { padding: "2px 6px", fontSize: "10px" }
+    });
+    downButton.addEventListener("click", () => {
+      const currentIndex = this.deckSelect.selectedIndex;
+      if (currentIndex < this.deckSelect.options.length - 1) {
+        this.deckSelect.selectedIndex = currentIndex + 1;
+        const event = new Event("change");
+        this.deckSelect.dispatchEvent(event);
+      }
+    });
     if (decks.length > 0) {
       decks.forEach((deck) => {
         const option = this.deckSelect.createEl("option", {
@@ -798,8 +831,11 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
         loadingNotice.hide();
         const successCount = results.filter((id) => id !== null).length;
         if (successCount > 0) {
+          console.log("\u51C6\u5907\u4FDD\u5B58\u4E0A\u6B21\u4F7F\u7528\u7684\u724C\u7EC4:", this.deckSelect.value);
           this.plugin.settings.lastUsedDeck = this.deckSelect.value;
+          console.log("\u8BBE\u7F6E\u5BF9\u8C61:", this.plugin.settings);
           await this.plugin.saveSettings();
+          console.log("\u4FDD\u5B58\u6210\u529F");
           new import_obsidian2.Notice(`\u6210\u529F\u6DFB\u52A0 ${successCount} \u5F20\u5361\u7247\u5230Anki`);
           this.close();
         } else {
