@@ -236,7 +236,10 @@ export class SelectableCardsModal extends Modal {
           value: deck,
           text: deck,
         });
-        if (deck === this.plugin.settings.defaultDeck) {
+        if (deck === this.plugin.settings.lastUsedDeck) {
+          option.selected = true;
+          this.deckName = deck;
+        } else if (deck === this.plugin.settings.defaultDeck && !this.deckSelect.value) {
           option.selected = true;
           this.deckName = deck;
         }
