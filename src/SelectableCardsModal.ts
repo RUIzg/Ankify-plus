@@ -944,9 +944,8 @@ export class SelectableCardsModal extends Modal {
         });
         
         new Notice(`已替换 ${replacedCount} 张卡片的标签`);
-        // 重新渲染卡片，更新标签显示
-        contentEl.empty();
-        this.loadContent();
+        // 直接更新标签显示，避免重新加载
+        this.updateTagsDisplay();
       } else {
         // 替换特定标签
         const oldTag = oldTagInput.value.trim();
@@ -966,9 +965,8 @@ export class SelectableCardsModal extends Modal {
         
         if (replacedCount > 0) {
           new Notice(`已替换 ${replacedCount} 张卡片的标签`);
-          // 重新渲染卡片，更新标签显示
-          contentEl.empty();
-          this.loadContent();
+          // 直接更新标签显示，避免重新加载
+          this.updateTagsDisplay();
         } else {
           new Notice("未找到要替换的标签");
         }
@@ -976,9 +974,9 @@ export class SelectableCardsModal extends Modal {
     });
 
     // 操作按钮
-    const buttonContainer = contentEl.createDiv({ cls: "ankify-button-container" });
+    const mainButtonContainer = contentEl.createDiv({ cls: "ankify-button-container" });
 
-    const addButton = buttonContainer.createEl("button", {
+    const addButton = mainButtonContainer.createEl("button", {
       text: "添加到Anki",
     });
     addButton.style.marginRight = "10px";
@@ -989,7 +987,7 @@ export class SelectableCardsModal extends Modal {
     addButton.style.borderRadius = "4px";
     addButton.style.cursor = "pointer";
 
-    const cancelButton = buttonContainer.createEl("button", {
+    const cancelButton = mainButtonContainer.createEl("button", {
       text: "取消",
     });
     cancelButton.style.padding = "8px 16px";
@@ -1050,6 +1048,16 @@ export class SelectableCardsModal extends Modal {
     const checkboxes = this.contentEl.querySelectorAll(".ankify-card-checkbox input[type=checkbox]");
     checkboxes.forEach((checkbox, index) => {
       (checkbox as HTMLInputElement).checked = this.selectedCards[index];
+    });
+  }
+
+  // 更新标签显示
+  updateTagsDisplay() {
+    const tagsInputs = this.contentEl.querySelectorAll(".ankify-card-tags input");
+    tagsInputs.forEach((input, index) => {
+      if (index < this.cards.length) {
+        (input as HTMLInputElement).value = (this.cards[index].tags || []).join(" ");
+      }
     });
   }
 
