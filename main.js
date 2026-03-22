@@ -59,7 +59,8 @@ var DEFAULT_SETTINGS = {
   defaultNoteType: "Basic",
   questionMarker: "%question%",
   answerMarker: "%answer%",
-  tagsMarker: "%tags%"
+  tagsMarker: "%tags%",
+  lastUsedDeck: "Default"
 };
 
 // src/SelectableCardsModal.ts
@@ -73,7 +74,7 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
     this.plugin = plugin;
     this.editor = editor;
     this.selectedCards = cards.map(() => true);
-    this.deckName = plugin.settings.defaultDeck;
+    this.deckName = plugin.settings.lastUsedDeck || plugin.settings.defaultDeck;
     this.noteType = plugin.settings.defaultNoteType;
     this.usedPrompt = usedPrompt;
     this.imageInfo = imageInfo;
@@ -794,6 +795,8 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
         loadingNotice.hide();
         const successCount = results.filter((id) => id !== null).length;
         if (successCount > 0) {
+          this.plugin.settings.lastUsedDeck = this.deckSelect.value;
+          await this.plugin.saveSettings();
           new import_obsidian2.Notice(`\u6210\u529F\u6DFB\u52A0 ${successCount} \u5F20\u5361\u7247\u5230Anki`);
           this.close();
         } else {

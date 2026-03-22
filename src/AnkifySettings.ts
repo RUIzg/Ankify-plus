@@ -28,4 +28,6 @@ export interface AnkifySettings {
   questionMarker: string; // 问题标记符，如 %question%
   answerMarker: string; // 回答标记符，如 %answer%
   tagsMarker: string; // 标签标记符，如 %tags%
+  // 历史设置
+  lastUsedDeck: string; // 上次使用的牌组
 }

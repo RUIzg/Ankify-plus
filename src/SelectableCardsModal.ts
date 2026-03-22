@@ -39,7 +39,7 @@ export class SelectableCardsModal extends Modal {
     this.plugin = plugin;
     this.editor = editor;
     this.selectedCards = cards.map(() => true); // 默认全选
-    this.deckName = plugin.settings.defaultDeck;
+    this.deckName = plugin.settings.lastUsedDeck || plugin.settings.defaultDeck;
     this.noteType = plugin.settings.defaultNoteType;
     this.usedPrompt = usedPrompt;
     this.imageInfo = imageInfo;
@@ -1022,6 +1022,10 @@ export class SelectableCardsModal extends Modal {
         const successCount = results.filter((id) => id !== null).length;
 
         if (successCount > 0) {
+          // 保存上次使用的牌组
+          this.plugin.settings.lastUsedDeck = this.deckSelect.value;
+          await this.plugin.saveSettings();
+          
           new Notice(`成功添加 ${successCount} 张卡片到Anki`);
           this.close();
         } else {

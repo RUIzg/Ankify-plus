@@ -31,5 +31,7 @@ export const DEFAULT_SETTINGS: AnkifySettings = {
   questionMarker: "%question%", // 问题标记符
   answerMarker: "%answer%", // 回答标记符
   tagsMarker: "%tags%", // 标签标记符
+  // 历史设置
+  lastUsedDeck: "Default", // 上次使用的牌组
 };
 
