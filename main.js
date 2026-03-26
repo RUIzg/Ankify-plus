@@ -1774,7 +1774,7 @@ ${card.backExtra}`;
         }
       }
       const userTags = (card.tags || []).filter((tag) => tag !== "ankify");
-      const finalTags = [...userTags, "ankify"];
+      const finalTags = [...userTags];
       const note = {
         deckName,
         modelName: cardNoteType,

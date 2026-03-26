@@ -625,7 +625,7 @@ export default class AnkifyPlugin extends Plugin {
 
         // 确保ankify标签在最后
         const userTags = (card.tags || []).filter(tag => tag !== "ankify");
-        const finalTags = [...userTags, "ankify"];
+        const finalTags = [...userTags];
         
         const note = {
           deckName,
