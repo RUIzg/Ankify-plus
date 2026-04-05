@@ -30,4 +30,6 @@ export interface AnkifySettings {
   tagsMarker: string; // 标签标记符，如 %tags%
   // 历史设置
   lastUsedDeck: string; // 上次使用的牌组
+  // 批量提交设置
+  batchSize: number; // 批量提交的批次大小
 }

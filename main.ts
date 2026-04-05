@@ -651,7 +651,7 @@ export default class AnkifyPlugin extends Plugin {
         firstNote: notes[0],
       });
 
-      const batchSize = 10;
+      const batchSize = this.settings.batchSize;
       const allResults: number[] = [];
 
       // 分批处理卡片

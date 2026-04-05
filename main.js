@@ -60,7 +60,8 @@ var DEFAULT_SETTINGS = {
   questionMarker: "%question%",
   answerMarker: "%answer%",
   tagsMarker: "%tags%",
-  lastUsedDeck: "Default"
+  lastUsedDeck: "Default",
+  batchSize: 10
 };
 
 // src/SelectableCardsModal.ts
@@ -1318,6 +1319,13 @@ ${error.message}`;
       this.plugin.settings.insertToDocument = value;
       await this.plugin.saveSettings();
     }));
+    new import_obsidian3.Setting(containerEl).setName("\u6279\u91CF\u63D0\u4EA4\u6279\u6B21\u5927\u5C0F").setDesc("\u6BCF\u6B21\u5411Anki\u63D0\u4EA4\u7684\u5361\u7247\u6570\u91CF\uFF0C\u5EFA\u8BAE10-50\u4E4B\u95F4\uFF0C\u592A\u5C0F\u4F1A\u5F71\u54CD\u901F\u5EA6\uFF0C\u592A\u5927\u4F1A\u5BFC\u81F4\u8BF7\u6C42\u5931\u8D25").addText((text) => text.setPlaceholder("10").setValue(String(this.plugin.settings.batchSize)).onChange(async (value) => {
+      const size = parseInt(value);
+      if (!isNaN(size) && size > 0) {
+        this.plugin.settings.batchSize = size;
+        await this.plugin.saveSettings();
+      }
+    }));
     containerEl.createEl("h3", { text: "\u8FD4\u56DE\u7ED3\u679C\u89E3\u6790" });
     new import_obsidian3.Setting(containerEl).setName("\u95EE\u9898\u6807\u8BB0\u7B26").setDesc("\u7528\u4E8E\u8BC6\u522B\u8FD4\u56DE\u7ED3\u679C\u4E2D\u7684\u95EE\u9898\u5B57\u6BB5\uFF0C\u4F8B\u5982\uFF1A%question%").addText((text) => text.setPlaceholder("%question%").setValue(this.plugin.settings.questionMarker).onChange(async (value) => {
       this.plugin.settings.questionMarker = value;
@@ -1854,7 +1862,7 @@ ${card.backExtra}`;
         noteCount: notes.length,
         firstNote: notes[0]
       });
-      const batchSize = 10;
+      const batchSize = this.settings.batchSize;
       const allResults = [];
       for (let i = 0; i < notes.length; i += batchSize) {
         const batch = notes.slice(i, i + batchSize);

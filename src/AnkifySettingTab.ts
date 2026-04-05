@@ -548,6 +548,22 @@ export class AnkifySettingTab extends PluginSettingTab {
           })
       );
 
+    new Setting(containerEl)
+      .setName("批量提交批次大小")
+      .setDesc("每次向Anki提交的卡片数量，建议10-50之间，太小会影响速度，太大会导致请求失败")
+      .addText((text) =>
+        text
+          .setPlaceholder("10")
+          .setValue(String(this.plugin.settings.batchSize))
+          .onChange(async (value) => {
+            const size = parseInt(value);
+            if (!isNaN(size) && size > 0) {
+              this.plugin.settings.batchSize = size;
+              await this.plugin.saveSettings();
+            }
+          })
+      );
+
     // ========== 返回结果解析 ==========
     containerEl.createEl("h3", { text: "返回结果解析" });
 

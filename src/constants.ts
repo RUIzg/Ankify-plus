@@ -33,5 +33,7 @@ export const DEFAULT_SETTINGS: AnkifySettings = {
   tagsMarker: "%tags%", // 标签标记符
   // 历史设置
   lastUsedDeck: "Default", // 上次使用的牌组
+  // 批量提交设置
+  batchSize: 10, // 批量提交的批次大小，默认10张
 };
 
