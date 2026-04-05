@@ -433,7 +433,7 @@ export default class AnkifyPlugin extends Plugin {
   }
 
   // 添加卡片到Anki
-  async addNotesToAnki(cards: AnkiCard[], deckName: string, noteType: string) {
+  async addNotesToAnki(cards: AnkiCard[], deckName: string, noteType: string, progressCallback?: (current: number, total: number) => void) {
     // 验证输入参数
     if (!deckName || !noteType) {
       throw new Error("牌组名称和笔记类型不能为空");
@@ -672,6 +672,12 @@ export default class AnkifyPlugin extends Plugin {
         const failedNotes = result.filter((id) => id === null);
         if (failedNotes.length > 0) {
           console.warn(`第 ${Math.floor(i / batchSize) + 1} 批中有 ${failedNotes.length} 张卡片添加失败`);
+        }
+
+        // 调用进度回调
+        if (progressCallback) {
+          const current = Math.min(i + batch.length, notes.length);
+          progressCallback(current, notes.length);
         }
 
         // 每批之间休息100ms，避免请求过于频繁

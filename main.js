@@ -823,9 +823,49 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
         return;
       }
       try {
-        const loadingNotice = new import_obsidian2.Notice("\u6B63\u5728\u6DFB\u52A0\u5361\u7247\u5230Anki\uFF0C\u8BF7\u7A0D\u5019...", 0);
-        const results = await this.plugin.addNotesToAnki(selectedCards, this.deckSelect.value, this.noteTypeSelect.value);
-        loadingNotice.hide();
+        const progressContainer2 = document.createElement("div");
+        progressContainer2.style.position = "fixed";
+        progressContainer2.style.top = "50%";
+        progressContainer2.style.left = "50%";
+        progressContainer2.style.transform = "translate(-50%, -50%)";
+        progressContainer2.style.backgroundColor = "var(--background-primary)";
+        progressContainer2.style.border = "1px solid var(--border-color)";
+        progressContainer2.style.borderRadius = "8px";
+        progressContainer2.style.padding = "20px";
+        progressContainer2.style.minWidth = "300px";
+        progressContainer2.style.zIndex = "9999";
+        const progressTitle = document.createElement("div");
+        progressTitle.style.fontSize = "14px";
+        progressTitle.style.fontWeight = "bold";
+        progressTitle.style.marginBottom = "10px";
+        progressTitle.style.textAlign = "center";
+        progressTitle.textContent = "\u6B63\u5728\u6DFB\u52A0\u5361\u7247\u5230Anki...";
+        progressContainer2.appendChild(progressTitle);
+        const progressText = document.createElement("div");
+        progressText.style.fontSize = "12px";
+        progressText.style.marginBottom = "10px";
+        progressText.style.textAlign = "center";
+        progressText.textContent = "0 / 0";
+        progressContainer2.appendChild(progressText);
+        const progressBar = document.createElement("div");
+        progressBar.style.height = "6px";
+        progressBar.style.backgroundColor = "var(--background-secondary)";
+        progressBar.style.borderRadius = "3px";
+        progressBar.style.overflow = "hidden";
+        const progressFill = document.createElement("div");
+        progressFill.style.height = "100%";
+        progressFill.style.backgroundColor = "var(--interactive-accent)";
+        progressFill.style.width = "0%";
+        progressFill.style.transition = "width 0.3s ease";
+        progressBar.appendChild(progressFill);
+        progressContainer2.appendChild(progressBar);
+        document.body.appendChild(progressContainer2);
+        const results = await this.plugin.addNotesToAnki(selectedCards, this.deckSelect.value, this.noteTypeSelect.value, (current, total) => {
+          const percentage = current / total * 100;
+          progressFill.style.width = `${percentage}%`;
+          progressText.textContent = `${current} / ${total}`;
+        });
+        document.body.removeChild(progressContainer2);
         const successCount = results.filter((id) => id !== null).length;
         if (successCount > 0) {
           console.log("\u51C6\u5907\u4FDD\u5B58\u4E0A\u6B21\u4F7F\u7528\u7684\u724C\u7EC4:", this.deckSelect.value);
@@ -839,6 +879,12 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
           new import_obsidian2.Notice("\u6DFB\u52A0\u5361\u7247\u5931\u8D25\uFF0C\u8BF7\u68C0\u67E5Anki\u662F\u5426\u6B63\u5728\u8FD0\u884C");
         }
       } catch (error) {
+        if (progressContainer) {
+          try {
+            document.body.removeChild(progressContainer);
+          } catch (e) {
+          }
+        }
         console.error("\u6DFB\u52A0\u5361\u7247\u5931\u8D25:", error);
         new import_obsidian2.Notice(`\u6DFB\u52A0\u5361\u7247\u5931\u8D25: ${error.message}`);
       }
@@ -1640,7 +1686,7 @@ var AnkifyPlugin = class extends import_obsidian4.Plugin {
     console.log(`\u89E3\u6790\u51FA ${cards.length} \u5F20\u5361\u7247`, cards);
     return cards;
   }
-  async addNotesToAnki(cards, deckName, noteType) {
+  async addNotesToAnki(cards, deckName, noteType, progressCallback) {
     if (!deckName || !noteType) {
       throw new Error("\u724C\u7EC4\u540D\u79F0\u548C\u7B14\u8BB0\u7C7B\u578B\u4E0D\u80FD\u4E3A\u7A7A");
     }
@@ -1807,6 +1853,10 @@ ${card.backExtra}`;
         const failedNotes = result.filter((id) => id === null);
         if (failedNotes.length > 0) {
           console.warn(`\u7B2C ${Math.floor(i / batchSize) + 1} \u6279\u4E2D\u6709 ${failedNotes.length} \u5F20\u5361\u7247\u6DFB\u52A0\u5931\u8D25`);
+        }
+        if (progressCallback) {
+          const current = Math.min(i + batch.length, notes.length);
+          progressCallback(current, notes.length);
         }
         if (i + batchSize < notes.length) {
           await new Promise((resolve) => setTimeout(resolve, 100));

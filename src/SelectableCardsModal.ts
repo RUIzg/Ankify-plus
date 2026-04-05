@@ -1047,17 +1047,68 @@ export class SelectableCardsModal extends Modal {
       }
 
       try {
-        // 显示加载提示
-        const loadingNotice = new Notice("正在添加卡片到Anki，请稍候...", 0);
+        // 创建进度条容器
+        const progressContainer = document.createElement("div");
+        progressContainer.style.position = "fixed";
+        progressContainer.style.top = "50%";
+        progressContainer.style.left = "50%";
+        progressContainer.style.transform = "translate(-50%, -50%)";
+        progressContainer.style.backgroundColor = "var(--background-primary)";
+        progressContainer.style.border = "1px solid var(--border-color)";
+        progressContainer.style.borderRadius = "8px";
+        progressContainer.style.padding = "20px";
+        progressContainer.style.minWidth = "300px";
+        progressContainer.style.zIndex = "9999";
+        
+        // 标题
+        const progressTitle = document.createElement("div");
+        progressTitle.style.fontSize = "14px";
+        progressTitle.style.fontWeight = "bold";
+        progressTitle.style.marginBottom = "10px";
+        progressTitle.style.textAlign = "center";
+        progressTitle.textContent = "正在添加卡片到Anki...";
+        progressContainer.appendChild(progressTitle);
+        
+        // 进度文本
+        const progressText = document.createElement("div");
+        progressText.style.fontSize = "12px";
+        progressText.style.marginBottom = "10px";
+        progressText.style.textAlign = "center";
+        progressText.textContent = "0 / 0";
+        progressContainer.appendChild(progressText);
+        
+        // 进度条
+        const progressBar = document.createElement("div");
+        progressBar.style.height = "6px";
+        progressBar.style.backgroundColor = "var(--background-secondary)";
+        progressBar.style.borderRadius = "3px";
+        progressBar.style.overflow = "hidden";
+        
+        const progressFill = document.createElement("div");
+        progressFill.style.height = "100%";
+        progressFill.style.backgroundColor = "var(--interactive-accent)";
+        progressFill.style.width = "0%";
+        progressFill.style.transition = "width 0.3s ease";
+        progressBar.appendChild(progressFill);
+        progressContainer.appendChild(progressBar);
+        
+        // 添加到文档
+        document.body.appendChild(progressContainer);
 
         const results = await this.plugin.addNotesToAnki(
           selectedCards,
           this.deckSelect.value,
-          this.noteTypeSelect.value
+          this.noteTypeSelect.value,
+          (current, total) => {
+            // 更新进度
+            const percentage = (current / total) * 100;
+            progressFill.style.width = `${percentage}%`;
+            progressText.textContent = `${current} / ${total}`;
+          }
         );
 
-        // 隐藏加载提示
-        loadingNotice.hide();
+        // 移除进度条
+        document.body.removeChild(progressContainer);
 
         // 检查结果
         const successCount = results.filter((id) => id !== null).length;
@@ -1076,6 +1127,14 @@ export class SelectableCardsModal extends Modal {
           new Notice("添加卡片失败，请检查Anki是否正在运行");
         }
       } catch (error) {
+        // 移除进度条
+        if (progressContainer) {
+          try {
+            document.body.removeChild(progressContainer);
+          } catch (e) {
+            // 忽略移除错误
+          }
+        }
         console.error("添加卡片失败:", error);
         new Notice(`添加卡片失败: ${error.message}`);
       }
