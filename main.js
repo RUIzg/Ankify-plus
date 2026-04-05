@@ -852,6 +852,13 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
         progressTitle.style.textAlign = "center";
         progressTitle.textContent = "\u6B63\u5728\u6DFB\u52A0\u5361\u7247\u5230Anki...";
         this.progressContainer.appendChild(progressTitle);
+        const batchInfo = document.createElement("div");
+        batchInfo.style.fontSize = "12px";
+        batchInfo.style.color = "var(--text-muted)";
+        batchInfo.style.marginBottom = "10px";
+        batchInfo.style.textAlign = "center";
+        batchInfo.textContent = `\u6279\u6B21\u5927\u5C0F: ${this.plugin.settings.batchSize}`;
+        this.progressContainer.appendChild(batchInfo);
         const progressText = document.createElement("div");
         progressText.style.fontSize = "12px";
         progressText.style.marginBottom = "10px";

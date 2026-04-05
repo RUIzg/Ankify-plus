@@ -1082,6 +1082,15 @@ export class SelectableCardsModal extends Modal {
         progressTitle.textContent = "正在添加卡片到Anki...";
         this.progressContainer.appendChild(progressTitle);
         
+        // 批次大小信息
+        const batchInfo = document.createElement("div");
+        batchInfo.style.fontSize = "12px";
+        batchInfo.style.color = "var(--text-muted)";
+        batchInfo.style.marginBottom = "10px";
+        batchInfo.style.textAlign = "center";
+        batchInfo.textContent = `批次大小: ${this.plugin.settings.batchSize}`;
+        this.progressContainer.appendChild(batchInfo);
+        
         // 进度文本
         const progressText = document.createElement("div");
         progressText.style.fontSize = "12px";
