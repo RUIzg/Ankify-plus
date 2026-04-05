@@ -20,6 +20,7 @@ export class SelectableCardsModal extends Modal {
   selectedContent: string; // 选中的内容
   apiCallFn: (() => Promise<{ result: string; cards: AnkiCard[]; imageInfo?: string }>) | null; // API调用函数
   insertToDocument: boolean; // 是否直接插入文档
+  progressContainer: HTMLElement | null = null; // 进度提示窗
 
   constructor(
     app: App,
@@ -68,6 +69,18 @@ export class SelectableCardsModal extends Modal {
 
     // 先显示调试信息和加载状态
     this.loadContent();
+  }
+
+  onClose() {
+    // 关闭时清理进度提示窗
+    if (this.progressContainer && document.body.contains(this.progressContainer)) {
+      try {
+        document.body.removeChild(this.progressContainer);
+        this.progressContainer = null;
+      } catch (e) {
+        // 忽略移除错误
+      }
+    }
   }
 
   async loadContent() {
@@ -1048,17 +1061,17 @@ export class SelectableCardsModal extends Modal {
 
       try {
         // 创建进度条容器
-        const progressContainer = document.createElement("div");
-        progressContainer.style.position = "fixed";
-        progressContainer.style.top = "50%";
-        progressContainer.style.left = "50%";
-        progressContainer.style.transform = "translate(-50%, -50%)";
-        progressContainer.style.backgroundColor = "var(--background-primary)";
-        progressContainer.style.border = "1px solid var(--border-color)";
-        progressContainer.style.borderRadius = "8px";
-        progressContainer.style.padding = "20px";
-        progressContainer.style.minWidth = "300px";
-        progressContainer.style.zIndex = "9999";
+        this.progressContainer = document.createElement("div");
+        this.progressContainer.style.position = "fixed";
+        this.progressContainer.style.top = "50%";
+        this.progressContainer.style.left = "50%";
+        this.progressContainer.style.transform = "translate(-50%, -50%)";
+        this.progressContainer.style.backgroundColor = "var(--background-primary)";
+        this.progressContainer.style.border = "1px solid var(--border-color)";
+        this.progressContainer.style.borderRadius = "8px";
+        this.progressContainer.style.padding = "20px";
+        this.progressContainer.style.minWidth = "300px";
+        this.progressContainer.style.zIndex = "9999";
         
         // 标题
         const progressTitle = document.createElement("div");
@@ -1067,7 +1080,7 @@ export class SelectableCardsModal extends Modal {
         progressTitle.style.marginBottom = "10px";
         progressTitle.style.textAlign = "center";
         progressTitle.textContent = "正在添加卡片到Anki...";
-        progressContainer.appendChild(progressTitle);
+        this.progressContainer.appendChild(progressTitle);
         
         // 进度文本
         const progressText = document.createElement("div");
@@ -1075,7 +1088,7 @@ export class SelectableCardsModal extends Modal {
         progressText.style.marginBottom = "10px";
         progressText.style.textAlign = "center";
         progressText.textContent = "0 / 0";
-        progressContainer.appendChild(progressText);
+        this.progressContainer.appendChild(progressText);
         
         // 进度条
         const progressBar = document.createElement("div");
@@ -1090,10 +1103,10 @@ export class SelectableCardsModal extends Modal {
         progressFill.style.width = "0%";
         progressFill.style.transition = "width 0.3s ease";
         progressBar.appendChild(progressFill);
-        progressContainer.appendChild(progressBar);
+        this.progressContainer.appendChild(progressBar);
         
         // 添加到文档
-        document.body.appendChild(progressContainer);
+        document.body.appendChild(this.progressContainer);
 
         const results = await this.plugin.addNotesToAnki(
           selectedCards,
@@ -1108,7 +1121,10 @@ export class SelectableCardsModal extends Modal {
         );
 
         // 移除进度条
-        document.body.removeChild(progressContainer);
+        if (this.progressContainer && document.body.contains(this.progressContainer)) {
+          document.body.removeChild(this.progressContainer);
+          this.progressContainer = null;
+        }
 
         // 检查结果
         const successCount = results.filter((id) => id !== null).length;
@@ -1128,9 +1144,10 @@ export class SelectableCardsModal extends Modal {
         }
       } catch (error) {
         // 移除进度条
-        if (progressContainer) {
+        if (this.progressContainer && document.body.contains(this.progressContainer)) {
           try {
-            document.body.removeChild(progressContainer);
+            document.body.removeChild(this.progressContainer);
+            this.progressContainer = null;
           } catch (e) {
             // 忽略移除错误
           }

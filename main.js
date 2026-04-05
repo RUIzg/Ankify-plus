@@ -69,6 +69,7 @@ var import_obsidian2 = __toModule(require("obsidian"));
 var SelectableCardsModal = class extends import_obsidian.Modal {
   constructor(app, cards, rawResult, plugin, editor, usedPrompt = "", imageInfo = "", selectedContent = "", apiCallFn = null, insertToDocument = false) {
     super(app);
+    this.progressContainer = null;
     this.cards = cards;
     this.rawResult = rawResult;
     this.plugin = plugin;
@@ -98,6 +99,15 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
     this.modalEl.style.maxHeight = "80vh";
     this.modalEl.style.overflow = "auto";
     this.loadContent();
+  }
+  onClose() {
+    if (this.progressContainer && document.body.contains(this.progressContainer)) {
+      try {
+        document.body.removeChild(this.progressContainer);
+        this.progressContainer = null;
+      } catch (e) {
+      }
+    }
   }
   async loadContent() {
     const { contentEl } = this;
@@ -823,30 +833,30 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
         return;
       }
       try {
-        const progressContainer2 = document.createElement("div");
-        progressContainer2.style.position = "fixed";
-        progressContainer2.style.top = "50%";
-        progressContainer2.style.left = "50%";
-        progressContainer2.style.transform = "translate(-50%, -50%)";
-        progressContainer2.style.backgroundColor = "var(--background-primary)";
-        progressContainer2.style.border = "1px solid var(--border-color)";
-        progressContainer2.style.borderRadius = "8px";
-        progressContainer2.style.padding = "20px";
-        progressContainer2.style.minWidth = "300px";
-        progressContainer2.style.zIndex = "9999";
+        this.progressContainer = document.createElement("div");
+        this.progressContainer.style.position = "fixed";
+        this.progressContainer.style.top = "50%";
+        this.progressContainer.style.left = "50%";
+        this.progressContainer.style.transform = "translate(-50%, -50%)";
+        this.progressContainer.style.backgroundColor = "var(--background-primary)";
+        this.progressContainer.style.border = "1px solid var(--border-color)";
+        this.progressContainer.style.borderRadius = "8px";
+        this.progressContainer.style.padding = "20px";
+        this.progressContainer.style.minWidth = "300px";
+        this.progressContainer.style.zIndex = "9999";
         const progressTitle = document.createElement("div");
         progressTitle.style.fontSize = "14px";
         progressTitle.style.fontWeight = "bold";
         progressTitle.style.marginBottom = "10px";
         progressTitle.style.textAlign = "center";
         progressTitle.textContent = "\u6B63\u5728\u6DFB\u52A0\u5361\u7247\u5230Anki...";
-        progressContainer2.appendChild(progressTitle);
+        this.progressContainer.appendChild(progressTitle);
         const progressText = document.createElement("div");
         progressText.style.fontSize = "12px";
         progressText.style.marginBottom = "10px";
         progressText.style.textAlign = "center";
         progressText.textContent = "0 / 0";
-        progressContainer2.appendChild(progressText);
+        this.progressContainer.appendChild(progressText);
         const progressBar = document.createElement("div");
         progressBar.style.height = "6px";
         progressBar.style.backgroundColor = "var(--background-secondary)";
@@ -858,14 +868,17 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
         progressFill.style.width = "0%";
         progressFill.style.transition = "width 0.3s ease";
         progressBar.appendChild(progressFill);
-        progressContainer2.appendChild(progressBar);
-        document.body.appendChild(progressContainer2);
+        this.progressContainer.appendChild(progressBar);
+        document.body.appendChild(this.progressContainer);
         const results = await this.plugin.addNotesToAnki(selectedCards, this.deckSelect.value, this.noteTypeSelect.value, (current, total) => {
           const percentage = current / total * 100;
           progressFill.style.width = `${percentage}%`;
           progressText.textContent = `${current} / ${total}`;
         });
-        document.body.removeChild(progressContainer2);
+        if (this.progressContainer && document.body.contains(this.progressContainer)) {
+          document.body.removeChild(this.progressContainer);
+          this.progressContainer = null;
+        }
         const successCount = results.filter((id) => id !== null).length;
         if (successCount > 0) {
           console.log("\u51C6\u5907\u4FDD\u5B58\u4E0A\u6B21\u4F7F\u7528\u7684\u724C\u7EC4:", this.deckSelect.value);
@@ -879,9 +892,10 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
           new import_obsidian2.Notice("\u6DFB\u52A0\u5361\u7247\u5931\u8D25\uFF0C\u8BF7\u68C0\u67E5Anki\u662F\u5426\u6B63\u5728\u8FD0\u884C");
         }
       } catch (error) {
-        if (progressContainer) {
+        if (this.progressContainer && document.body.contains(this.progressContainer)) {
           try {
-            document.body.removeChild(progressContainer);
+            document.body.removeChild(this.progressContainer);
+            this.progressContainer = null;
           } catch (e) {
           }
         }
