@@ -1425,6 +1425,152 @@ ${errorMessages.join("\n")}`);
   }
 };
 
+// src/utils/AnkiNoteBuilder.ts
+var AnkiNoteBuilder = class {
+  constructor(invokeAnkiConnect) {
+    this.noteTypeFields = {};
+    this.invokeAnkiConnect = invokeAnkiConnect;
+  }
+  async buildNotes(cards, deckName) {
+    return await Promise.all(cards.map(async (card, index) => {
+      if (!card.question) {
+        throw new Error(`\u5361\u7247\u5185\u5BB9\u4E0D\u5B8C\u6574\uFF1A
+\u95EE\u9898\uFF1A${card.question}`);
+      }
+      const cardNoteType = card.noteType;
+      let fields = {};
+      const modelFieldNames = await this.invokeAnkiConnect("modelFieldNames", { modelName: cardNoteType });
+      console.log(`\u7B14\u8BB0\u7C7B\u578B ${cardNoteType} \u7684\u5B57\u6BB5\u540D\u79F0:`, modelFieldNames);
+      this.noteTypeFields[cardNoteType] = modelFieldNames;
+      if (cardNoteType === "Cloze" || cardNoteType === "\u586B\u7A7A\u9898") {
+        let mainFieldName;
+        let extraFieldName = null;
+        if (modelFieldNames.includes("Text")) {
+          mainFieldName = "Text";
+          if (modelFieldNames.includes("Back Extra")) {
+            extraFieldName = "Back Extra";
+          } else if (modelFieldNames.includes("Extra")) {
+            extraFieldName = "Extra";
+          } else if (modelFieldNames.includes("Back")) {
+            extraFieldName = "Back";
+          }
+        } else if (modelFieldNames.includes("\u6B63\u9762")) {
+          mainFieldName = "\u6B63\u9762";
+          if (modelFieldNames.includes("\u80CC\u9762 \u989D\u5916")) {
+            extraFieldName = "\u80CC\u9762 \u989D\u5916";
+          } else if (modelFieldNames.includes("\u989D\u5916")) {
+            extraFieldName = "\u989D\u5916";
+          } else if (modelFieldNames.includes("\u80CC\u9762")) {
+            extraFieldName = "\u80CC\u9762";
+          }
+        } else if (modelFieldNames.includes("Back")) {
+          mainFieldName = "Back";
+          if (modelFieldNames.includes("Back Extra")) {
+            extraFieldName = "Back Extra";
+          } else if (modelFieldNames.includes("Extra")) {
+            extraFieldName = "Extra";
+          }
+        } else if (modelFieldNames.length > 0) {
+          mainFieldName = modelFieldNames[0];
+          for (let i = 1; i < modelFieldNames.length; i++) {
+            const field = modelFieldNames[i];
+            if (field === "Back Extra" || field === "\u80CC\u9762 \u989D\u5916" || field === "Extra" || field === "\u989D\u5916" || field === "Back" || field === "\u80CC\u9762") {
+              extraFieldName = field;
+              break;
+            }
+          }
+          if (!extraFieldName && modelFieldNames.length > 1) {
+            extraFieldName = modelFieldNames[1];
+          }
+        } else {
+          throw new Error(`\u65E0\u6CD5\u786E\u5B9ACloze\u7B14\u8BB0\u7C7B\u578B\u7684\u5B57\u6BB5`);
+        }
+        const clozeContent = card.question ? `${card.question}<br><br>${card.answer}` : card.answer;
+        fields = {
+          [mainFieldName]: clozeContent
+        };
+        if (extraFieldName && card.annotation) {
+          fields[extraFieldName] = card.annotation;
+          console.log(`\u5C06\u6CE8\u91CA\u653E\u5165\u989D\u5916\u5B57\u6BB5 ${extraFieldName}:`, card.annotation);
+        } else if (card.annotation) {
+          fields[mainFieldName] += `
+<hr>
+<span style="color: rgb(143, 53, 8);">${card.annotation}</span>`;
+          console.log(`\u5C06\u6CE8\u91CA\u8FFD\u52A0\u5230\u4E3B\u8981\u5B57\u6BB5 ${mainFieldName}:`, card.annotation);
+        }
+        console.log(`\u5904\u7406 Back Extra: card.backExtra = "${card.backExtra}", modelFieldNames =`, modelFieldNames);
+        if (card.backExtra) {
+          if (modelFieldNames.includes("Back Extra")) {
+            fields["Back Extra"] = card.backExtra;
+            console.log(`\u5C06 Back Extra \u5185\u5BB9\u653E\u5165 Back Extra \u5B57\u6BB5:`, card.backExtra);
+          } else if (extraFieldName && !card.annotation) {
+            fields[extraFieldName] = card.backExtra;
+            console.log(`\u5C06 Back Extra \u5185\u5BB9\u653E\u5165\u989D\u5916\u5B57\u6BB5 ${extraFieldName}:`, card.backExtra);
+          } else {
+            fields[mainFieldName] += `
+<hr>
+${card.backExtra}`;
+            console.log(`\u5C06 Back Extra \u5185\u5BB9\u8FFD\u52A0\u5230\u4E3B\u8981\u5B57\u6BB5 ${mainFieldName}`);
+          }
+        } else if (modelFieldNames.includes("Back Extra")) {
+          fields["Back Extra"] = "";
+          console.log(`\u6DFB\u52A0\u7A7A\u7684 Back Extra \u5B57\u6BB5`);
+        }
+        console.log(`\u6700\u7EC8\u5B57\u6BB5:`, fields);
+      } else if (modelFieldNames.includes("Front") && modelFieldNames.includes("Back")) {
+        fields = {
+          Front: card.question,
+          Back: card.answer + (card.annotation ? `
+<hr>
+<span style="color: rgb(143, 53, 8);">${card.annotation}</span>` : "")
+        };
+      } else if (modelFieldNames.includes("\u6B63\u9762") && modelFieldNames.includes("\u80CC\u9762")) {
+        fields = {
+          \u6B63\u9762: card.question,
+          \u80CC\u9762: card.answer + (card.annotation ? `
+<hr>
+<span style="color: rgb(143, 53, 8);">${card.annotation}</span>` : "")
+        };
+      } else if (modelFieldNames.includes("Text") && modelFieldNames.includes("Extra")) {
+        fields = {
+          Text: card.question,
+          Extra: card.answer + (card.annotation ? `
+<hr>
+<span style="color: rgb(143, 53, 8);">${card.annotation}</span>` : "")
+        };
+      } else {
+        if (modelFieldNames.length >= 2) {
+          fields = {
+            [modelFieldNames[0]]: card.question,
+            [modelFieldNames[1]]: card.answer + (card.annotation ? `
+<hr>
+<span style="color: rgb(143, 53, 8);">${card.annotation}</span>` : "")
+          };
+        } else {
+          throw new Error(`\u65E0\u6CD5\u786E\u5B9A\u7B14\u8BB0\u7C7B\u578B ${cardNoteType} \u7684\u5B57\u6BB5\u6620\u5C04`);
+        }
+      }
+      for (const [key, value] of Object.entries(fields)) {
+        if (key !== "Back Extra" && (!value || value.trim() === "")) {
+          throw new Error(`\u5B57\u6BB5 "${key}" \u4E0D\u80FD\u4E3A\u7A7A`);
+        }
+      }
+      const userTags = (card.tags || []).filter((tag) => tag !== "ankify");
+      const finalTags = [...userTags];
+      const note = {
+        deckName,
+        modelName: cardNoteType,
+        fields,
+        tags: finalTags,
+        options: {
+          allowDuplicate: false
+        }
+      };
+      return note;
+    }));
+  }
+};
+
 // main.ts
 var AnkifyPlugin = class extends import_obsidian4.Plugin {
   constructor() {
@@ -1732,143 +1878,8 @@ var AnkifyPlugin = class extends import_obsidian4.Plugin {
       cardCount: cards.length,
       firstCard: cards[0]
     });
-    const notes = await Promise.all(cards.map(async (card, index) => {
-      if (!card.question) {
-        throw new Error(`\u5361\u7247\u5185\u5BB9\u4E0D\u5B8C\u6574\uFF1A
-\u95EE\u9898\uFF1A${card.question}`);
-      }
-      const cardNoteType = card.noteType;
-      let fields = {};
-      const modelFieldNames = await this.invokeAnkiConnect("modelFieldNames", { modelName: cardNoteType });
-      console.log(`\u7B14\u8BB0\u7C7B\u578B ${cardNoteType} \u7684\u5B57\u6BB5\u540D\u79F0:`, modelFieldNames);
-      this.noteTypeFields[cardNoteType] = modelFieldNames;
-      if (cardNoteType === "Cloze" || cardNoteType === "\u586B\u7A7A\u9898") {
-        let mainFieldName;
-        let extraFieldName = null;
-        if (modelFieldNames.includes("Text")) {
-          mainFieldName = "Text";
-          if (modelFieldNames.includes("Back Extra")) {
-            extraFieldName = "Back Extra";
-          } else if (modelFieldNames.includes("Extra")) {
-            extraFieldName = "Extra";
-          } else if (modelFieldNames.includes("Back")) {
-            extraFieldName = "Back";
-          }
-        } else if (modelFieldNames.includes("\u6B63\u9762")) {
-          mainFieldName = "\u6B63\u9762";
-          if (modelFieldNames.includes("\u80CC\u9762 \u989D\u5916")) {
-            extraFieldName = "\u80CC\u9762 \u989D\u5916";
-          } else if (modelFieldNames.includes("\u989D\u5916")) {
-            extraFieldName = "\u989D\u5916";
-          } else if (modelFieldNames.includes("\u80CC\u9762")) {
-            extraFieldName = "\u80CC\u9762";
-          }
-        } else if (modelFieldNames.includes("Back")) {
-          mainFieldName = "Back";
-          if (modelFieldNames.includes("Back Extra")) {
-            extraFieldName = "Back Extra";
-          } else if (modelFieldNames.includes("Extra")) {
-            extraFieldName = "Extra";
-          }
-        } else if (modelFieldNames.length > 0) {
-          mainFieldName = modelFieldNames[0];
-          for (let i = 1; i < modelFieldNames.length; i++) {
-            const field = modelFieldNames[i];
-            if (field === "Back Extra" || field === "\u80CC\u9762 \u989D\u5916" || field === "Extra" || field === "\u989D\u5916" || field === "Back" || field === "\u80CC\u9762") {
-              extraFieldName = field;
-              break;
-            }
-          }
-          if (!extraFieldName && modelFieldNames.length > 1) {
-            extraFieldName = modelFieldNames[1];
-          }
-        } else {
-          throw new Error(`\u65E0\u6CD5\u786E\u5B9ACloze\u7B14\u8BB0\u7C7B\u578B\u7684\u5B57\u6BB5`);
-        }
-        const clozeContent = card.question ? `${card.question}<br><br>${card.answer}` : card.answer;
-        fields = {
-          [mainFieldName]: clozeContent
-        };
-        if (extraFieldName && card.annotation) {
-          fields[extraFieldName] = card.annotation;
-          console.log(`\u5C06\u6CE8\u91CA\u653E\u5165\u989D\u5916\u5B57\u6BB5 ${extraFieldName}:`, card.annotation);
-        } else if (card.annotation) {
-          fields[mainFieldName] += `
-<hr>
-<span style="color: rgb(143, 53, 8);">${card.annotation}</span>`;
-          console.log(`\u5C06\u6CE8\u91CA\u8FFD\u52A0\u5230\u4E3B\u8981\u5B57\u6BB5 ${mainFieldName}:`, card.annotation);
-        }
-        console.log(`\u5904\u7406 Back Extra: card.backExtra = "${card.backExtra}", modelFieldNames =`, modelFieldNames);
-        if (card.backExtra) {
-          if (modelFieldNames.includes("Back Extra")) {
-            fields["Back Extra"] = card.backExtra;
-            console.log(`\u5C06 Back Extra \u5185\u5BB9\u653E\u5165 Back Extra \u5B57\u6BB5:`, card.backExtra);
-          } else if (extraFieldName && !card.annotation) {
-            fields[extraFieldName] = card.backExtra;
-            console.log(`\u5C06 Back Extra \u5185\u5BB9\u653E\u5165\u989D\u5916\u5B57\u6BB5 ${extraFieldName}:`, card.backExtra);
-          } else {
-            fields[mainFieldName] += `
-<hr>
-${card.backExtra}`;
-            console.log(`\u5C06 Back Extra \u5185\u5BB9\u8FFD\u52A0\u5230\u4E3B\u8981\u5B57\u6BB5 ${mainFieldName}`);
-          }
-        } else if (modelFieldNames.includes("Back Extra")) {
-          fields["Back Extra"] = "";
-          console.log(`\u6DFB\u52A0\u7A7A\u7684 Back Extra \u5B57\u6BB5`);
-        }
-        console.log(`\u6700\u7EC8\u5B57\u6BB5:`, fields);
-      } else if (modelFieldNames.includes("Front") && modelFieldNames.includes("Back")) {
-        fields = {
-          Front: card.question,
-          Back: card.answer + (card.annotation ? `
-<hr>
-<span style="color: rgb(143, 53, 8);">${card.annotation}</span>` : "")
-        };
-      } else if (modelFieldNames.includes("\u6B63\u9762") && modelFieldNames.includes("\u80CC\u9762")) {
-        fields = {
-          \u6B63\u9762: card.question,
-          \u80CC\u9762: card.answer + (card.annotation ? `
-<hr>
-<span style="color: rgb(143, 53, 8);">${card.annotation}</span>` : "")
-        };
-      } else if (modelFieldNames.includes("Text") && modelFieldNames.includes("Extra")) {
-        fields = {
-          Text: card.question,
-          Extra: card.answer + (card.annotation ? `
-<hr>
-<span style="color: rgb(143, 53, 8);">${card.annotation}</span>` : "")
-        };
-      } else {
-        if (modelFieldNames.length >= 2) {
-          fields = {
-            [modelFieldNames[0]]: card.question,
-            [modelFieldNames[1]]: card.answer + (card.annotation ? `
-<hr>
-<span style="color: rgb(143, 53, 8);">${card.annotation}</span>` : "")
-          };
-        } else {
-          throw new Error(`\u65E0\u6CD5\u786E\u5B9A\u7B14\u8BB0\u7C7B\u578B ${cardNoteType} \u7684\u5B57\u6BB5\u6620\u5C04`);
-        }
-      }
-      for (const [key, value] of Object.entries(fields)) {
-        if (key !== "Back Extra" && (!value || value.trim() === "")) {
-          throw new Error(`\u5B57\u6BB5 "${key}" \u4E0D\u80FD\u4E3A\u7A7A`);
-        }
-      }
-      const userTags = (card.tags || []).filter((tag) => tag !== "ankify");
-      const finalTags = [...userTags];
-      const note = {
-        deckName,
-        modelName: cardNoteType,
-        fields,
-        tags: finalTags,
-        options: {
-          allowDuplicate: false
-        }
-      };
-      console.log(`\u7B2C ${index + 1} \u5F20\u5361\u7247\u7684\u6807\u7B7E:`, finalTags);
-      return note;
-    }));
+    const noteBuilder = new AnkiNoteBuilder(this.invokeAnkiConnect.bind(this));
+    const notes = await noteBuilder.buildNotes(cards, deckName);
     try {
       console.log("\u6B63\u5728\u6DFB\u52A0\u7B14\u8BB0\u5230Anki:", {
         deckName,
