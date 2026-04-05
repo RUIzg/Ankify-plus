@@ -564,6 +564,18 @@ export class AnkifySettingTab extends PluginSettingTab {
           })
       );
 
+    new Setting(containerEl)
+      .setName("调试模式")
+      .setDesc("开启后会在进度提示窗中显示更多详细信息，如批次大小")
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.debugMode)
+          .onChange(async (value) => {
+            this.plugin.settings.debugMode = value;
+            await this.plugin.saveSettings();
+          })
+      );
+
     // ========== 返回结果解析 ==========
     containerEl.createEl("h3", { text: "返回结果解析" });
 

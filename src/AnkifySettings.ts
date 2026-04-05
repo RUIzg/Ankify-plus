@@ -32,4 +32,6 @@ export interface AnkifySettings {
   lastUsedDeck: string; // 上次使用的牌组
   // 批量提交设置
   batchSize: number; // 批量提交的批次大小
+  // 调试设置
+  debugMode: boolean; // 是否开启调试模式
 }

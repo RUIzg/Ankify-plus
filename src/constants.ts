@@ -35,5 +35,7 @@ export const DEFAULT_SETTINGS: AnkifySettings = {
   lastUsedDeck: "Default", // 上次使用的牌组
   // 批量提交设置
   batchSize: 10, // 批量提交的批次大小，默认10张
+  // 调试设置
+  debugMode: false, // 默认关闭调试模式
 };
 

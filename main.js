@@ -61,7 +61,8 @@ var DEFAULT_SETTINGS = {
   answerMarker: "%answer%",
   tagsMarker: "%tags%",
   lastUsedDeck: "Default",
-  batchSize: 10
+  batchSize: 10,
+  debugMode: false
 };
 
 // src/SelectableCardsModal.ts
@@ -852,13 +853,15 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
         progressTitle.style.textAlign = "center";
         progressTitle.textContent = "\u6B63\u5728\u6DFB\u52A0\u5361\u7247\u5230Anki...";
         this.progressContainer.appendChild(progressTitle);
-        const batchInfo = document.createElement("div");
-        batchInfo.style.fontSize = "12px";
-        batchInfo.style.color = "var(--text-muted)";
-        batchInfo.style.marginBottom = "10px";
-        batchInfo.style.textAlign = "center";
-        batchInfo.textContent = `\u6279\u6B21\u5927\u5C0F: ${this.plugin.settings.batchSize}`;
-        this.progressContainer.appendChild(batchInfo);
+        if (this.plugin.settings.debugMode) {
+          const batchInfo = document.createElement("div");
+          batchInfo.style.fontSize = "12px";
+          batchInfo.style.color = "var(--text-muted)";
+          batchInfo.style.marginBottom = "10px";
+          batchInfo.style.textAlign = "center";
+          batchInfo.textContent = `\u6279\u6B21\u5927\u5C0F: ${this.plugin.settings.batchSize}`;
+          this.progressContainer.appendChild(batchInfo);
+        }
         const progressText = document.createElement("div");
         progressText.style.fontSize = "12px";
         progressText.style.marginBottom = "10px";
@@ -1332,6 +1335,10 @@ ${error.message}`;
         this.plugin.settings.batchSize = size;
         await this.plugin.saveSettings();
       }
+    }));
+    new import_obsidian3.Setting(containerEl).setName("\u8C03\u8BD5\u6A21\u5F0F").setDesc("\u5F00\u542F\u540E\u4F1A\u5728\u8FDB\u5EA6\u63D0\u793A\u7A97\u4E2D\u663E\u793A\u66F4\u591A\u8BE6\u7EC6\u4FE1\u606F\uFF0C\u5982\u6279\u6B21\u5927\u5C0F").addToggle((toggle) => toggle.setValue(this.plugin.settings.debugMode).onChange(async (value) => {
+      this.plugin.settings.debugMode = value;
+      await this.plugin.saveSettings();
     }));
     containerEl.createEl("h3", { text: "\u8FD4\u56DE\u7ED3\u679C\u89E3\u6790" });
     new import_obsidian3.Setting(containerEl).setName("\u95EE\u9898\u6807\u8BB0\u7B26").setDesc("\u7528\u4E8E\u8BC6\u522B\u8FD4\u56DE\u7ED3\u679C\u4E2D\u7684\u95EE\u9898\u5B57\u6BB5\uFF0C\u4F8B\u5982\uFF1A%question%").addText((text) => text.setPlaceholder("%question%").setValue(this.plugin.settings.questionMarker).onChange(async (value) => {
