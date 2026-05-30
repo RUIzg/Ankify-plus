@@ -7,9 +7,20 @@ export class ImageUtils {
   // 解析Markdown图片路径
   parseImagePath(text: string): string | null {
     // 匹配 Markdown 图片格式: ![alt](path)
-    const imageRegex = /!\[([^\]]*)\]\(([^)]+)\)/;
-    const match = text.match(imageRegex);
-    return match ? match[2] : null;
+    const markdownImageRegex = /!\[([^\]]*)\]\(([^)]+)\)/;
+    const match = text.match(markdownImageRegex);
+    if (match) {
+      return match[2];
+    }
+    
+    // 匹配 Obsidian wiki 图片格式: ![[path]]
+    const wikiImageRegex = /!\[\[([^\]]+)\]\]/;
+    const wikiMatch = text.match(wikiImageRegex);
+    if (wikiMatch) {
+      return wikiMatch[1];
+    }
+    
+    return null;
   }
 
   // 读取图片并转换为base64
