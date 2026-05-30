@@ -505,9 +505,31 @@ export default class AnkifyPlugin extends Plugin {
   // 解析Markdown图片路径
   parseImagePath(text: string): string | null {
     // 匹配 Markdown 图片格式: ![alt](path)
-    const imageRegex = /!\[([^\]]*)\]\(([^)]+)\)/;
-    const match = text.match(imageRegex);
-    return match ? match[2] : null;
+    const markdownImageRegex = /!\[([^\]]*)\]\(([^)]+)\)/;
+    const match = text.match(markdownImageRegex);
+    if (match) {
+      console.log("解析到 Markdown 图片格式:", match[2]);
+      return match[2];
+    }
+    
+    // 匹配 Obsidian wiki 图片格式: ![[path]]
+    const wikiImageRegex = /!\[\[([^\]]+)\]\]/;
+    const wikiMatch = text.match(wikiImageRegex);
+    if (wikiMatch) {
+      console.log("解析到 Wiki 图片格式:", wikiMatch[1]);
+      return wikiMatch[1];
+    }
+    
+    // 检查是否直接是图片路径（没有 ! 标记）
+    // 例如: images/Pasted image 20260530181513.png
+    const trimmedText = text.trim();
+    const imageExtensions = /\.(png|jpg|jpeg|gif|webp|bmp|svg)$/i;
+    if (imageExtensions.test(trimmedText)) {
+      console.log("解析到直接图片路径格式:", trimmedText);
+      return trimmedText;
+    }
+    
+    return null;
   }
 
   // 读取图片并转换为base64
@@ -666,6 +688,7 @@ export default class AnkifyPlugin extends Plugin {
     // 修改为处理选中的文本，而不是整篇文章
     const selectedText = editor.getSelection();
 
+    console.log("selectedText:", selectedText);
     if (!selectedText) {
       new Notice("请先选择要处理的文本内容");
       return;
@@ -673,8 +696,22 @@ export default class AnkifyPlugin extends Plugin {
 
     // 检查是否为图片路径
     const imagePath = this.parseImagePath(selectedText);
+    
+    // 检查是否看起来像图片链接但解析失败
+    const looksLikeImageLink = selectedText.includes("![[") || selectedText.includes("![](");
+    
+    if (looksLikeImageLink && (!imagePath || imagePath.trim() === "")) {
+      console.error("图片路径解析失败：", {
+        selectedText: selectedText,
+        imagePath: imagePath
+      });
+      new Notice("图片路径解析失败，请检查图片链接格式是否正确\n选中的内容：" + selectedText);
+      return;
+    }
+    
     if (imagePath) {
       // 处理图片识别，传递用户实际选中的文本
+      console.log("匹配到图片路径(before processImage):", imagePath);
       await this.processImage(imagePath, selectedText, editor, view);
       return;
     }

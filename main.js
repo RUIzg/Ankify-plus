@@ -1916,9 +1916,25 @@ var AnkifyPlugin = class extends import_obsidian4.Plugin {
     }
   }
   parseImagePath(text) {
-    const imageRegex = /!\[([^\]]*)\]\(([^)]+)\)/;
-    const match = text.match(imageRegex);
-    return match ? match[2] : null;
+    const markdownImageRegex = /!\[([^\]]*)\]\(([^)]+)\)/;
+    const match = text.match(markdownImageRegex);
+    if (match) {
+      console.log("\u89E3\u6790\u5230 Markdown \u56FE\u7247\u683C\u5F0F:", match[2]);
+      return match[2];
+    }
+    const wikiImageRegex = /!\[\[([^\]]+)\]\]/;
+    const wikiMatch = text.match(wikiImageRegex);
+    if (wikiMatch) {
+      console.log("\u89E3\u6790\u5230 Wiki \u56FE\u7247\u683C\u5F0F:", wikiMatch[1]);
+      return wikiMatch[1];
+    }
+    const trimmedText = text.trim();
+    const imageExtensions = /\.(png|jpg|jpeg|gif|webp|bmp|svg)$/i;
+    if (imageExtensions.test(trimmedText)) {
+      console.log("\u89E3\u6790\u5230\u76F4\u63A5\u56FE\u7247\u8DEF\u5F84\u683C\u5F0F:", trimmedText);
+      return trimmedText;
+    }
+    return null;
   }
   async readImageAsBase64(imagePath, currentFilePath) {
     var _a, _b, _c, _d;
@@ -2037,12 +2053,23 @@ var AnkifyPlugin = class extends import_obsidian4.Plugin {
   }
   async processContent(editor, view) {
     const selectedText = editor.getSelection();
+    console.log("selectedText:", selectedText);
     if (!selectedText) {
       new import_obsidian4.Notice("\u8BF7\u5148\u9009\u62E9\u8981\u5904\u7406\u7684\u6587\u672C\u5185\u5BB9");
       return;
     }
     const imagePath = this.parseImagePath(selectedText);
+    const looksLikeImageLink = selectedText.includes("![[") || selectedText.includes("![](");
+    if (looksLikeImageLink && (!imagePath || imagePath.trim() === "")) {
+      console.error("\u56FE\u7247\u8DEF\u5F84\u89E3\u6790\u5931\u8D25\uFF1A", {
+        selectedText,
+        imagePath
+      });
+      new import_obsidian4.Notice("\u56FE\u7247\u8DEF\u5F84\u89E3\u6790\u5931\u8D25\uFF0C\u8BF7\u68C0\u67E5\u56FE\u7247\u94FE\u63A5\u683C\u5F0F\u662F\u5426\u6B63\u786E\n\u9009\u4E2D\u7684\u5185\u5BB9\uFF1A" + selectedText);
+      return;
+    }
     if (imagePath) {
+      console.log("\u5339\u914D\u5230\u56FE\u7247\u8DEF\u5F84(before processImage):", imagePath);
       await this.processImage(imagePath, selectedText, editor, view);
       return;
     }
