@@ -72,6 +72,7 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
   constructor(app, cards, rawResult, plugin, editor, usedPrompt = "", imageInfo = "", selectedContent = "", apiCallFn = null, insertToDocument = false) {
     super(app);
     this.progressContainer = null;
+    this.allowClose = false;
     this.cards = cards;
     this.rawResult = rawResult;
     this.plugin = plugin;
@@ -89,10 +90,16 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
     this.apiCallFn = apiCallFn;
     this.insertToDocument = insertToDocument;
   }
+  close() {
+    if (this.allowClose) {
+      super.close();
+    }
+  }
+  forceClose() {
+    this.allowClose = true;
+    super.close();
+  }
   onOpen() {
-    const { contentEl } = this;
-    contentEl.empty();
-    this.modalEl.style.position = "fixed";
     this.modalEl.style.top = "50%";
     this.modalEl.style.left = "50%";
     this.modalEl.style.transform = "translate(-50%, -50%)";
@@ -110,6 +117,8 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
       } catch (e) {
       }
     }
+    const { contentEl } = this;
+    contentEl.empty();
   }
   async loadContent() {
     const { contentEl } = this;
@@ -138,7 +147,7 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
         loadingContainer.remove();
         if (this.insertToDocument) {
           this.appendResultToDocument(this.editor, this.rawResult);
-          this.close();
+          this.forceClose();
           return;
         }
         await this.renderCards(contentEl);
@@ -199,7 +208,7 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
         const newContent = docContent + "\n\n## Anki\u5361\u7247\n\n" + textAreaEl.value;
         this.editor.setValue(newContent);
         new import_obsidian2.Notice("\u5185\u5BB9\u5DF2\u6DFB\u52A0\u5230\u6587\u6863\u672B\u5C3E");
-        this.close();
+        this.forceClose();
       });
       this.addRequestInfo(contentEl);
       return;
@@ -898,7 +907,7 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
           await this.plugin.saveSettings();
           console.log("\u4FDD\u5B58\u6210\u529F");
           new import_obsidian2.Notice(`\u6210\u529F\u6DFB\u52A0 ${successCount} \u5F20\u5361\u7247\u5230Anki`);
-          this.close();
+          this.forceClose();
         } else {
           new import_obsidian2.Notice("\u6DFB\u52A0\u5361\u7247\u5931\u8D25\uFF0C\u8BF7\u68C0\u67E5Anki\u662F\u5426\u6B63\u5728\u8FD0\u884C");
         }
@@ -915,12 +924,8 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
       }
     });
     cancelButton.addEventListener("click", () => {
-      this.close();
+      this.forceClose();
     });
-  }
-  onClose() {
-    const { contentEl } = this;
-    contentEl.empty();
   }
   updateCardSelectionDisplay() {
     const checkboxes = this.contentEl.querySelectorAll(".ankify-card-checkbox input[type=checkbox]");

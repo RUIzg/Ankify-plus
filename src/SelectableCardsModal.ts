@@ -21,6 +21,7 @@ export class SelectableCardsModal extends Modal {
   apiCallFn: (() => Promise<{ result: string; cards: AnkiCard[]; imageInfo?: string }>) | null; // API调用函数
   insertToDocument: boolean; // 是否直接插入文档
   progressContainer: HTMLElement | null = null; // 进度提示窗
+  private allowClose = false;
 
   constructor(
     app: App,
@@ -53,12 +54,20 @@ export class SelectableCardsModal extends Modal {
     this.insertToDocument = insertToDocument;
   }
 
-  onOpen() {
-    const { contentEl } = this;
-    contentEl.empty();
+  // 拦截所有 close() 调用（包括点击背景、ESC），只有 forceClose() 才真正关闭
+  close() {
+    if (this.allowClose) {
+      super.close();
+    }
+  }
 
-    // 设置模态框为常驻
-    this.modalEl.style.position = "fixed";
+  forceClose() {
+    this.allowClose = true;
+    super.close();
+  }
+
+  onOpen() {
+    // 屏蔽点击背景关闭
     this.modalEl.style.top = "50%";
     this.modalEl.style.left = "50%";
     this.modalEl.style.transform = "translate(-50%, -50%)";
@@ -81,6 +90,8 @@ export class SelectableCardsModal extends Modal {
         // 忽略移除错误
       }
     }
+    const { contentEl } = this;
+    contentEl.empty();
   }
 
   async loadContent() {
@@ -126,7 +137,7 @@ export class SelectableCardsModal extends Modal {
         // 如果设置了直接插入文档
         if (this.insertToDocument) {
           this.appendResultToDocument(this.editor, this.rawResult);
-          this.close();
+          this.forceClose();
           return;
         }
 
@@ -212,7 +223,7 @@ export class SelectableCardsModal extends Modal {
           docContent + "\n\n## Anki卡片\n\n" + textAreaEl.value;
         this.editor.setValue(newContent);
         new Notice("内容已添加到文档末尾");
-        this.close();
+        this.forceClose();
       });
 
       // 添加请求信息到底部
@@ -1149,7 +1160,7 @@ export class SelectableCardsModal extends Modal {
           console.log("保存成功");
           
           new Notice(`成功添加 ${successCount} 张卡片到Anki`);
-          this.close();
+          this.forceClose();
         } else {
           new Notice("添加卡片失败，请检查Anki是否正在运行");
         }
@@ -1169,13 +1180,8 @@ export class SelectableCardsModal extends Modal {
     });
 
     cancelButton.addEventListener("click", () => {
-      this.close();
+      this.forceClose();
     });
-  }
-
-  onClose() {
-    const { contentEl } = this;
-    contentEl.empty();
   }
 
   // 更新卡片选择显示
