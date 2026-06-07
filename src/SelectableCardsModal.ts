@@ -68,6 +68,7 @@ export class SelectableCardsModal extends Modal {
 
   onOpen() {
     // 屏蔽点击背景关闭
+    this.modalEl.style.position = "fixed";
     this.modalEl.style.top = "50%";
     this.modalEl.style.left = "50%";
     this.modalEl.style.transform = "translate(-50%, -50%)";

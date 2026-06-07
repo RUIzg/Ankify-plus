@@ -100,6 +100,7 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
     super.close();
   }
   onOpen() {
+    this.modalEl.style.position = "fixed";
     this.modalEl.style.top = "50%";
     this.modalEl.style.left = "50%";
     this.modalEl.style.transform = "translate(-50%, -50%)";
