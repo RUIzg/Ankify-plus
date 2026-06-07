@@ -108,6 +108,10 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
     this.modalEl.style.maxWidth = "800px";
     this.modalEl.style.maxHeight = "80vh";
     this.modalEl.style.overflow = "auto";
+    const closeBtn = this.modalEl.querySelector(".modal-close-button");
+    if (closeBtn) {
+      closeBtn.addEventListener("click", () => this.forceClose());
+    }
     this.loadContent();
   }
   onClose() {

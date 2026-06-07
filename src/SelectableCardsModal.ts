@@ -77,6 +77,12 @@ export class SelectableCardsModal extends Modal {
     this.modalEl.style.maxHeight = "80vh";
     this.modalEl.style.overflow = "auto";
 
+    // 让右上角 X 按钮能正常关闭弹窗
+    const closeBtn = this.modalEl.querySelector(".modal-close-button") as HTMLElement;
+    if (closeBtn) {
+      closeBtn.addEventListener("click", () => this.forceClose());
+    }
+
     // 先显示调试信息和加载状态
     this.loadContent();
   }
