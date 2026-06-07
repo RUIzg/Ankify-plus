@@ -1432,6 +1432,14 @@ var AnkiNoteBuilder = class {
     this.invokeAnkiConnect = invokeAnkiConnect;
   }
   async buildNotes(cards, deckName) {
+    const uniqueNoteTypes = [...new Set(cards.map((card) => card.noteType))];
+    for (const nt of uniqueNoteTypes) {
+      if (!this.noteTypeFields[nt]) {
+        const fields = await this.invokeAnkiConnect("modelFieldNames", { modelName: nt });
+        console.log(`\u7B14\u8BB0\u7C7B\u578B ${nt} \u7684\u5B57\u6BB5\u540D\u79F0:`, fields);
+        this.noteTypeFields[nt] = fields;
+      }
+    }
     return await Promise.all(cards.map(async (card, index) => {
       if (!card.question) {
         throw new Error(`\u5361\u7247\u5185\u5BB9\u4E0D\u5B8C\u6574\uFF1A
@@ -1439,9 +1447,8 @@ var AnkiNoteBuilder = class {
       }
       const cardNoteType = card.noteType;
       let fields = {};
-      const modelFieldNames = await this.invokeAnkiConnect("modelFieldNames", { modelName: cardNoteType });
+      const modelFieldNames = this.noteTypeFields[cardNoteType];
       console.log(`\u7B14\u8BB0\u7C7B\u578B ${cardNoteType} \u7684\u5B57\u6BB5\u540D\u79F0:`, modelFieldNames);
-      this.noteTypeFields[cardNoteType] = modelFieldNames;
       if (cardNoteType === "Cloze" || cardNoteType === "\u586B\u7A7A\u9898") {
         let mainFieldName;
         let extraFieldName = null;

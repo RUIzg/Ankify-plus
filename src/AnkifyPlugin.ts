@@ -311,6 +311,16 @@ export class AnkifyPlugin extends Plugin {
       firstCard: cards[0],
     });
 
+    // 预先顺序获取所有唯一笔记类型的字段名称，避免并发请求导致连接被拒绝
+    const uniqueNoteTypes = [...new Set(cards.map(card => card.noteType))];
+    for (const nt of uniqueNoteTypes) {
+      if (!this.noteTypeFields[nt]) {
+        const fields = await this.invokeAnkiConnect("modelFieldNames", { modelName: nt });
+        console.log(`笔记类型 ${nt} 的字段名称:`, fields);
+        this.noteTypeFields[nt] = fields;
+      }
+    }
+
     const notes = await Promise.all(
       cards.map(async (card, index) => {
         // 验证卡片内容
@@ -326,15 +336,9 @@ export class AnkifyPlugin extends Plugin {
         // 根据笔记类型构建字段映射
         let fields: Record<string, string> = {};
 
-        // 获取笔记类型的字段名称
-        const modelFieldNames = await this.invokeAnkiConnect(
-          "modelFieldNames",
-          { modelName: cardNoteType }
-        );
+        // 从缓存中读取字段名称（已在上方预取）
+        const modelFieldNames = this.noteTypeFields[cardNoteType];
         console.log(`笔记类型 ${cardNoteType} 的字段名称:`, modelFieldNames);
-        
-        // 存储笔记类型的字段信息
-        this.noteTypeFields[cardNoteType] = modelFieldNames;
 
         // 根据字段名称进行映射
         if (cardNoteType === "Cloze" || cardNoteType === "填空题") {
