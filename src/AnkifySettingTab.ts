@@ -60,16 +60,16 @@ export class AnkifySettingTab extends PluginSettingTab {
         .setDesc("选择或输入DeepSeek API的URL地址");
 
       const deepseekUrlContainer = deepseekUrlSetting.settingEl.createDiv();
-      deepseekUrlContainer.style.display = "flex";
-      deepseekUrlContainer.style.flexDirection = "column";
-      deepseekUrlContainer.style.gap = "10px";
-      deepseekUrlContainer.style.marginTop = "10px";
+      deepseekUrlContainer.setCssStyles({ display: "flex" });
+      deepseekUrlContainer.setCssStyles({ flexDirection: "column" });
+      deepseekUrlContainer.setCssStyles({ gap: "10px" });
+      deepseekUrlContainer.setCssStyles({ marginTop: "10px" });
 
       // 下拉选择常用URL
       const urlSelect = deepseekUrlContainer.createEl("select");
-      urlSelect.style.width = "100%";
-      urlSelect.style.padding = "5px";
-      urlSelect.style.marginBottom = "5px";
+      urlSelect.setCssStyles({ width: "100%" });
+      urlSelect.setCssStyles({ padding: "5px" });
+      urlSelect.setCssStyles({ marginBottom: "5px" });
 
       const urlOptions = [
         { value: "https://api.deepseek.com/v1/chat/completions", label: "DeepSeek 官方 API (v1)", url: "https://api.deepseek.com/v1/chat/completions" },
@@ -90,10 +90,10 @@ export class AnkifySettingTab extends PluginSettingTab {
       const customUrlInput = deepseekUrlContainer.createEl("input");
       customUrlInput.type = "text";
       customUrlInput.placeholder = "输入自定义API URL";
-      customUrlInput.style.width = "100%";
-      customUrlInput.style.padding = "5px";
-      customUrlInput.style.display = this.plugin.settings.deepseekApiUrl === "custom" || 
-        !urlOptions.some(opt => opt.value === this.plugin.settings.deepseekApiUrl) ? "block" : "none";
+      customUrlInput.setCssStyles({ width: "100%" });
+      customUrlInput.setCssStyles({ padding: "5px" });
+      customUrlInput.setCssStyles({ display: this.plugin.settings.deepseekApiUrl === "custom" ||
+        !urlOptions.some(opt => opt.value === this.plugin.settings.deepseekApiUrl) ? "block" : "none" });
       
       if (!urlOptions.some(opt => opt.value === this.plugin.settings.deepseekApiUrl)) {
         customUrlInput.value = this.plugin.settings.deepseekApiUrl;
@@ -103,10 +103,10 @@ export class AnkifySettingTab extends PluginSettingTab {
       urlSelect.addEventListener("change", async () => {
         const selectedValue = urlSelect.value;
         if (selectedValue === "custom") {
-          customUrlInput.style.display = "block";
+          customUrlInput.setCssStyles({ display: "block" });
           this.plugin.settings.deepseekApiUrl = customUrlInput.value || "";
         } else {
-          customUrlInput.style.display = "none";
+          customUrlInput.setCssStyles({ display: "none" });
           this.plugin.settings.deepseekApiUrl = selectedValue;
         }
         await this.plugin.saveSettings();
@@ -253,7 +253,7 @@ export class AnkifySettingTab extends PluginSettingTab {
             .onChange(async (value) => {
               this.plugin.settings.customPrompt = value;
               await this.plugin.saveSettings();
-            }).inputEl.style.minHeight = "80px")
+            }).inputEl.setCssStyles({ minHeight: "80px" }))
       );
 
     // 图片识别Prompt
@@ -270,7 +270,7 @@ export class AnkifySettingTab extends PluginSettingTab {
             .onChange(async (value) => {
               this.plugin.settings.visionPrompt = value;
               await this.plugin.saveSettings();
-            }).inputEl.style.minHeight = "80px")
+            }).inputEl.setCssStyles({ minHeight: "80px" }))
       );
 
     // API连通性测试
@@ -279,47 +279,47 @@ export class AnkifySettingTab extends PluginSettingTab {
       .setDesc("测试当前选择的API是否可以正常连接");
 
     const apiTestContainer = apiTestSetting.settingEl.createDiv();
-    apiTestContainer.style.display = "flex";
-    apiTestContainer.style.alignItems = "center";
-    apiTestContainer.style.gap = "10px";
-    apiTestContainer.style.marginTop = "10px";
+    apiTestContainer.setCssStyles({ display: "flex" });
+    apiTestContainer.setCssStyles({ alignItems: "center" });
+    apiTestContainer.setCssStyles({ gap: "10px" });
+    apiTestContainer.setCssStyles({ marginTop: "10px" });
 
     const apiTestButton = apiTestContainer.createEl("button", {
       text: "测试API连接",
     });
 
     const apiTestStatus = apiTestContainer.createEl("span");
-    apiTestStatus.style.fontSize = "20px";
+    apiTestStatus.setCssStyles({ fontSize: "20px" });
 
     const apiTestResult = containerEl.createEl("div");
-    apiTestResult.style.marginTop = "10px";
-    apiTestResult.style.padding = "10px";
-    apiTestResult.style.backgroundColor = "#f5f5f5";
-    apiTestResult.style.border = "1px solid #ddd";
-    apiTestResult.style.borderRadius = "4px";
-    apiTestResult.style.fontFamily = "monospace";
-    apiTestResult.style.fontSize = "12px";
-    apiTestResult.style.display = "none";
+    apiTestResult.setCssStyles({ marginTop: "10px" });
+    apiTestResult.setCssStyles({ padding: "10px" });
+    apiTestResult.setCssStyles({ backgroundColor: "#f5f5f5" });
+    apiTestResult.setCssStyles({ border: "1px solid #ddd" });
+    apiTestResult.setCssStyles({ borderRadius: "4px" });
+    apiTestResult.setCssStyles({ fontFamily: "monospace" });
+    apiTestResult.setCssStyles({ fontSize: "12px" });
+    apiTestResult.setCssStyles({ display: "none" });
 
     apiTestButton.addEventListener("click", async () => {
       apiTestButton.disabled = true;
       apiTestButton.textContent = "测试中...";
       apiTestStatus.textContent = "";
       apiTestResult.textContent = "";
-      apiTestResult.style.display = "none";
+      apiTestResult.setCssStyles({ display: "none" });
 
       try {
         const testResult = await this.plugin.callModelAPI("测试连接");
         apiTestStatus.textContent = "✅";
-        apiTestStatus.style.color = "green";
+        apiTestStatus.setCssStyles({ color: "green" });
         apiTestResult.textContent = `连接成功！\n\nAPI返回示例:\n${testResult.substring(0, 200)}...`;
-        apiTestResult.style.display = "block";
+        apiTestResult.setCssStyles({ display: "block" });
         new Notice("API连接测试成功");
       } catch (error) {
         apiTestStatus.textContent = "❌";
-        apiTestStatus.style.color = "red";
+        apiTestStatus.setCssStyles({ color: "red" });
         apiTestResult.textContent = `连接失败：\n${error.message}`;
-        apiTestResult.style.display = "block";
+        apiTestResult.setCssStyles({ display: "block" });
         new Notice("API连接测试失败");
       } finally {
         apiTestButton.disabled = false;
@@ -333,7 +333,7 @@ export class AnkifySettingTab extends PluginSettingTab {
       .setDesc("选择图片文件进行测试");
 
     const visionTestContainer = visionTestSetting.settingEl.createDiv();
-    visionTestContainer.style.marginTop = "10px";
+    visionTestContainer.setCssStyles({ marginTop: "10px" });
 
     // 文件选择器
     const visionTestFileInput = visionTestContainer.createEl("input", {
@@ -342,33 +342,33 @@ export class AnkifySettingTab extends PluginSettingTab {
         accept: "image/*"
       }
     });
-    visionTestFileInput.style.marginBottom = "10px";
+    visionTestFileInput.setCssStyles({ marginBottom: "10px" });
 
     const visionTestButtonContainer = visionTestContainer.createDiv();
-    visionTestButtonContainer.style.display = "flex";
-    visionTestButtonContainer.style.alignItems = "center";
-    visionTestButtonContainer.style.gap = "10px";
-    visionTestButtonContainer.style.marginTop = "10px";
+    visionTestButtonContainer.setCssStyles({ display: "flex" });
+    visionTestButtonContainer.setCssStyles({ alignItems: "center" });
+    visionTestButtonContainer.setCssStyles({ gap: "10px" });
+    visionTestButtonContainer.setCssStyles({ marginTop: "10px" });
 
     const visionTestButton = visionTestButtonContainer.createEl("button", {
       text: "测试图片识别",
     });
 
     const visionTestStatus = visionTestButtonContainer.createEl("span");
-    visionTestStatus.style.fontSize = "20px";
+    visionTestStatus.setCssStyles({ fontSize: "20px" });
 
     const visionTestResult = containerEl.createEl("textarea");
     visionTestResult.placeholder = "识别结果将显示在这里...";
-    visionTestResult.style.width = "100%";
-    visionTestResult.style.minHeight = "150px";
-    visionTestResult.style.marginTop = "10px";
-    visionTestResult.style.padding = "10px";
-    visionTestResult.style.backgroundColor = "#f5f5f5";
-    visionTestResult.style.border = "1px solid #ddd";
-    visionTestResult.style.borderRadius = "4px";
-    visionTestResult.style.fontFamily = "monospace";
-    visionTestResult.style.fontSize = "12px";
-    visionTestResult.style.display = "none";
+    visionTestResult.setCssStyles({ width: "100%" });
+    visionTestResult.setCssStyles({ minHeight: "150px" });
+    visionTestResult.setCssStyles({ marginTop: "10px" });
+    visionTestResult.setCssStyles({ padding: "10px" });
+    visionTestResult.setCssStyles({ backgroundColor: "#f5f5f5" });
+    visionTestResult.setCssStyles({ border: "1px solid #ddd" });
+    visionTestResult.setCssStyles({ borderRadius: "4px" });
+    visionTestResult.setCssStyles({ fontFamily: "monospace" });
+    visionTestResult.setCssStyles({ fontSize: "12px" });
+    visionTestResult.setCssStyles({ display: "none" });
     visionTestResult.readOnly = true;
 
     visionTestButton.addEventListener("click", async () => {
@@ -382,7 +382,7 @@ export class AnkifySettingTab extends PluginSettingTab {
       visionTestButton.textContent = "识别中...";
       visionTestStatus.textContent = "";
       visionTestResult.textContent = "";
-      visionTestResult.style.display = "none";
+      visionTestResult.setCssStyles({ display: "none" });
 
       try {
         console.log('开始读取图片:', file.name, '大小:', file.size);
@@ -409,19 +409,19 @@ export class AnkifySettingTab extends PluginSettingTab {
         const result = await this.plugin.callVisionAPI(compressedImage);
 
         visionTestStatus.textContent = "✅";
-        visionTestStatus.style.color = "green";
+        visionTestStatus.setCssStyles({ color: "green" });
 
         // 显示使用的Prompt和识别结果
         const resultText = `【使用的Prompt】\n${this.plugin.settings.visionPrompt}\n\n${'='.repeat(50)}\n\n【识别结果】\n${result}`;
         visionTestResult.textContent = resultText;
-        visionTestResult.style.display = "block";
+        visionTestResult.setCssStyles({ display: "block" });
         new Notice("图片识别测试成功");
       } catch (error) {
         console.error('图片识别测试失败:', error);
         visionTestStatus.textContent = "❌";
-        visionTestStatus.style.color = "red";
+        visionTestStatus.setCssStyles({ color: "red" });
         visionTestResult.textContent = `识别失败：\n${error.message}`;
-        visionTestResult.style.display = "block";
+        visionTestResult.setCssStyles({ display: "block" });
         new Notice("图片识别测试失败");
       } finally {
         visionTestButton.disabled = false;
@@ -474,18 +474,18 @@ export class AnkifySettingTab extends PluginSettingTab {
       .setDesc("Anki Connect API的地址，默认为 http://127.0.0.1:8765");
 
     const ankiConnectContainer = ankiConnectSetting.settingEl.createDiv();
-    ankiConnectContainer.style.display = "flex";
-    ankiConnectContainer.style.alignItems = "center";
-    ankiConnectContainer.style.gap = "10px";
-    ankiConnectContainer.style.marginTop = "10px";
+    ankiConnectContainer.setCssStyles({ display: "flex" });
+    ankiConnectContainer.setCssStyles({ alignItems: "center" });
+    ankiConnectContainer.setCssStyles({ gap: "10px" });
+    ankiConnectContainer.setCssStyles({ marginTop: "10px" });
 
     // URL 输入框
     const urlInput = ankiConnectContainer.createEl("input");
     urlInput.type = "text";
     urlInput.placeholder = "http://127.0.0.1:8765";
     urlInput.value = this.plugin.settings.ankiConnectUrl;
-    urlInput.style.flex = "1";
-    urlInput.style.padding = "5px";
+    urlInput.setCssStyles({ flex: "1" });
+    urlInput.setCssStyles({ padding: "5px" });
     urlInput.addEventListener("change", async () => {
       this.plugin.settings.ankiConnectUrl = urlInput.value;
       await this.plugin.saveSettings();
@@ -626,29 +626,29 @@ export class AnkifySettingTab extends PluginSettingTab {
       .setDesc("每行输入一个Deck名称，点击按钮批量创建");
 
     const deckInputContainer = deckCreationSetting.settingEl.createDiv();
-    deckInputContainer.style.marginTop = "10px";
+    deckInputContainer.setCssStyles({ marginTop: "10px" });
 
     const deckTextArea = deckInputContainer.createEl("textarea");
     deckTextArea.placeholder = "输入Deck名称，每行一个\n例如：\n默认牌组\n英语学习\n数学公式";
-    deckTextArea.style.width = "100%";
-    deckTextArea.style.minHeight = "150px";
-    deckTextArea.style.padding = "10px";
-    deckTextArea.style.backgroundColor = "#f5f5f5";
-    deckTextArea.style.border = "1px solid #ddd";
-    deckTextArea.style.borderRadius = "4px";
+    deckTextArea.setCssStyles({ width: "100%" });
+    deckTextArea.setCssStyles({ minHeight: "150px" });
+    deckTextArea.setCssStyles({ padding: "10px" });
+    deckTextArea.setCssStyles({ backgroundColor: "#f5f5f5" });
+    deckTextArea.setCssStyles({ border: "1px solid #ddd" });
+    deckTextArea.setCssStyles({ borderRadius: "4px" });
 
     const deckButtonContainer = deckInputContainer.createDiv();
-    deckButtonContainer.style.display = "flex";
-    deckButtonContainer.style.alignItems = "center";
-    deckButtonContainer.style.gap = "10px";
-    deckButtonContainer.style.marginTop = "10px";
+    deckButtonContainer.setCssStyles({ display: "flex" });
+    deckButtonContainer.setCssStyles({ alignItems: "center" });
+    deckButtonContainer.setCssStyles({ gap: "10px" });
+    deckButtonContainer.setCssStyles({ marginTop: "10px" });
 
     const createDeckButton = deckButtonContainer.createEl("button", {
       text: "批量创建Deck",
     });
 
     const deckCreationStatus = deckButtonContainer.createEl("span");
-    deckCreationStatus.style.fontSize = "20px";
+    deckCreationStatus.setCssStyles({ fontSize: "20px" });
 
     createDeckButton.addEventListener("click", async () => {
       createDeckButton.disabled = true;
@@ -689,7 +689,7 @@ export class AnkifySettingTab extends PluginSettingTab {
         }
 
         deckCreationStatus.textContent = "✅";
-        deckCreationStatus.style.color = "green";
+        deckCreationStatus.setCssStyles({ color: "green" });
         
         if (errorMessages.length > 0) {
           new Notice(`成功创建 ${successCount} 个Deck，失败 ${errorCount} 个\n失败原因:\n${errorMessages.join("\n")}`);
@@ -699,7 +699,7 @@ export class AnkifySettingTab extends PluginSettingTab {
       } catch (error) {
         console.error("批量创建Deck失败:", error);
         deckCreationStatus.textContent = "❌";
-        deckCreationStatus.style.color = "red";
+        deckCreationStatus.setCssStyles({ color: "red" });
         new Notice(`批量创建Deck失败: ${error.message}`);
       } finally {
         createDeckButton.disabled = false;

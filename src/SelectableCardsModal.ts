@@ -68,14 +68,14 @@ export class SelectableCardsModal extends Modal {
 
   onOpen() {
     // 屏蔽点击背景关闭
-    this.modalEl.style.position = "fixed";
-    this.modalEl.style.top = "50%";
-    this.modalEl.style.left = "50%";
-    this.modalEl.style.transform = "translate(-50%, -50%)";
-    this.modalEl.style.width = "80%";
-    this.modalEl.style.maxWidth = "800px";
-    this.modalEl.style.maxHeight = "80vh";
-    this.modalEl.style.overflow = "auto";
+    this.modalEl.setCssStyles({ position: "fixed" });
+    this.modalEl.setCssStyles({ top: "50%" });
+    this.modalEl.setCssStyles({ left: "50%" });
+    this.modalEl.setCssStyles({ transform: "translate(-50%, -50%)" });
+    this.modalEl.setCssStyles({ width: "80%" });
+    this.modalEl.setCssStyles({ maxWidth: "800px" });
+    this.modalEl.setCssStyles({ maxHeight: "80vh" });
+    this.modalEl.setCssStyles({ overflow: "auto" });
 
     // 让右上角 X 按钮能正常关闭弹窗
     const closeBtn = this.modalEl.querySelector(".modal-close-button") as HTMLElement;
@@ -110,17 +110,17 @@ export class SelectableCardsModal extends Modal {
 
     // 创建加载区域
     const loadingContainer = contentEl.createDiv({ cls: "ankify-loading-container" });
-    loadingContainer.style.textAlign = "center";
-    loadingContainer.style.padding = "20px";
+    loadingContainer.setCssStyles({ textAlign: "center" });
+    loadingContainer.setCssStyles({ padding: "20px" });
 
     const loadingSpinner = loadingContainer.createEl("div", { cls: "ankify-loading-spinner" });
-    loadingSpinner.style.fontSize = "24px";
-    loadingSpinner.style.marginBottom = "10px";
+    loadingSpinner.setCssStyles({ fontSize: "24px" });
+    loadingSpinner.setCssStyles({ marginBottom: "10px" });
     loadingSpinner.textContent = "⏳";
 
     const loadingText = loadingContainer.createEl("div", { text: "正在生成Anki卡片，请稍候..." });
-    loadingText.style.fontSize = "14px";
-    loadingText.style.color = "#666";
+    loadingText.setCssStyles({ fontSize: "14px" });
+    loadingText.setCssStyles({ color: "#666" });
 
     // 保存图片信息元素引用
     let imageInfoEl: HTMLPreElement | null = null;
@@ -164,7 +164,7 @@ export class SelectableCardsModal extends Modal {
         contentEl.createEl("p", {
           text: `生成失败: ${error.message}`,
           cls: "ankify-error"
-        }).style.color = "red";
+        }).setCssStyles({ color: "red" });
         
         // 移除旧的请求信息面板
         const existingRequestInfo = contentEl.querySelector(".ankify-request-info");
@@ -207,8 +207,8 @@ export class SelectableCardsModal extends Modal {
         cls: "ankify-editable-result",
         text: this.rawResult,
       });
-      textAreaEl.style.width = "100%";
-      textAreaEl.style.height = "100px";
+      textAreaEl.setCssStyles({ width: "100%" });
+      textAreaEl.setCssStyles({ height: "100px" });
 
       const buttonContainer = contentEl.createDiv({
         cls: "ankify-button-container",
@@ -454,8 +454,8 @@ export class SelectableCardsModal extends Modal {
       text: ` (已选择 ${this.selectedCards.filter(Boolean).length}/${this.selectedCards.length})`,
       cls: "ankify-selection-count",
     });
-    selectionCountEl.style.marginLeft = "10px";
-    selectionCountEl.style.color = "var(--text-muted)";
+    selectionCountEl.setCssStyles({ marginLeft: "10px" });
+    selectionCountEl.setCssStyles({ color: "var(--text-muted)" });
 
     // 更新选择数量
     const updateSelectionCount = () => {
@@ -506,15 +506,15 @@ export class SelectableCardsModal extends Modal {
         cls: "ankify-card-textarea",
         text: displayAnswer,
       });
-      answerTextarea.style.width = "100%";
-      answerTextarea.style.minHeight = "100px";
-      answerTextarea.style.padding = "8px";
-      answerTextarea.style.border = "1px solid var(--border-color)";
-      answerTextarea.style.borderRadius = "4px";
-      answerTextarea.style.backgroundColor = "var(--background-primary)";
-      answerTextarea.style.color = "var(--text-normal)";
-      answerTextarea.style.fontFamily = "inherit";
-      answerTextarea.style.resize = "vertical";
+      answerTextarea.setCssStyles({ width: "100%" });
+      answerTextarea.setCssStyles({ minHeight: "100px" });
+      answerTextarea.setCssStyles({ padding: "8px" });
+      answerTextarea.setCssStyles({ border: "1px solid var(--border-color)" });
+      answerTextarea.setCssStyles({ borderRadius: "4px" });
+      answerTextarea.setCssStyles({ backgroundColor: "var(--background-primary)" });
+      answerTextarea.setCssStyles({ color: "var(--text-normal)" });
+      answerTextarea.setCssStyles({ fontFamily: "inherit" });
+      answerTextarea.setCssStyles({ resize: "vertical" });
       // 撤销历史记录
       const undoHistory: string[] = [answerTextarea.value];
       
@@ -552,22 +552,22 @@ export class SelectableCardsModal extends Modal {
 
       // 操作按钮区域 - 直接在answerEl中创建
       const actionsContainer = answerEl.createDiv();
-      actionsContainer.style.marginTop = "10px";
-      actionsContainer.style.display = "flex";
-      actionsContainer.style.alignItems = "center";
-      actionsContainer.style.gap = "15px";
+      actionsContainer.setCssStyles({ marginTop: "10px" });
+      actionsContainer.setCssStyles({ display: "flex" });
+      actionsContainer.setCssStyles({ alignItems: "center" });
+      actionsContainer.setCssStyles({ gap: "15px" });
 
       // 撤销按钮
       const undoButton = actionsContainer.createEl("button", {
         text: "撤销",
       });
-      undoButton.style.padding = "4px 8px";
-      undoButton.style.fontSize = "12px";
-      undoButton.style.backgroundColor = "var(--background-modifier-border)";
-      undoButton.style.color = "var(--text-normal)";
-      undoButton.style.border = "1px solid var(--border-color)";
-      undoButton.style.borderRadius = "4px";
-      undoButton.style.cursor = "pointer";
+      undoButton.setCssStyles({ padding: "4px 8px" });
+      undoButton.setCssStyles({ fontSize: "12px" });
+      undoButton.setCssStyles({ backgroundColor: "var(--background-modifier-border)" });
+      undoButton.setCssStyles({ color: "var(--text-normal)" });
+      undoButton.setCssStyles({ border: "1px solid var(--border-color)" });
+      undoButton.setCssStyles({ borderRadius: "4px" });
+      undoButton.setCssStyles({ cursor: "pointer" });
       undoButton.addEventListener("click", (e) => {
         e.preventDefault();
         undo();
@@ -577,20 +577,20 @@ export class SelectableCardsModal extends Modal {
       const blankButton = actionsContainer.createEl("button", {
         text: "填空",
       });
-      blankButton.style.padding = "4px 8px";
-      blankButton.style.fontSize = "12px";
-      blankButton.style.backgroundColor = "var(--interactive-accent)";
-      blankButton.style.color = "var(--text-on-accent)";
-      blankButton.style.border = "none";
-      blankButton.style.borderRadius = "4px";
-      blankButton.style.cursor = "pointer";
+      blankButton.setCssStyles({ padding: "4px 8px" });
+      blankButton.setCssStyles({ fontSize: "12px" });
+      blankButton.setCssStyles({ backgroundColor: "var(--interactive-accent)" });
+      blankButton.setCssStyles({ color: "var(--text-on-accent)" });
+      blankButton.setCssStyles({ border: "none" });
+      blankButton.setCssStyles({ borderRadius: "4px" });
+      blankButton.setCssStyles({ cursor: "pointer" });
 
       // 颜色标签
       const colorLabel = actionsContainer.createEl("span", {
         text: "颜色: "
       });
-      colorLabel.style.fontSize = "12px";
-      colorLabel.style.marginLeft = "10px";
+      colorLabel.setCssStyles({ fontSize: "12px" });
+      colorLabel.setCssStyles({ marginLeft: "10px" });
 
       // 颜色选项 - 使用按钮显示
       const colors = ["#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4", "#FFEAA7", "#DDA0DD", "#98D8C8", "#F7DC6F", "#BB8FCE", "#85C1E9"];
@@ -600,14 +600,14 @@ export class SelectableCardsModal extends Modal {
             title: color
           }
         });
-        colorOption.style.width = "20px";
-        colorOption.style.height = "20px";
-        colorOption.style.backgroundColor = color;
-        colorOption.style.borderRadius = "50%";
-        colorOption.style.cursor = "pointer";
-        colorOption.style.border = "2px solid var(--border-color)";
-        colorOption.style.marginLeft = "3px";
-        colorOption.style.padding = "0";
+        colorOption.setCssStyles({ width: "20px" });
+        colorOption.setCssStyles({ height: "20px" });
+        colorOption.setCssStyles({ backgroundColor: color });
+        colorOption.setCssStyles({ borderRadius: "50%" });
+        colorOption.setCssStyles({ cursor: "pointer" });
+        colorOption.setCssStyles({ border: "2px solid var(--border-color)" });
+        colorOption.setCssStyles({ marginLeft: "3px" });
+        colorOption.setCssStyles({ padding: "0" });
         
         // 点击事件
         colorOption.addEventListener("click", (e) => {
@@ -641,9 +641,9 @@ export class SelectableCardsModal extends Modal {
       // 控制按钮显示状态
       const updateBlankButtonVisibility = () => {
         if (card.noteType === "Cloze") {
-          blankButton.style.display = "inline-block";
+          blankButton.setCssStyles({ display: "inline-block" });
         } else {
-          blankButton.style.display = "none";
+          blankButton.setCssStyles({ display: "none" });
         }
       };
       
@@ -730,7 +730,7 @@ export class SelectableCardsModal extends Modal {
       const noteTypeContainer = cardContent.createDiv({ cls: "ankify-card-note-type" });
       noteTypeContainer.createEl("strong", { text: "笔记类型: " });
       const noteTypeSelect = noteTypeContainer.createEl("select");
-      noteTypeSelect.style.marginLeft = "5px";
+      noteTypeSelect.setCssStyles({ marginLeft: "5px" });
 
       // 添加笔记类型选项
       availableNoteTypes.forEach((type) => {
@@ -745,40 +745,40 @@ export class SelectableCardsModal extends Modal {
 
       // Back Extra 文本框（仅在Cloze类型时显示，默认折叠）
       const backExtraContainer = cardContent.createDiv({ cls: "ankify-card-back-extra-container" });
-      backExtraContainer.style.marginTop = "10px";
+      backExtraContainer.setCssStyles({ marginTop: "10px" });
       
       // Back Extra 标题和折叠按钮
       const backExtraHeader = backExtraContainer.createEl("div");
-      backExtraHeader.style.display = "flex";
-      backExtraHeader.style.alignItems = "center";
-      backExtraHeader.style.cursor = "pointer";
-      backExtraHeader.style.padding = "5px 0";
+      backExtraHeader.setCssStyles({ display: "flex" });
+      backExtraHeader.setCssStyles({ alignItems: "center" });
+      backExtraHeader.setCssStyles({ cursor: "pointer" });
+      backExtraHeader.setCssStyles({ padding: "5px 0" });
       
       const backExtraToggle = backExtraHeader.createEl("span", { text: "▶" });
-      backExtraToggle.style.marginRight = "5px";
-      backExtraToggle.style.color = "var(--text-muted)";
-      backExtraToggle.style.fontSize = "12px";
+      backExtraToggle.setCssStyles({ marginRight: "5px" });
+      backExtraToggle.setCssStyles({ color: "var(--text-muted)" });
+      backExtraToggle.setCssStyles({ fontSize: "12px" });
       
       backExtraHeader.createEl("strong", { text: "Back Extra" });
       
       // Back Extra 内容区域（默认隐藏）
       const backExtraContent = backExtraContainer.createDiv({ cls: "ankify-card-back-extra" });
-      backExtraContent.style.display = "none";
-      backExtraContent.style.marginTop = "5px";
+      backExtraContent.setCssStyles({ display: "none" });
+      backExtraContent.setCssStyles({ marginTop: "5px" });
       
       const backExtraTextarea = backExtraContent.createEl("textarea", {
         cls: "ankify-card-textarea",
         text: card.backExtra || "",
       });
-      backExtraTextarea.style.width = "100%";
-      backExtraTextarea.style.minHeight = "60px";
-      backExtraTextarea.style.padding = "8px";
-      backExtraTextarea.style.border = "1px solid var(--border-color)";
-      backExtraTextarea.style.borderRadius = "4px";
-      backExtraTextarea.style.backgroundColor = "var(--background-primary)";
-      backExtraTextarea.style.color = "var(--text-normal)";
-      backExtraTextarea.style.fontFamily = "inherit";
-      backExtraTextarea.style.resize = "vertical";
+      backExtraTextarea.setCssStyles({ width: "100%" });
+      backExtraTextarea.setCssStyles({ minHeight: "60px" });
+      backExtraTextarea.setCssStyles({ padding: "8px" });
+      backExtraTextarea.setCssStyles({ border: "1px solid var(--border-color)" });
+      backExtraTextarea.setCssStyles({ borderRadius: "4px" });
+      backExtraTextarea.setCssStyles({ backgroundColor: "var(--background-primary)" });
+      backExtraTextarea.setCssStyles({ color: "var(--text-normal)" });
+      backExtraTextarea.setCssStyles({ fontFamily: "inherit" });
+      backExtraTextarea.setCssStyles({ resize: "vertical" });
       backExtraTextarea.addEventListener("input", () => {
         // 将实际换行符转换回<br>标签，保持数据一致性
         const storedBackExtra = backExtraTextarea.value.replace(/\n/g, "<br>");
@@ -788,10 +788,10 @@ export class SelectableCardsModal extends Modal {
       // 切换折叠状态
       backExtraHeader.addEventListener("click", () => {
         if (backExtraContent.style.display === "none") {
-          backExtraContent.style.display = "block";
+          backExtraContent.setCssStyles({ display: "block" });
           backExtraToggle.textContent = "▼";
         } else {
-          backExtraContent.style.display = "none";
+          backExtraContent.setCssStyles({ display: "none" });
           backExtraToggle.textContent = "▶";
         }
       });
@@ -799,9 +799,9 @@ export class SelectableCardsModal extends Modal {
       // 控制Back Extra容器显示状态
       const updateBackExtraVisibility = () => {
         if (card.noteType === "Cloze") {
-          backExtraContainer.style.display = "block";
+          backExtraContainer.setCssStyles({ display: "block" });
         } else {
-          backExtraContainer.style.display = "none";
+          backExtraContainer.setCssStyles({ display: "none" });
         }
       };
       
@@ -872,53 +872,53 @@ export class SelectableCardsModal extends Modal {
     const batchTagsContainer = contentEl.createDiv({
       cls: "ankify-batch-tags-container",
     });
-    batchTagsContainer.style.marginTop = "20px";
+    batchTagsContainer.setCssStyles({ marginTop: "20px" });
     
     // 标题和折叠按钮
     const batchTagsHeader = batchTagsContainer.createEl("div");
-    batchTagsHeader.style.display = "flex";
-    batchTagsHeader.style.justifyContent = "space-between";
-    batchTagsHeader.style.alignItems = "center";
-    batchTagsHeader.style.cursor = "pointer";
-    batchTagsHeader.style.padding = "10px";
-    batchTagsHeader.style.backgroundColor = "var(--background-secondary)";
-    batchTagsHeader.style.border = "1px solid var(--border-color)";
-    batchTagsHeader.style.borderRadius = "4px";
-    batchTagsHeader.style.color = "var(--text-normal)";
+    batchTagsHeader.setCssStyles({ display: "flex" });
+    batchTagsHeader.setCssStyles({ justifyContent: "space-between" });
+    batchTagsHeader.setCssStyles({ alignItems: "center" });
+    batchTagsHeader.setCssStyles({ cursor: "pointer" });
+    batchTagsHeader.setCssStyles({ padding: "10px" });
+    batchTagsHeader.setCssStyles({ backgroundColor: "var(--background-secondary)" });
+    batchTagsHeader.setCssStyles({ border: "1px solid var(--border-color)" });
+    batchTagsHeader.setCssStyles({ borderRadius: "4px" });
+    batchTagsHeader.setCssStyles({ color: "var(--text-normal)" });
     
     // 设置header为flex布局，方便排列元素
-    batchTagsHeader.style.display = "flex";
-    batchTagsHeader.style.alignItems = "center";
-    batchTagsHeader.style.justifyContent = "space-between";
+    batchTagsHeader.setCssStyles({ display: "flex" });
+    batchTagsHeader.setCssStyles({ alignItems: "center" });
+    batchTagsHeader.setCssStyles({ justifyContent: "space-between" });
     
     const batchTagsTitle = batchTagsHeader.createEl("h4", { text: "替换标签" });
-    batchTagsTitle.style.margin = "0";
-    batchTagsTitle.style.fontSize = "14px";
-    batchTagsTitle.style.color = "var(--text-normal)";
+    batchTagsTitle.setCssStyles({ margin: "0" });
+    batchTagsTitle.setCssStyles({ fontSize: "14px" });
+    batchTagsTitle.setCssStyles({ color: "var(--text-normal)" });
     
     // 右侧折叠按钮
     const batchTagsToggle = batchTagsHeader.createEl("span", { text: "▼" });
-    batchTagsToggle.style.color = "var(--text-muted)";
+    batchTagsToggle.setCssStyles({ color: "var(--text-muted)" });
     
     // 内容区域，默认隐藏
     const batchTagsContent = batchTagsContainer.createEl("div");
-    batchTagsContent.style.display = "none";
-    batchTagsContent.style.padding = "15px";
-    batchTagsContent.style.backgroundColor = "var(--background-secondary)";
-    batchTagsContent.style.border = "1px solid var(--border-color)";
-    batchTagsContent.style.borderTop = "none";
-    batchTagsContent.style.borderRadius = "0 0 4px 4px";
-    batchTagsContent.style.color = "var(--text-normal)";
+    batchTagsContent.setCssStyles({ display: "none" });
+    batchTagsContent.setCssStyles({ padding: "15px" });
+    batchTagsContent.setCssStyles({ backgroundColor: "var(--background-secondary)" });
+    batchTagsContent.setCssStyles({ border: "1px solid var(--border-color)" });
+    batchTagsContent.setCssStyles({ borderTop: "none" });
+    batchTagsContent.setCssStyles({ borderRadius: "0 0 4px 4px" });
+    batchTagsContent.setCssStyles({ color: "var(--text-normal)" });
     
     // 切换折叠状态
     batchTagsHeader.addEventListener("click", (e) => {
       // 防止点击checkbox时触发折叠
       if (!e.target.closest("input[type='checkbox']") && !e.target.closest("label")) {
         if (batchTagsContent.style.display === "none") {
-          batchTagsContent.style.display = "block";
+          batchTagsContent.setCssStyles({ display: "block" });
           batchTagsToggle.textContent = "▲";
         } else {
-          batchTagsContent.style.display = "none";
+          batchTagsContent.setCssStyles({ display: "none" });
           batchTagsToggle.textContent = "▼";
         }
       }
@@ -929,70 +929,70 @@ export class SelectableCardsModal extends Modal {
       type: "text",
       placeholder: "输入要替换的标签",
     });
-    oldTagInput.style.width = "100%";
-    oldTagInput.style.padding = "8px";
-    oldTagInput.style.marginBottom = "10px";
-    oldTagInput.style.border = "1px solid var(--border-color)";
-    oldTagInput.style.borderRadius = "4px";
-    oldTagInput.style.backgroundColor = "var(--background-primary)";
-    oldTagInput.style.color = "var(--text-normal)";
+    oldTagInput.setCssStyles({ width: "100%" });
+    oldTagInput.setCssStyles({ padding: "8px" });
+    oldTagInput.setCssStyles({ marginBottom: "10px" });
+    oldTagInput.setCssStyles({ border: "1px solid var(--border-color)" });
+    oldTagInput.setCssStyles({ borderRadius: "4px" });
+    oldTagInput.setCssStyles({ backgroundColor: "var(--background-primary)" });
+    oldTagInput.setCssStyles({ color: "var(--text-normal)" });
     
     // 新标签输入框
     const newTagInput = batchTagsContent.createEl("input", {
       type: "text",
       placeholder: "输入新的标签",
     });
-    newTagInput.style.width = "100%";
-    newTagInput.style.padding = "8px";
-    newTagInput.style.marginBottom = "10px";
-    newTagInput.style.border = "1px solid var(--border-color)";
-    newTagInput.style.borderRadius = "4px";
-    newTagInput.style.backgroundColor = "var(--background-primary)";
-    newTagInput.style.color = "var(--text-normal)";
+    newTagInput.setCssStyles({ width: "100%" });
+    newTagInput.setCssStyles({ padding: "8px" });
+    newTagInput.setCssStyles({ marginBottom: "10px" });
+    newTagInput.setCssStyles({ border: "1px solid var(--border-color)" });
+    newTagInput.setCssStyles({ borderRadius: "4px" });
+    newTagInput.setCssStyles({ backgroundColor: "var(--background-primary)" });
+    newTagInput.setCssStyles({ color: "var(--text-normal)" });
     
     // 按钮和checkbox容器
     const buttonContainer = batchTagsContent.createEl("div");
-    buttonContainer.style.display = "flex";
-    buttonContainer.style.alignItems = "center";
-    buttonContainer.style.gap = "15px";
+    buttonContainer.setCssStyles({ display: "flex" });
+    buttonContainer.setCssStyles({ alignItems: "center" });
+    buttonContainer.setCssStyles({ gap: "15px" });
     
     // 替换按钮
     const replaceButton = buttonContainer.createEl("button", {
       text: "替换标签",
     });
-    replaceButton.style.padding = "8px 16px";
-    replaceButton.style.backgroundColor = "var(--interactive-accent)";
-    replaceButton.style.color = "var(--text-on-accent)";
-    replaceButton.style.border = "none";
-    replaceButton.style.borderRadius = "4px";
-    replaceButton.style.cursor = "pointer";
+    replaceButton.setCssStyles({ padding: "8px 16px" });
+    replaceButton.setCssStyles({ backgroundColor: "var(--interactive-accent)" });
+    replaceButton.setCssStyles({ color: "var(--text-on-accent)" });
+    replaceButton.setCssStyles({ border: "none" });
+    replaceButton.setCssStyles({ borderRadius: "4px" });
+    replaceButton.setCssStyles({ cursor: "pointer" });
     
     // 添加checkbox - 直接替换所有标签，放在按钮右边
     const replaceAllContainer = buttonContainer.createEl("div");
-    replaceAllContainer.style.display = "flex";
-    replaceAllContainer.style.alignItems = "center";
+    replaceAllContainer.setCssStyles({ display: "flex" });
+    replaceAllContainer.setCssStyles({ alignItems: "center" });
     
     const replaceAllCheckbox = replaceAllContainer.createEl("input", {
       type: "checkbox",
       attr: { id: "replaceAllTags" }
     });
-    replaceAllCheckbox.style.marginRight = "5px";
+    replaceAllCheckbox.setCssStyles({ marginRight: "5px" });
     
     const replaceAllLabel = replaceAllContainer.createEl("label", {
       text: "直接替换所有标签",
       attr: { for: "replaceAllTags" }
     });
-    replaceAllLabel.style.cursor = "pointer";
-    replaceAllLabel.style.color = "var(--text-normal)";
-    replaceAllLabel.style.fontSize = "12px";
+    replaceAllLabel.setCssStyles({ cursor: "pointer" });
+    replaceAllLabel.setCssStyles({ color: "var(--text-normal)" });
+    replaceAllLabel.setCssStyles({ fontSize: "12px" });
     
     // 根据checkbox状态切换旧标签输入框的显示
     replaceAllCheckbox.addEventListener("change", () => {
       if (replaceAllCheckbox.checked) {
-        oldTagInput.style.display = "none";
+        oldTagInput.setCssStyles({ display: "none" });
         newTagInput.placeholder = "输入新的标签（将替换所有卡片的标签）";
       } else {
-        oldTagInput.style.display = "block";
+        oldTagInput.setCssStyles({ display: "block" });
         newTagInput.placeholder = "输入新的标签";
       }
     });
@@ -1051,23 +1051,23 @@ export class SelectableCardsModal extends Modal {
     const addButton = mainButtonContainer.createEl("button", {
       text: "添加到Anki",
     });
-    addButton.style.marginRight = "10px";
-    addButton.style.padding = "8px 16px";
-    addButton.style.backgroundColor = "var(--interactive-accent)";
-    addButton.style.color = "var(--text-on-accent)";
-    addButton.style.border = "none";
-    addButton.style.borderRadius = "4px";
-    addButton.style.cursor = "pointer";
+    addButton.setCssStyles({ marginRight: "10px" });
+    addButton.setCssStyles({ padding: "8px 16px" });
+    addButton.setCssStyles({ backgroundColor: "var(--interactive-accent)" });
+    addButton.setCssStyles({ color: "var(--text-on-accent)" });
+    addButton.setCssStyles({ border: "none" });
+    addButton.setCssStyles({ borderRadius: "4px" });
+    addButton.setCssStyles({ cursor: "pointer" });
 
     const cancelButton = mainButtonContainer.createEl("button", {
       text: "取消",
     });
-    cancelButton.style.padding = "8px 16px";
-    cancelButton.style.backgroundColor = "var(--background-modifier-border)";
-    cancelButton.style.color = "var(--text-normal)";
-    cancelButton.style.border = "1px solid var(--border-color)";
-    cancelButton.style.borderRadius = "4px";
-    cancelButton.style.cursor = "pointer";
+    cancelButton.setCssStyles({ padding: "8px 16px" });
+    cancelButton.setCssStyles({ backgroundColor: "var(--background-modifier-border)" });
+    cancelButton.setCssStyles({ color: "var(--text-normal)" });
+    cancelButton.setCssStyles({ border: "1px solid var(--border-color)" });
+    cancelButton.setCssStyles({ borderRadius: "4px" });
+    cancelButton.setCssStyles({ cursor: "pointer" });
 
     addButton.addEventListener("click", async () => {
       const selectedCards = this.cards.filter((_, index) => this.selectedCards[index]);
@@ -1080,57 +1080,57 @@ export class SelectableCardsModal extends Modal {
       try {
         // 创建进度条容器
         this.progressContainer = document.createElement("div");
-        this.progressContainer.style.position = "fixed";
-        this.progressContainer.style.top = "50%";
-        this.progressContainer.style.left = "50%";
-        this.progressContainer.style.transform = "translate(-50%, -50%)";
-        this.progressContainer.style.backgroundColor = "var(--background-primary)";
-        this.progressContainer.style.border = "1px solid var(--border-color)";
-        this.progressContainer.style.borderRadius = "8px";
-        this.progressContainer.style.padding = "20px";
-        this.progressContainer.style.minWidth = "300px";
-        this.progressContainer.style.zIndex = "9999";
+        this.progressContainer.setCssStyles({ position: "fixed" });
+        this.progressContainer.setCssStyles({ top: "50%" });
+        this.progressContainer.setCssStyles({ left: "50%" });
+        this.progressContainer.setCssStyles({ transform: "translate(-50%, -50%)" });
+        this.progressContainer.setCssStyles({ backgroundColor: "var(--background-primary)" });
+        this.progressContainer.setCssStyles({ border: "1px solid var(--border-color)" });
+        this.progressContainer.setCssStyles({ borderRadius: "8px" });
+        this.progressContainer.setCssStyles({ padding: "20px" });
+        this.progressContainer.setCssStyles({ minWidth: "300px" });
+        this.progressContainer.setCssStyles({ zIndex: "9999" });
         
         // 标题
         const progressTitle = document.createElement("div");
-        progressTitle.style.fontSize = "14px";
-        progressTitle.style.fontWeight = "bold";
-        progressTitle.style.marginBottom = "10px";
-        progressTitle.style.textAlign = "center";
+        progressTitle.setCssStyles({ fontSize: "14px" });
+        progressTitle.setCssStyles({ fontWeight: "bold" });
+        progressTitle.setCssStyles({ marginBottom: "10px" });
+        progressTitle.setCssStyles({ textAlign: "center" });
         progressTitle.textContent = "正在添加卡片到Anki...";
         this.progressContainer.appendChild(progressTitle);
         
         // 批次大小信息（仅在调试模式下显示）
         if (this.plugin.settings.debugMode) {
           const batchInfo = document.createElement("div");
-          batchInfo.style.fontSize = "12px";
-          batchInfo.style.color = "var(--text-muted)";
-          batchInfo.style.marginBottom = "10px";
-          batchInfo.style.textAlign = "center";
+          batchInfo.setCssStyles({ fontSize: "12px" });
+          batchInfo.setCssStyles({ color: "var(--text-muted)" });
+          batchInfo.setCssStyles({ marginBottom: "10px" });
+          batchInfo.setCssStyles({ textAlign: "center" });
           batchInfo.textContent = `批次大小: ${this.plugin.settings.batchSize}`;
           this.progressContainer.appendChild(batchInfo);
         }
         
         // 进度文本
         const progressText = document.createElement("div");
-        progressText.style.fontSize = "12px";
-        progressText.style.marginBottom = "10px";
-        progressText.style.textAlign = "center";
+        progressText.setCssStyles({ fontSize: "12px" });
+        progressText.setCssStyles({ marginBottom: "10px" });
+        progressText.setCssStyles({ textAlign: "center" });
         progressText.textContent = "0 / 0";
         this.progressContainer.appendChild(progressText);
         
         // 进度条
         const progressBar = document.createElement("div");
-        progressBar.style.height = "6px";
-        progressBar.style.backgroundColor = "var(--background-secondary)";
-        progressBar.style.borderRadius = "3px";
-        progressBar.style.overflow = "hidden";
+        progressBar.setCssStyles({ height: "6px" });
+        progressBar.setCssStyles({ backgroundColor: "var(--background-secondary)" });
+        progressBar.setCssStyles({ borderRadius: "3px" });
+        progressBar.setCssStyles({ overflow: "hidden" });
         
         const progressFill = document.createElement("div");
-        progressFill.style.height = "100%";
-        progressFill.style.backgroundColor = "var(--interactive-accent)";
-        progressFill.style.width = "0%";
-        progressFill.style.transition = "width 0.3s ease";
+        progressFill.setCssStyles({ height: "100%" });
+        progressFill.setCssStyles({ backgroundColor: "var(--interactive-accent)" });
+        progressFill.setCssStyles({ width: "0%" });
+        progressFill.setCssStyles({ transition: "width 0.3s ease" });
         progressBar.appendChild(progressFill);
         this.progressContainer.appendChild(progressBar);
         
@@ -1144,7 +1144,7 @@ export class SelectableCardsModal extends Modal {
           (current, total) => {
             // 更新进度
             const percentage = (current / total) * 100;
-            progressFill.style.width = `${percentage}%`;
+            progressFill.setCssStyles({ width: `${percentage}%` });
             progressText.textContent = `${current} / ${total}`;
           }
         );
@@ -1212,36 +1212,36 @@ export class SelectableCardsModal extends Modal {
   // 添加请求信息面板
   addRequestInfo(contentEl: HTMLElement) {
     const requestInfoEl = contentEl.createDiv({ cls: "ankify-request-info" });
-    requestInfoEl.style.marginTop = "20px";
-    requestInfoEl.style.border = "1px solid var(--border-color)";
-    requestInfoEl.style.borderRadius = "4px";
-    requestInfoEl.style.backgroundColor = "var(--background-secondary)";
-    requestInfoEl.style.overflow = "hidden";
+    requestInfoEl.setCssStyles({ marginTop: "20px" });
+    requestInfoEl.setCssStyles({ border: "1px solid var(--border-color)" });
+    requestInfoEl.setCssStyles({ borderRadius: "4px" });
+    requestInfoEl.setCssStyles({ backgroundColor: "var(--background-secondary)" });
+    requestInfoEl.setCssStyles({ overflow: "hidden" });
 
     // 标题和切换按钮
     const headerEl = requestInfoEl.createEl("div");
-    headerEl.style.display = "flex";
-    headerEl.style.justifyContent = "space-between";
-    headerEl.style.alignItems = "center";
-    headerEl.style.padding = "10px";
-    headerEl.style.cursor = "pointer";
-    headerEl.style.backgroundColor = "var(--background-secondary)";
+    headerEl.setCssStyles({ display: "flex" });
+    headerEl.setCssStyles({ justifyContent: "space-between" });
+    headerEl.setCssStyles({ alignItems: "center" });
+    headerEl.setCssStyles({ padding: "10px" });
+    headerEl.setCssStyles({ cursor: "pointer" });
+    headerEl.setCssStyles({ backgroundColor: "var(--background-secondary)" });
 
     headerEl.createEl("h4", { text: "请求信息" });
     const toggleEl = headerEl.createEl("span", { text: "▼" });
 
     // 内容区域（默认隐藏）
     const contentInfoEl = requestInfoEl.createDiv();
-    contentInfoEl.style.padding = "10px";
-    contentInfoEl.style.display = "none";
+    contentInfoEl.setCssStyles({ padding: "10px" });
+    contentInfoEl.setCssStyles({ display: "none" });
 
     // 切换显示/隐藏
     headerEl.addEventListener("click", () => {
       if (contentInfoEl.style.display === "none") {
-        contentInfoEl.style.display = "block";
+        contentInfoEl.setCssStyles({ display: "block" });
         toggleEl.textContent = "▲";
       } else {
-        contentInfoEl.style.display = "none";
+        contentInfoEl.setCssStyles({ display: "none" });
         toggleEl.textContent = "▼";
       }
     });
@@ -1250,11 +1250,11 @@ export class SelectableCardsModal extends Modal {
     if (this.usedPrompt) {
       contentInfoEl.createEl("h5", { text: "提示词:" });
       const promptPre = contentInfoEl.createEl("pre");
-      promptPre.style.backgroundColor = "var(--background-primary)";
-      promptPre.style.padding = "10px";
-      promptPre.style.borderRadius = "4px";
-      promptPre.style.maxHeight = "200px";
-      promptPre.style.overflow = "auto";
+      promptPre.setCssStyles({ backgroundColor: "var(--background-primary)" });
+      promptPre.setCssStyles({ padding: "10px" });
+      promptPre.setCssStyles({ borderRadius: "4px" });
+      promptPre.setCssStyles({ maxHeight: "200px" });
+      promptPre.setCssStyles({ overflow: "auto" });
       promptPre.textContent = this.usedPrompt;
     }
 
@@ -1262,11 +1262,11 @@ export class SelectableCardsModal extends Modal {
     if (this.selectedContent) {
       contentInfoEl.createEl("h5", { text: "选中内容:" });
       const contentPre = contentInfoEl.createEl("pre");
-      contentPre.style.backgroundColor = "var(--background-primary)";
-      contentPre.style.padding = "10px";
-      contentPre.style.borderRadius = "4px";
-      contentPre.style.maxHeight = "200px";
-      contentPre.style.overflow = "auto";
+      contentPre.setCssStyles({ backgroundColor: "var(--background-primary)" });
+      contentPre.setCssStyles({ padding: "10px" });
+      contentPre.setCssStyles({ borderRadius: "4px" });
+      contentPre.setCssStyles({ maxHeight: "200px" });
+      contentPre.setCssStyles({ overflow: "auto" });
       contentPre.textContent = this.selectedContent;
     }
 
@@ -1274,11 +1274,11 @@ export class SelectableCardsModal extends Modal {
     if (this.imageInfo) {
       contentInfoEl.createEl("h5", { text: "图片信息:" });
       const imageInfoPre = contentInfoEl.createEl("pre");
-      imageInfoPre.style.backgroundColor = "var(--background-primary)";
-      imageInfoPre.style.padding = "10px";
-      imageInfoPre.style.borderRadius = "4px";
-      imageInfoPre.style.maxHeight = "200px";
-      imageInfoPre.style.overflow = "auto";
+      imageInfoPre.setCssStyles({ backgroundColor: "var(--background-primary)" });
+      imageInfoPre.setCssStyles({ padding: "10px" });
+      imageInfoPre.setCssStyles({ borderRadius: "4px" });
+      imageInfoPre.setCssStyles({ maxHeight: "200px" });
+      imageInfoPre.setCssStyles({ overflow: "auto" });
       imageInfoPre.textContent = this.imageInfo;
     }
 
@@ -1286,11 +1286,11 @@ export class SelectableCardsModal extends Modal {
     if (this.rawResult) {
       contentInfoEl.createEl("h5", { text: "原始API结果:" });
       const resultPre = contentInfoEl.createEl("pre");
-      resultPre.style.backgroundColor = "var(--background-primary)";
-      resultPre.style.padding = "10px";
-      resultPre.style.borderRadius = "4px";
-      resultPre.style.maxHeight = "200px";
-      resultPre.style.overflow = "auto";
+      resultPre.setCssStyles({ backgroundColor: "var(--background-primary)" });
+      resultPre.setCssStyles({ padding: "10px" });
+      resultPre.setCssStyles({ borderRadius: "4px" });
+      resultPre.setCssStyles({ maxHeight: "200px" });
+      resultPre.setCssStyles({ overflow: "auto" });
       resultPre.textContent = this.rawResult;
     }
   }

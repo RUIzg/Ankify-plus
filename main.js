@@ -100,14 +100,14 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
     super.close();
   }
   onOpen() {
-    this.modalEl.style.position = "fixed";
-    this.modalEl.style.top = "50%";
-    this.modalEl.style.left = "50%";
-    this.modalEl.style.transform = "translate(-50%, -50%)";
-    this.modalEl.style.width = "80%";
-    this.modalEl.style.maxWidth = "800px";
-    this.modalEl.style.maxHeight = "80vh";
-    this.modalEl.style.overflow = "auto";
+    this.modalEl.setCssStyles({ position: "fixed" });
+    this.modalEl.setCssStyles({ top: "50%" });
+    this.modalEl.setCssStyles({ left: "50%" });
+    this.modalEl.setCssStyles({ transform: "translate(-50%, -50%)" });
+    this.modalEl.setCssStyles({ width: "80%" });
+    this.modalEl.setCssStyles({ maxWidth: "800px" });
+    this.modalEl.setCssStyles({ maxHeight: "80vh" });
+    this.modalEl.setCssStyles({ overflow: "auto" });
     const closeBtn = this.modalEl.querySelector(".modal-close-button");
     if (closeBtn) {
       closeBtn.addEventListener("click", () => this.forceClose());
@@ -130,15 +130,15 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
     contentEl.createEl("h2", { text: "Anki\u5361\u7247\u751F\u6210" });
     this.addRequestInfo(contentEl);
     const loadingContainer = contentEl.createDiv({ cls: "ankify-loading-container" });
-    loadingContainer.style.textAlign = "center";
-    loadingContainer.style.padding = "20px";
+    loadingContainer.setCssStyles({ textAlign: "center" });
+    loadingContainer.setCssStyles({ padding: "20px" });
     const loadingSpinner = loadingContainer.createEl("div", { cls: "ankify-loading-spinner" });
-    loadingSpinner.style.fontSize = "24px";
-    loadingSpinner.style.marginBottom = "10px";
+    loadingSpinner.setCssStyles({ fontSize: "24px" });
+    loadingSpinner.setCssStyles({ marginBottom: "10px" });
     loadingSpinner.textContent = "\u23F3";
     const loadingText = loadingContainer.createEl("div", { text: "\u6B63\u5728\u751F\u6210Anki\u5361\u7247\uFF0C\u8BF7\u7A0D\u5019..." });
-    loadingText.style.fontSize = "14px";
-    loadingText.style.color = "#666";
+    loadingText.setCssStyles({ fontSize: "14px" });
+    loadingText.setCssStyles({ color: "#666" });
     let imageInfoEl = null;
     if (this.apiCallFn) {
       try {
@@ -166,7 +166,7 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
         contentEl.createEl("p", {
           text: `\u751F\u6210\u5931\u8D25: ${error.message}`,
           cls: "ankify-error"
-        }).style.color = "red";
+        }).setCssStyles({ color: "red" });
         const existingRequestInfo = contentEl.querySelector(".ankify-request-info");
         if (existingRequestInfo) {
           existingRequestInfo.remove();
@@ -193,8 +193,8 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
         cls: "ankify-editable-result",
         text: this.rawResult
       });
-      textAreaEl.style.width = "100%";
-      textAreaEl.style.height = "100px";
+      textAreaEl.setCssStyles({ width: "100%" });
+      textAreaEl.setCssStyles({ height: "100px" });
       const buttonContainer2 = contentEl.createDiv({
         cls: "ankify-button-container"
       });
@@ -388,8 +388,8 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
       text: ` (\u5DF2\u9009\u62E9 ${this.selectedCards.filter(Boolean).length}/${this.selectedCards.length})`,
       cls: "ankify-selection-count"
     });
-    selectionCountEl.style.marginLeft = "10px";
-    selectionCountEl.style.color = "var(--text-muted)";
+    selectionCountEl.setCssStyles({ marginLeft: "10px" });
+    selectionCountEl.setCssStyles({ color: "var(--text-muted)" });
     const updateSelectionCount = () => {
       const selectedCount = this.selectedCards.filter(Boolean).length;
       const totalCount = this.selectedCards.length;
@@ -427,15 +427,15 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
         cls: "ankify-card-textarea",
         text: displayAnswer
       });
-      answerTextarea.style.width = "100%";
-      answerTextarea.style.minHeight = "100px";
-      answerTextarea.style.padding = "8px";
-      answerTextarea.style.border = "1px solid var(--border-color)";
-      answerTextarea.style.borderRadius = "4px";
-      answerTextarea.style.backgroundColor = "var(--background-primary)";
-      answerTextarea.style.color = "var(--text-normal)";
-      answerTextarea.style.fontFamily = "inherit";
-      answerTextarea.style.resize = "vertical";
+      answerTextarea.setCssStyles({ width: "100%" });
+      answerTextarea.setCssStyles({ minHeight: "100px" });
+      answerTextarea.setCssStyles({ padding: "8px" });
+      answerTextarea.setCssStyles({ border: "1px solid var(--border-color)" });
+      answerTextarea.setCssStyles({ borderRadius: "4px" });
+      answerTextarea.setCssStyles({ backgroundColor: "var(--background-primary)" });
+      answerTextarea.setCssStyles({ color: "var(--text-normal)" });
+      answerTextarea.setCssStyles({ fontFamily: "inherit" });
+      answerTextarea.setCssStyles({ resize: "vertical" });
       const undoHistory = [answerTextarea.value];
       const saveToHistory = () => {
         undoHistory.push(answerTextarea.value);
@@ -460,20 +460,20 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
         saveToHistory();
       });
       const actionsContainer = answerEl.createDiv();
-      actionsContainer.style.marginTop = "10px";
-      actionsContainer.style.display = "flex";
-      actionsContainer.style.alignItems = "center";
-      actionsContainer.style.gap = "15px";
+      actionsContainer.setCssStyles({ marginTop: "10px" });
+      actionsContainer.setCssStyles({ display: "flex" });
+      actionsContainer.setCssStyles({ alignItems: "center" });
+      actionsContainer.setCssStyles({ gap: "15px" });
       const undoButton = actionsContainer.createEl("button", {
         text: "\u64A4\u9500"
       });
-      undoButton.style.padding = "4px 8px";
-      undoButton.style.fontSize = "12px";
-      undoButton.style.backgroundColor = "var(--background-modifier-border)";
-      undoButton.style.color = "var(--text-normal)";
-      undoButton.style.border = "1px solid var(--border-color)";
-      undoButton.style.borderRadius = "4px";
-      undoButton.style.cursor = "pointer";
+      undoButton.setCssStyles({ padding: "4px 8px" });
+      undoButton.setCssStyles({ fontSize: "12px" });
+      undoButton.setCssStyles({ backgroundColor: "var(--background-modifier-border)" });
+      undoButton.setCssStyles({ color: "var(--text-normal)" });
+      undoButton.setCssStyles({ border: "1px solid var(--border-color)" });
+      undoButton.setCssStyles({ borderRadius: "4px" });
+      undoButton.setCssStyles({ cursor: "pointer" });
       undoButton.addEventListener("click", (e) => {
         e.preventDefault();
         undo();
@@ -481,18 +481,18 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
       const blankButton = actionsContainer.createEl("button", {
         text: "\u586B\u7A7A"
       });
-      blankButton.style.padding = "4px 8px";
-      blankButton.style.fontSize = "12px";
-      blankButton.style.backgroundColor = "var(--interactive-accent)";
-      blankButton.style.color = "var(--text-on-accent)";
-      blankButton.style.border = "none";
-      blankButton.style.borderRadius = "4px";
-      blankButton.style.cursor = "pointer";
+      blankButton.setCssStyles({ padding: "4px 8px" });
+      blankButton.setCssStyles({ fontSize: "12px" });
+      blankButton.setCssStyles({ backgroundColor: "var(--interactive-accent)" });
+      blankButton.setCssStyles({ color: "var(--text-on-accent)" });
+      blankButton.setCssStyles({ border: "none" });
+      blankButton.setCssStyles({ borderRadius: "4px" });
+      blankButton.setCssStyles({ cursor: "pointer" });
       const colorLabel = actionsContainer.createEl("span", {
         text: "\u989C\u8272: "
       });
-      colorLabel.style.fontSize = "12px";
-      colorLabel.style.marginLeft = "10px";
+      colorLabel.setCssStyles({ fontSize: "12px" });
+      colorLabel.setCssStyles({ marginLeft: "10px" });
       const colors = ["#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4", "#FFEAA7", "#DDA0DD", "#98D8C8", "#F7DC6F", "#BB8FCE", "#85C1E9"];
       colors.forEach((color) => {
         const colorOption = actionsContainer.createEl("button", {
@@ -500,14 +500,14 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
             title: color
           }
         });
-        colorOption.style.width = "20px";
-        colorOption.style.height = "20px";
-        colorOption.style.backgroundColor = color;
-        colorOption.style.borderRadius = "50%";
-        colorOption.style.cursor = "pointer";
-        colorOption.style.border = "2px solid var(--border-color)";
-        colorOption.style.marginLeft = "3px";
-        colorOption.style.padding = "0";
+        colorOption.setCssStyles({ width: "20px" });
+        colorOption.setCssStyles({ height: "20px" });
+        colorOption.setCssStyles({ backgroundColor: color });
+        colorOption.setCssStyles({ borderRadius: "50%" });
+        colorOption.setCssStyles({ cursor: "pointer" });
+        colorOption.setCssStyles({ border: "2px solid var(--border-color)" });
+        colorOption.setCssStyles({ marginLeft: "3px" });
+        colorOption.setCssStyles({ padding: "0" });
         colorOption.addEventListener("click", (e) => {
           e.preventDefault();
           const start = answerTextarea.selectionStart;
@@ -529,9 +529,9 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
       });
       const updateBlankButtonVisibility = () => {
         if (card.noteType === "Cloze") {
-          blankButton.style.display = "inline-block";
+          blankButton.setCssStyles({ display: "inline-block" });
         } else {
-          blankButton.style.display = "none";
+          blankButton.setCssStyles({ display: "none" });
         }
       };
       updateBlankButtonVisibility();
@@ -588,7 +588,7 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
       const noteTypeContainer2 = cardContent.createDiv({ cls: "ankify-card-note-type" });
       noteTypeContainer2.createEl("strong", { text: "\u7B14\u8BB0\u7C7B\u578B: " });
       const noteTypeSelect = noteTypeContainer2.createEl("select");
-      noteTypeSelect.style.marginLeft = "5px";
+      noteTypeSelect.setCssStyles({ marginLeft: "5px" });
       availableNoteTypes.forEach((type) => {
         const option = noteTypeSelect.createEl("option", {
           value: type,
@@ -599,51 +599,51 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
         }
       });
       const backExtraContainer = cardContent.createDiv({ cls: "ankify-card-back-extra-container" });
-      backExtraContainer.style.marginTop = "10px";
+      backExtraContainer.setCssStyles({ marginTop: "10px" });
       const backExtraHeader = backExtraContainer.createEl("div");
-      backExtraHeader.style.display = "flex";
-      backExtraHeader.style.alignItems = "center";
-      backExtraHeader.style.cursor = "pointer";
-      backExtraHeader.style.padding = "5px 0";
+      backExtraHeader.setCssStyles({ display: "flex" });
+      backExtraHeader.setCssStyles({ alignItems: "center" });
+      backExtraHeader.setCssStyles({ cursor: "pointer" });
+      backExtraHeader.setCssStyles({ padding: "5px 0" });
       const backExtraToggle = backExtraHeader.createEl("span", { text: "\u25B6" });
-      backExtraToggle.style.marginRight = "5px";
-      backExtraToggle.style.color = "var(--text-muted)";
-      backExtraToggle.style.fontSize = "12px";
+      backExtraToggle.setCssStyles({ marginRight: "5px" });
+      backExtraToggle.setCssStyles({ color: "var(--text-muted)" });
+      backExtraToggle.setCssStyles({ fontSize: "12px" });
       backExtraHeader.createEl("strong", { text: "Back Extra" });
       const backExtraContent = backExtraContainer.createDiv({ cls: "ankify-card-back-extra" });
-      backExtraContent.style.display = "none";
-      backExtraContent.style.marginTop = "5px";
+      backExtraContent.setCssStyles({ display: "none" });
+      backExtraContent.setCssStyles({ marginTop: "5px" });
       const backExtraTextarea = backExtraContent.createEl("textarea", {
         cls: "ankify-card-textarea",
         text: card.backExtra || ""
       });
-      backExtraTextarea.style.width = "100%";
-      backExtraTextarea.style.minHeight = "60px";
-      backExtraTextarea.style.padding = "8px";
-      backExtraTextarea.style.border = "1px solid var(--border-color)";
-      backExtraTextarea.style.borderRadius = "4px";
-      backExtraTextarea.style.backgroundColor = "var(--background-primary)";
-      backExtraTextarea.style.color = "var(--text-normal)";
-      backExtraTextarea.style.fontFamily = "inherit";
-      backExtraTextarea.style.resize = "vertical";
+      backExtraTextarea.setCssStyles({ width: "100%" });
+      backExtraTextarea.setCssStyles({ minHeight: "60px" });
+      backExtraTextarea.setCssStyles({ padding: "8px" });
+      backExtraTextarea.setCssStyles({ border: "1px solid var(--border-color)" });
+      backExtraTextarea.setCssStyles({ borderRadius: "4px" });
+      backExtraTextarea.setCssStyles({ backgroundColor: "var(--background-primary)" });
+      backExtraTextarea.setCssStyles({ color: "var(--text-normal)" });
+      backExtraTextarea.setCssStyles({ fontFamily: "inherit" });
+      backExtraTextarea.setCssStyles({ resize: "vertical" });
       backExtraTextarea.addEventListener("input", () => {
         const storedBackExtra = backExtraTextarea.value.replace(/\n/g, "<br>");
         this.cards[index].backExtra = storedBackExtra;
       });
       backExtraHeader.addEventListener("click", () => {
         if (backExtraContent.style.display === "none") {
-          backExtraContent.style.display = "block";
+          backExtraContent.setCssStyles({ display: "block" });
           backExtraToggle.textContent = "\u25BC";
         } else {
-          backExtraContent.style.display = "none";
+          backExtraContent.setCssStyles({ display: "none" });
           backExtraToggle.textContent = "\u25B6";
         }
       });
       const updateBackExtraVisibility = () => {
         if (card.noteType === "Cloze") {
-          backExtraContainer.style.display = "block";
+          backExtraContainer.setCssStyles({ display: "block" });
         } else {
-          backExtraContainer.style.display = "none";
+          backExtraContainer.setCssStyles({ display: "none" });
         }
       };
       updateBackExtraVisibility();
@@ -690,41 +690,41 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
     const batchTagsContainer = contentEl.createDiv({
       cls: "ankify-batch-tags-container"
     });
-    batchTagsContainer.style.marginTop = "20px";
+    batchTagsContainer.setCssStyles({ marginTop: "20px" });
     const batchTagsHeader = batchTagsContainer.createEl("div");
-    batchTagsHeader.style.display = "flex";
-    batchTagsHeader.style.justifyContent = "space-between";
-    batchTagsHeader.style.alignItems = "center";
-    batchTagsHeader.style.cursor = "pointer";
-    batchTagsHeader.style.padding = "10px";
-    batchTagsHeader.style.backgroundColor = "var(--background-secondary)";
-    batchTagsHeader.style.border = "1px solid var(--border-color)";
-    batchTagsHeader.style.borderRadius = "4px";
-    batchTagsHeader.style.color = "var(--text-normal)";
-    batchTagsHeader.style.display = "flex";
-    batchTagsHeader.style.alignItems = "center";
-    batchTagsHeader.style.justifyContent = "space-between";
+    batchTagsHeader.setCssStyles({ display: "flex" });
+    batchTagsHeader.setCssStyles({ justifyContent: "space-between" });
+    batchTagsHeader.setCssStyles({ alignItems: "center" });
+    batchTagsHeader.setCssStyles({ cursor: "pointer" });
+    batchTagsHeader.setCssStyles({ padding: "10px" });
+    batchTagsHeader.setCssStyles({ backgroundColor: "var(--background-secondary)" });
+    batchTagsHeader.setCssStyles({ border: "1px solid var(--border-color)" });
+    batchTagsHeader.setCssStyles({ borderRadius: "4px" });
+    batchTagsHeader.setCssStyles({ color: "var(--text-normal)" });
+    batchTagsHeader.setCssStyles({ display: "flex" });
+    batchTagsHeader.setCssStyles({ alignItems: "center" });
+    batchTagsHeader.setCssStyles({ justifyContent: "space-between" });
     const batchTagsTitle = batchTagsHeader.createEl("h4", { text: "\u66FF\u6362\u6807\u7B7E" });
-    batchTagsTitle.style.margin = "0";
-    batchTagsTitle.style.fontSize = "14px";
-    batchTagsTitle.style.color = "var(--text-normal)";
+    batchTagsTitle.setCssStyles({ margin: "0" });
+    batchTagsTitle.setCssStyles({ fontSize: "14px" });
+    batchTagsTitle.setCssStyles({ color: "var(--text-normal)" });
     const batchTagsToggle = batchTagsHeader.createEl("span", { text: "\u25BC" });
-    batchTagsToggle.style.color = "var(--text-muted)";
+    batchTagsToggle.setCssStyles({ color: "var(--text-muted)" });
     const batchTagsContent = batchTagsContainer.createEl("div");
-    batchTagsContent.style.display = "none";
-    batchTagsContent.style.padding = "15px";
-    batchTagsContent.style.backgroundColor = "var(--background-secondary)";
-    batchTagsContent.style.border = "1px solid var(--border-color)";
-    batchTagsContent.style.borderTop = "none";
-    batchTagsContent.style.borderRadius = "0 0 4px 4px";
-    batchTagsContent.style.color = "var(--text-normal)";
+    batchTagsContent.setCssStyles({ display: "none" });
+    batchTagsContent.setCssStyles({ padding: "15px" });
+    batchTagsContent.setCssStyles({ backgroundColor: "var(--background-secondary)" });
+    batchTagsContent.setCssStyles({ border: "1px solid var(--border-color)" });
+    batchTagsContent.setCssStyles({ borderTop: "none" });
+    batchTagsContent.setCssStyles({ borderRadius: "0 0 4px 4px" });
+    batchTagsContent.setCssStyles({ color: "var(--text-normal)" });
     batchTagsHeader.addEventListener("click", (e) => {
       if (!e.target.closest("input[type='checkbox']") && !e.target.closest("label")) {
         if (batchTagsContent.style.display === "none") {
-          batchTagsContent.style.display = "block";
+          batchTagsContent.setCssStyles({ display: "block" });
           batchTagsToggle.textContent = "\u25B2";
         } else {
-          batchTagsContent.style.display = "none";
+          batchTagsContent.setCssStyles({ display: "none" });
           batchTagsToggle.textContent = "\u25BC";
         }
       }
@@ -733,58 +733,58 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
       type: "text",
       placeholder: "\u8F93\u5165\u8981\u66FF\u6362\u7684\u6807\u7B7E"
     });
-    oldTagInput.style.width = "100%";
-    oldTagInput.style.padding = "8px";
-    oldTagInput.style.marginBottom = "10px";
-    oldTagInput.style.border = "1px solid var(--border-color)";
-    oldTagInput.style.borderRadius = "4px";
-    oldTagInput.style.backgroundColor = "var(--background-primary)";
-    oldTagInput.style.color = "var(--text-normal)";
+    oldTagInput.setCssStyles({ width: "100%" });
+    oldTagInput.setCssStyles({ padding: "8px" });
+    oldTagInput.setCssStyles({ marginBottom: "10px" });
+    oldTagInput.setCssStyles({ border: "1px solid var(--border-color)" });
+    oldTagInput.setCssStyles({ borderRadius: "4px" });
+    oldTagInput.setCssStyles({ backgroundColor: "var(--background-primary)" });
+    oldTagInput.setCssStyles({ color: "var(--text-normal)" });
     const newTagInput = batchTagsContent.createEl("input", {
       type: "text",
       placeholder: "\u8F93\u5165\u65B0\u7684\u6807\u7B7E"
     });
-    newTagInput.style.width = "100%";
-    newTagInput.style.padding = "8px";
-    newTagInput.style.marginBottom = "10px";
-    newTagInput.style.border = "1px solid var(--border-color)";
-    newTagInput.style.borderRadius = "4px";
-    newTagInput.style.backgroundColor = "var(--background-primary)";
-    newTagInput.style.color = "var(--text-normal)";
+    newTagInput.setCssStyles({ width: "100%" });
+    newTagInput.setCssStyles({ padding: "8px" });
+    newTagInput.setCssStyles({ marginBottom: "10px" });
+    newTagInput.setCssStyles({ border: "1px solid var(--border-color)" });
+    newTagInput.setCssStyles({ borderRadius: "4px" });
+    newTagInput.setCssStyles({ backgroundColor: "var(--background-primary)" });
+    newTagInput.setCssStyles({ color: "var(--text-normal)" });
     const buttonContainer = batchTagsContent.createEl("div");
-    buttonContainer.style.display = "flex";
-    buttonContainer.style.alignItems = "center";
-    buttonContainer.style.gap = "15px";
+    buttonContainer.setCssStyles({ display: "flex" });
+    buttonContainer.setCssStyles({ alignItems: "center" });
+    buttonContainer.setCssStyles({ gap: "15px" });
     const replaceButton = buttonContainer.createEl("button", {
       text: "\u66FF\u6362\u6807\u7B7E"
     });
-    replaceButton.style.padding = "8px 16px";
-    replaceButton.style.backgroundColor = "var(--interactive-accent)";
-    replaceButton.style.color = "var(--text-on-accent)";
-    replaceButton.style.border = "none";
-    replaceButton.style.borderRadius = "4px";
-    replaceButton.style.cursor = "pointer";
+    replaceButton.setCssStyles({ padding: "8px 16px" });
+    replaceButton.setCssStyles({ backgroundColor: "var(--interactive-accent)" });
+    replaceButton.setCssStyles({ color: "var(--text-on-accent)" });
+    replaceButton.setCssStyles({ border: "none" });
+    replaceButton.setCssStyles({ borderRadius: "4px" });
+    replaceButton.setCssStyles({ cursor: "pointer" });
     const replaceAllContainer = buttonContainer.createEl("div");
-    replaceAllContainer.style.display = "flex";
-    replaceAllContainer.style.alignItems = "center";
+    replaceAllContainer.setCssStyles({ display: "flex" });
+    replaceAllContainer.setCssStyles({ alignItems: "center" });
     const replaceAllCheckbox = replaceAllContainer.createEl("input", {
       type: "checkbox",
       attr: { id: "replaceAllTags" }
     });
-    replaceAllCheckbox.style.marginRight = "5px";
+    replaceAllCheckbox.setCssStyles({ marginRight: "5px" });
     const replaceAllLabel = replaceAllContainer.createEl("label", {
       text: "\u76F4\u63A5\u66FF\u6362\u6240\u6709\u6807\u7B7E",
       attr: { for: "replaceAllTags" }
     });
-    replaceAllLabel.style.cursor = "pointer";
-    replaceAllLabel.style.color = "var(--text-normal)";
-    replaceAllLabel.style.fontSize = "12px";
+    replaceAllLabel.setCssStyles({ cursor: "pointer" });
+    replaceAllLabel.setCssStyles({ color: "var(--text-normal)" });
+    replaceAllLabel.setCssStyles({ fontSize: "12px" });
     replaceAllCheckbox.addEventListener("change", () => {
       if (replaceAllCheckbox.checked) {
-        oldTagInput.style.display = "none";
+        oldTagInput.setCssStyles({ display: "none" });
         newTagInput.placeholder = "\u8F93\u5165\u65B0\u7684\u6807\u7B7E\uFF08\u5C06\u66FF\u6362\u6240\u6709\u5361\u7247\u7684\u6807\u7B7E\uFF09";
       } else {
-        oldTagInput.style.display = "block";
+        oldTagInput.setCssStyles({ display: "block" });
         newTagInput.placeholder = "\u8F93\u5165\u65B0\u7684\u6807\u7B7E";
       }
     });
@@ -826,22 +826,22 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
     const addButton = mainButtonContainer.createEl("button", {
       text: "\u6DFB\u52A0\u5230Anki"
     });
-    addButton.style.marginRight = "10px";
-    addButton.style.padding = "8px 16px";
-    addButton.style.backgroundColor = "var(--interactive-accent)";
-    addButton.style.color = "var(--text-on-accent)";
-    addButton.style.border = "none";
-    addButton.style.borderRadius = "4px";
-    addButton.style.cursor = "pointer";
+    addButton.setCssStyles({ marginRight: "10px" });
+    addButton.setCssStyles({ padding: "8px 16px" });
+    addButton.setCssStyles({ backgroundColor: "var(--interactive-accent)" });
+    addButton.setCssStyles({ color: "var(--text-on-accent)" });
+    addButton.setCssStyles({ border: "none" });
+    addButton.setCssStyles({ borderRadius: "4px" });
+    addButton.setCssStyles({ cursor: "pointer" });
     const cancelButton = mainButtonContainer.createEl("button", {
       text: "\u53D6\u6D88"
     });
-    cancelButton.style.padding = "8px 16px";
-    cancelButton.style.backgroundColor = "var(--background-modifier-border)";
-    cancelButton.style.color = "var(--text-normal)";
-    cancelButton.style.border = "1px solid var(--border-color)";
-    cancelButton.style.borderRadius = "4px";
-    cancelButton.style.cursor = "pointer";
+    cancelButton.setCssStyles({ padding: "8px 16px" });
+    cancelButton.setCssStyles({ backgroundColor: "var(--background-modifier-border)" });
+    cancelButton.setCssStyles({ color: "var(--text-normal)" });
+    cancelButton.setCssStyles({ border: "1px solid var(--border-color)" });
+    cancelButton.setCssStyles({ borderRadius: "4px" });
+    cancelButton.setCssStyles({ cursor: "pointer" });
     addButton.addEventListener("click", async () => {
       const selectedCards = this.cards.filter((_, index) => this.selectedCards[index]);
       if (selectedCards.length === 0) {
@@ -850,54 +850,54 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
       }
       try {
         this.progressContainer = document.createElement("div");
-        this.progressContainer.style.position = "fixed";
-        this.progressContainer.style.top = "50%";
-        this.progressContainer.style.left = "50%";
-        this.progressContainer.style.transform = "translate(-50%, -50%)";
-        this.progressContainer.style.backgroundColor = "var(--background-primary)";
-        this.progressContainer.style.border = "1px solid var(--border-color)";
-        this.progressContainer.style.borderRadius = "8px";
-        this.progressContainer.style.padding = "20px";
-        this.progressContainer.style.minWidth = "300px";
-        this.progressContainer.style.zIndex = "9999";
+        this.progressContainer.setCssStyles({ position: "fixed" });
+        this.progressContainer.setCssStyles({ top: "50%" });
+        this.progressContainer.setCssStyles({ left: "50%" });
+        this.progressContainer.setCssStyles({ transform: "translate(-50%, -50%)" });
+        this.progressContainer.setCssStyles({ backgroundColor: "var(--background-primary)" });
+        this.progressContainer.setCssStyles({ border: "1px solid var(--border-color)" });
+        this.progressContainer.setCssStyles({ borderRadius: "8px" });
+        this.progressContainer.setCssStyles({ padding: "20px" });
+        this.progressContainer.setCssStyles({ minWidth: "300px" });
+        this.progressContainer.setCssStyles({ zIndex: "9999" });
         const progressTitle = document.createElement("div");
-        progressTitle.style.fontSize = "14px";
-        progressTitle.style.fontWeight = "bold";
-        progressTitle.style.marginBottom = "10px";
-        progressTitle.style.textAlign = "center";
+        progressTitle.setCssStyles({ fontSize: "14px" });
+        progressTitle.setCssStyles({ fontWeight: "bold" });
+        progressTitle.setCssStyles({ marginBottom: "10px" });
+        progressTitle.setCssStyles({ textAlign: "center" });
         progressTitle.textContent = "\u6B63\u5728\u6DFB\u52A0\u5361\u7247\u5230Anki...";
         this.progressContainer.appendChild(progressTitle);
         if (this.plugin.settings.debugMode) {
           const batchInfo = document.createElement("div");
-          batchInfo.style.fontSize = "12px";
-          batchInfo.style.color = "var(--text-muted)";
-          batchInfo.style.marginBottom = "10px";
-          batchInfo.style.textAlign = "center";
+          batchInfo.setCssStyles({ fontSize: "12px" });
+          batchInfo.setCssStyles({ color: "var(--text-muted)" });
+          batchInfo.setCssStyles({ marginBottom: "10px" });
+          batchInfo.setCssStyles({ textAlign: "center" });
           batchInfo.textContent = `\u6279\u6B21\u5927\u5C0F: ${this.plugin.settings.batchSize}`;
           this.progressContainer.appendChild(batchInfo);
         }
         const progressText = document.createElement("div");
-        progressText.style.fontSize = "12px";
-        progressText.style.marginBottom = "10px";
-        progressText.style.textAlign = "center";
+        progressText.setCssStyles({ fontSize: "12px" });
+        progressText.setCssStyles({ marginBottom: "10px" });
+        progressText.setCssStyles({ textAlign: "center" });
         progressText.textContent = "0 / 0";
         this.progressContainer.appendChild(progressText);
         const progressBar = document.createElement("div");
-        progressBar.style.height = "6px";
-        progressBar.style.backgroundColor = "var(--background-secondary)";
-        progressBar.style.borderRadius = "3px";
-        progressBar.style.overflow = "hidden";
+        progressBar.setCssStyles({ height: "6px" });
+        progressBar.setCssStyles({ backgroundColor: "var(--background-secondary)" });
+        progressBar.setCssStyles({ borderRadius: "3px" });
+        progressBar.setCssStyles({ overflow: "hidden" });
         const progressFill = document.createElement("div");
-        progressFill.style.height = "100%";
-        progressFill.style.backgroundColor = "var(--interactive-accent)";
-        progressFill.style.width = "0%";
-        progressFill.style.transition = "width 0.3s ease";
+        progressFill.setCssStyles({ height: "100%" });
+        progressFill.setCssStyles({ backgroundColor: "var(--interactive-accent)" });
+        progressFill.setCssStyles({ width: "0%" });
+        progressFill.setCssStyles({ transition: "width 0.3s ease" });
         progressBar.appendChild(progressFill);
         this.progressContainer.appendChild(progressBar);
         document.body.appendChild(this.progressContainer);
         const results = await this.plugin.addNotesToAnki(selectedCards, this.deckSelect.value, this.noteTypeSelect.value, (current, total) => {
           const percentage = current / total * 100;
-          progressFill.style.width = `${percentage}%`;
+          progressFill.setCssStyles({ width: `${percentage}%` });
           progressText.textContent = `${current} / ${total}`;
         });
         if (this.progressContainer && document.body.contains(this.progressContainer)) {
@@ -948,70 +948,70 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
   }
   addRequestInfo(contentEl) {
     const requestInfoEl = contentEl.createDiv({ cls: "ankify-request-info" });
-    requestInfoEl.style.marginTop = "20px";
-    requestInfoEl.style.border = "1px solid var(--border-color)";
-    requestInfoEl.style.borderRadius = "4px";
-    requestInfoEl.style.backgroundColor = "var(--background-secondary)";
-    requestInfoEl.style.overflow = "hidden";
+    requestInfoEl.setCssStyles({ marginTop: "20px" });
+    requestInfoEl.setCssStyles({ border: "1px solid var(--border-color)" });
+    requestInfoEl.setCssStyles({ borderRadius: "4px" });
+    requestInfoEl.setCssStyles({ backgroundColor: "var(--background-secondary)" });
+    requestInfoEl.setCssStyles({ overflow: "hidden" });
     const headerEl = requestInfoEl.createEl("div");
-    headerEl.style.display = "flex";
-    headerEl.style.justifyContent = "space-between";
-    headerEl.style.alignItems = "center";
-    headerEl.style.padding = "10px";
-    headerEl.style.cursor = "pointer";
-    headerEl.style.backgroundColor = "var(--background-secondary)";
+    headerEl.setCssStyles({ display: "flex" });
+    headerEl.setCssStyles({ justifyContent: "space-between" });
+    headerEl.setCssStyles({ alignItems: "center" });
+    headerEl.setCssStyles({ padding: "10px" });
+    headerEl.setCssStyles({ cursor: "pointer" });
+    headerEl.setCssStyles({ backgroundColor: "var(--background-secondary)" });
     headerEl.createEl("h4", { text: "\u8BF7\u6C42\u4FE1\u606F" });
     const toggleEl = headerEl.createEl("span", { text: "\u25BC" });
     const contentInfoEl = requestInfoEl.createDiv();
-    contentInfoEl.style.padding = "10px";
-    contentInfoEl.style.display = "none";
+    contentInfoEl.setCssStyles({ padding: "10px" });
+    contentInfoEl.setCssStyles({ display: "none" });
     headerEl.addEventListener("click", () => {
       if (contentInfoEl.style.display === "none") {
-        contentInfoEl.style.display = "block";
+        contentInfoEl.setCssStyles({ display: "block" });
         toggleEl.textContent = "\u25B2";
       } else {
-        contentInfoEl.style.display = "none";
+        contentInfoEl.setCssStyles({ display: "none" });
         toggleEl.textContent = "\u25BC";
       }
     });
     if (this.usedPrompt) {
       contentInfoEl.createEl("h5", { text: "\u63D0\u793A\u8BCD:" });
       const promptPre = contentInfoEl.createEl("pre");
-      promptPre.style.backgroundColor = "var(--background-primary)";
-      promptPre.style.padding = "10px";
-      promptPre.style.borderRadius = "4px";
-      promptPre.style.maxHeight = "200px";
-      promptPre.style.overflow = "auto";
+      promptPre.setCssStyles({ backgroundColor: "var(--background-primary)" });
+      promptPre.setCssStyles({ padding: "10px" });
+      promptPre.setCssStyles({ borderRadius: "4px" });
+      promptPre.setCssStyles({ maxHeight: "200px" });
+      promptPre.setCssStyles({ overflow: "auto" });
       promptPre.textContent = this.usedPrompt;
     }
     if (this.selectedContent) {
       contentInfoEl.createEl("h5", { text: "\u9009\u4E2D\u5185\u5BB9:" });
       const contentPre = contentInfoEl.createEl("pre");
-      contentPre.style.backgroundColor = "var(--background-primary)";
-      contentPre.style.padding = "10px";
-      contentPre.style.borderRadius = "4px";
-      contentPre.style.maxHeight = "200px";
-      contentPre.style.overflow = "auto";
+      contentPre.setCssStyles({ backgroundColor: "var(--background-primary)" });
+      contentPre.setCssStyles({ padding: "10px" });
+      contentPre.setCssStyles({ borderRadius: "4px" });
+      contentPre.setCssStyles({ maxHeight: "200px" });
+      contentPre.setCssStyles({ overflow: "auto" });
       contentPre.textContent = this.selectedContent;
     }
     if (this.imageInfo) {
       contentInfoEl.createEl("h5", { text: "\u56FE\u7247\u4FE1\u606F:" });
       const imageInfoPre = contentInfoEl.createEl("pre");
-      imageInfoPre.style.backgroundColor = "var(--background-primary)";
-      imageInfoPre.style.padding = "10px";
-      imageInfoPre.style.borderRadius = "4px";
-      imageInfoPre.style.maxHeight = "200px";
-      imageInfoPre.style.overflow = "auto";
+      imageInfoPre.setCssStyles({ backgroundColor: "var(--background-primary)" });
+      imageInfoPre.setCssStyles({ padding: "10px" });
+      imageInfoPre.setCssStyles({ borderRadius: "4px" });
+      imageInfoPre.setCssStyles({ maxHeight: "200px" });
+      imageInfoPre.setCssStyles({ overflow: "auto" });
       imageInfoPre.textContent = this.imageInfo;
     }
     if (this.rawResult) {
       contentInfoEl.createEl("h5", { text: "\u539F\u59CBAPI\u7ED3\u679C:" });
       const resultPre = contentInfoEl.createEl("pre");
-      resultPre.style.backgroundColor = "var(--background-primary)";
-      resultPre.style.padding = "10px";
-      resultPre.style.borderRadius = "4px";
-      resultPre.style.maxHeight = "200px";
-      resultPre.style.overflow = "auto";
+      resultPre.setCssStyles({ backgroundColor: "var(--background-primary)" });
+      resultPre.setCssStyles({ padding: "10px" });
+      resultPre.setCssStyles({ borderRadius: "4px" });
+      resultPre.setCssStyles({ maxHeight: "200px" });
+      resultPre.setCssStyles({ overflow: "auto" });
       resultPre.textContent = this.rawResult;
     }
   }
@@ -1049,14 +1049,14 @@ var AnkifySettingTab = class extends import_obsidian3.PluginSettingTab {
       }));
       const deepseekUrlSetting = new import_obsidian3.Setting(containerEl).setName("DeepSeek API URL").setDesc("\u9009\u62E9\u6216\u8F93\u5165DeepSeek API\u7684URL\u5730\u5740");
       const deepseekUrlContainer = deepseekUrlSetting.settingEl.createDiv();
-      deepseekUrlContainer.style.display = "flex";
-      deepseekUrlContainer.style.flexDirection = "column";
-      deepseekUrlContainer.style.gap = "10px";
-      deepseekUrlContainer.style.marginTop = "10px";
+      deepseekUrlContainer.setCssStyles({ display: "flex" });
+      deepseekUrlContainer.setCssStyles({ flexDirection: "column" });
+      deepseekUrlContainer.setCssStyles({ gap: "10px" });
+      deepseekUrlContainer.setCssStyles({ marginTop: "10px" });
       const urlSelect = deepseekUrlContainer.createEl("select");
-      urlSelect.style.width = "100%";
-      urlSelect.style.padding = "5px";
-      urlSelect.style.marginBottom = "5px";
+      urlSelect.setCssStyles({ width: "100%" });
+      urlSelect.setCssStyles({ padding: "5px" });
+      urlSelect.setCssStyles({ marginBottom: "5px" });
       const urlOptions = [
         { value: "https://api.deepseek.com/v1/chat/completions", label: "DeepSeek \u5B98\u65B9 API (v1)", url: "https://api.deepseek.com/v1/chat/completions" },
         { value: "https://api.deepseek.com/v3/chat", label: "DeepSeek V3 API", url: "https://api.deepseek.com/v3/chat" },
@@ -1073,19 +1073,19 @@ var AnkifySettingTab = class extends import_obsidian3.PluginSettingTab {
       const customUrlInput = deepseekUrlContainer.createEl("input");
       customUrlInput.type = "text";
       customUrlInput.placeholder = "\u8F93\u5165\u81EA\u5B9A\u4E49API URL";
-      customUrlInput.style.width = "100%";
-      customUrlInput.style.padding = "5px";
-      customUrlInput.style.display = this.plugin.settings.deepseekApiUrl === "custom" || !urlOptions.some((opt) => opt.value === this.plugin.settings.deepseekApiUrl) ? "block" : "none";
+      customUrlInput.setCssStyles({ width: "100%" });
+      customUrlInput.setCssStyles({ padding: "5px" });
+      customUrlInput.setCssStyles({ display: this.plugin.settings.deepseekApiUrl === "custom" || !urlOptions.some((opt) => opt.value === this.plugin.settings.deepseekApiUrl) ? "block" : "none" });
       if (!urlOptions.some((opt) => opt.value === this.plugin.settings.deepseekApiUrl)) {
         customUrlInput.value = this.plugin.settings.deepseekApiUrl;
       }
       urlSelect.addEventListener("change", async () => {
         const selectedValue = urlSelect.value;
         if (selectedValue === "custom") {
-          customUrlInput.style.display = "block";
+          customUrlInput.setCssStyles({ display: "block" });
           this.plugin.settings.deepseekApiUrl = customUrlInput.value || "";
         } else {
-          customUrlInput.style.display = "none";
+          customUrlInput.setCssStyles({ display: "none" });
           this.plugin.settings.deepseekApiUrl = selectedValue;
         }
         await this.plugin.saveSettings();
@@ -1140,53 +1140,53 @@ var AnkifySettingTab = class extends import_obsidian3.PluginSettingTab {
     new import_obsidian3.Setting(containerEl).setName("\u6587\u672C\u5185\u5BB9Prompt").setDesc("\u8BBE\u7F6E\u751F\u6210Anki\u5361\u7247\u7684\u63D0\u793A\u8BCD\uFF08\u7528\u4E8E\u6587\u672C\u5185\u5BB9\uFF09").addTextArea((text) => text.setPlaceholder('\u8BF7\u57FA\u4E8E\u4EE5\u4E0B\u5185\u5BB9\u521B\u5EFAAnki\u5361\u7247\uFF0C\u683C\u5F0F\u4E3A"%question%:\u95EE\u9898 %answer%:\u7B54\u6848 %tags%:#\u6807\u7B7E"...').setValue(this.plugin.settings.customPrompt).onChange(async (value) => {
       this.plugin.settings.customPrompt = value;
       await this.plugin.saveSettings();
-    }).inputEl.style.minHeight = "80px");
+    }).inputEl.setCssStyles({ minHeight: "80px" }));
     new import_obsidian3.Setting(containerEl).setName("\u56FE\u7247\u8BC6\u522BPrompt").setDesc("\u8BBE\u7F6E\u8BC6\u522B\u56FE\u7247\u5185\u5BB9\u5E76\u751F\u6210Anki\u5361\u7247\u7684\u63D0\u793A\u8BCD").addTextArea((text) => text.setPlaceholder("\u8BF7\u8BC6\u522B\u8FD9\u5F20\u56FE\u7247\u4E2D\u7684\u5185\u5BB9\uFF0C\u5E76\u57FA\u4E8E\u56FE\u7247\u5185\u5BB9\u521B\u5EFAAnki\u5361\u7247...").setValue(this.plugin.settings.visionPrompt).onChange(async (value) => {
       this.plugin.settings.visionPrompt = value;
       await this.plugin.saveSettings();
-    }).inputEl.style.minHeight = "80px");
+    }).inputEl.setCssStyles({ minHeight: "80px" }));
     const apiTestSetting = new import_obsidian3.Setting(containerEl).setName("API\u8FDE\u901A\u6027\u6D4B\u8BD5").setDesc("\u6D4B\u8BD5\u5F53\u524D\u9009\u62E9\u7684API\u662F\u5426\u53EF\u4EE5\u6B63\u5E38\u8FDE\u63A5");
     const apiTestContainer = apiTestSetting.settingEl.createDiv();
-    apiTestContainer.style.display = "flex";
-    apiTestContainer.style.alignItems = "center";
-    apiTestContainer.style.gap = "10px";
-    apiTestContainer.style.marginTop = "10px";
+    apiTestContainer.setCssStyles({ display: "flex" });
+    apiTestContainer.setCssStyles({ alignItems: "center" });
+    apiTestContainer.setCssStyles({ gap: "10px" });
+    apiTestContainer.setCssStyles({ marginTop: "10px" });
     const apiTestButton = apiTestContainer.createEl("button", {
       text: "\u6D4B\u8BD5API\u8FDE\u63A5"
     });
     const apiTestStatus = apiTestContainer.createEl("span");
-    apiTestStatus.style.fontSize = "20px";
+    apiTestStatus.setCssStyles({ fontSize: "20px" });
     const apiTestResult = containerEl.createEl("div");
-    apiTestResult.style.marginTop = "10px";
-    apiTestResult.style.padding = "10px";
-    apiTestResult.style.backgroundColor = "#f5f5f5";
-    apiTestResult.style.border = "1px solid #ddd";
-    apiTestResult.style.borderRadius = "4px";
-    apiTestResult.style.fontFamily = "monospace";
-    apiTestResult.style.fontSize = "12px";
-    apiTestResult.style.display = "none";
+    apiTestResult.setCssStyles({ marginTop: "10px" });
+    apiTestResult.setCssStyles({ padding: "10px" });
+    apiTestResult.setCssStyles({ backgroundColor: "#f5f5f5" });
+    apiTestResult.setCssStyles({ border: "1px solid #ddd" });
+    apiTestResult.setCssStyles({ borderRadius: "4px" });
+    apiTestResult.setCssStyles({ fontFamily: "monospace" });
+    apiTestResult.setCssStyles({ fontSize: "12px" });
+    apiTestResult.setCssStyles({ display: "none" });
     apiTestButton.addEventListener("click", async () => {
       apiTestButton.disabled = true;
       apiTestButton.textContent = "\u6D4B\u8BD5\u4E2D...";
       apiTestStatus.textContent = "";
       apiTestResult.textContent = "";
-      apiTestResult.style.display = "none";
+      apiTestResult.setCssStyles({ display: "none" });
       try {
         const testResult = await this.plugin.callModelAPI("\u6D4B\u8BD5\u8FDE\u63A5");
         apiTestStatus.textContent = "\u2705";
-        apiTestStatus.style.color = "green";
+        apiTestStatus.setCssStyles({ color: "green" });
         apiTestResult.textContent = `\u8FDE\u63A5\u6210\u529F\uFF01
 
 API\u8FD4\u56DE\u793A\u4F8B:
 ${testResult.substring(0, 200)}...`;
-        apiTestResult.style.display = "block";
+        apiTestResult.setCssStyles({ display: "block" });
         new import_obsidian3.Notice("API\u8FDE\u63A5\u6D4B\u8BD5\u6210\u529F");
       } catch (error) {
         apiTestStatus.textContent = "\u274C";
-        apiTestStatus.style.color = "red";
+        apiTestStatus.setCssStyles({ color: "red" });
         apiTestResult.textContent = `\u8FDE\u63A5\u5931\u8D25\uFF1A
 ${error.message}`;
-        apiTestResult.style.display = "block";
+        apiTestResult.setCssStyles({ display: "block" });
         new import_obsidian3.Notice("API\u8FDE\u63A5\u6D4B\u8BD5\u5931\u8D25");
       } finally {
         apiTestButton.disabled = false;
@@ -1195,36 +1195,36 @@ ${error.message}`;
     });
     const visionTestSetting = new import_obsidian3.Setting(containerEl).setName("\u56FE\u7247\u8BC6\u522B\u6D4B\u8BD5").setDesc("\u9009\u62E9\u56FE\u7247\u6587\u4EF6\u8FDB\u884C\u6D4B\u8BD5");
     const visionTestContainer = visionTestSetting.settingEl.createDiv();
-    visionTestContainer.style.marginTop = "10px";
+    visionTestContainer.setCssStyles({ marginTop: "10px" });
     const visionTestFileInput = visionTestContainer.createEl("input", {
       type: "file",
       attr: {
         accept: "image/*"
       }
     });
-    visionTestFileInput.style.marginBottom = "10px";
+    visionTestFileInput.setCssStyles({ marginBottom: "10px" });
     const visionTestButtonContainer = visionTestContainer.createDiv();
-    visionTestButtonContainer.style.display = "flex";
-    visionTestButtonContainer.style.alignItems = "center";
-    visionTestButtonContainer.style.gap = "10px";
-    visionTestButtonContainer.style.marginTop = "10px";
+    visionTestButtonContainer.setCssStyles({ display: "flex" });
+    visionTestButtonContainer.setCssStyles({ alignItems: "center" });
+    visionTestButtonContainer.setCssStyles({ gap: "10px" });
+    visionTestButtonContainer.setCssStyles({ marginTop: "10px" });
     const visionTestButton = visionTestButtonContainer.createEl("button", {
       text: "\u6D4B\u8BD5\u56FE\u7247\u8BC6\u522B"
     });
     const visionTestStatus = visionTestButtonContainer.createEl("span");
-    visionTestStatus.style.fontSize = "20px";
+    visionTestStatus.setCssStyles({ fontSize: "20px" });
     const visionTestResult = containerEl.createEl("textarea");
     visionTestResult.placeholder = "\u8BC6\u522B\u7ED3\u679C\u5C06\u663E\u793A\u5728\u8FD9\u91CC...";
-    visionTestResult.style.width = "100%";
-    visionTestResult.style.minHeight = "150px";
-    visionTestResult.style.marginTop = "10px";
-    visionTestResult.style.padding = "10px";
-    visionTestResult.style.backgroundColor = "#f5f5f5";
-    visionTestResult.style.border = "1px solid #ddd";
-    visionTestResult.style.borderRadius = "4px";
-    visionTestResult.style.fontFamily = "monospace";
-    visionTestResult.style.fontSize = "12px";
-    visionTestResult.style.display = "none";
+    visionTestResult.setCssStyles({ width: "100%" });
+    visionTestResult.setCssStyles({ minHeight: "150px" });
+    visionTestResult.setCssStyles({ marginTop: "10px" });
+    visionTestResult.setCssStyles({ padding: "10px" });
+    visionTestResult.setCssStyles({ backgroundColor: "#f5f5f5" });
+    visionTestResult.setCssStyles({ border: "1px solid #ddd" });
+    visionTestResult.setCssStyles({ borderRadius: "4px" });
+    visionTestResult.setCssStyles({ fontFamily: "monospace" });
+    visionTestResult.setCssStyles({ fontSize: "12px" });
+    visionTestResult.setCssStyles({ display: "none" });
     visionTestResult.readOnly = true;
     visionTestButton.addEventListener("click", async () => {
       var _a;
@@ -1237,7 +1237,7 @@ ${error.message}`;
       visionTestButton.textContent = "\u8BC6\u522B\u4E2D...";
       visionTestStatus.textContent = "";
       visionTestResult.textContent = "";
-      visionTestResult.style.display = "none";
+      visionTestResult.setCssStyles({ display: "none" });
       try {
         console.log("\u5F00\u59CB\u8BFB\u53D6\u56FE\u7247:", file.name, "\u5927\u5C0F:", file.size);
         console.log("\u4F7F\u7528\u7684Prompt:", this.plugin.settings.visionPrompt);
@@ -1255,7 +1255,7 @@ ${error.message}`;
         console.log("\u56FE\u7247\u538B\u7F29\u5B8C\u6210");
         const result = await this.plugin.callVisionAPI(compressedImage);
         visionTestStatus.textContent = "\u2705";
-        visionTestStatus.style.color = "green";
+        visionTestStatus.setCssStyles({ color: "green" });
         const resultText = `\u3010\u4F7F\u7528\u7684Prompt\u3011
 ${this.plugin.settings.visionPrompt}
 
@@ -1264,15 +1264,15 @@ ${"=".repeat(50)}
 \u3010\u8BC6\u522B\u7ED3\u679C\u3011
 ${result}`;
         visionTestResult.textContent = resultText;
-        visionTestResult.style.display = "block";
+        visionTestResult.setCssStyles({ display: "block" });
         new import_obsidian3.Notice("\u56FE\u7247\u8BC6\u522B\u6D4B\u8BD5\u6210\u529F");
       } catch (error) {
         console.error("\u56FE\u7247\u8BC6\u522B\u6D4B\u8BD5\u5931\u8D25:", error);
         visionTestStatus.textContent = "\u274C";
-        visionTestStatus.style.color = "red";
+        visionTestStatus.setCssStyles({ color: "red" });
         visionTestResult.textContent = `\u8BC6\u522B\u5931\u8D25\uFF1A
 ${error.message}`;
-        visionTestResult.style.display = "block";
+        visionTestResult.setCssStyles({ display: "block" });
         new import_obsidian3.Notice("\u56FE\u7247\u8BC6\u522B\u6D4B\u8BD5\u5931\u8D25");
       } finally {
         visionTestButton.disabled = false;
@@ -1297,16 +1297,16 @@ ${error.message}`;
     new import_obsidian3.Setting(containerEl).setName("Anki Connect \u8BBE\u7F6E").setHeading();
     const ankiConnectSetting = new import_obsidian3.Setting(containerEl).setName("Anki Connect URL").setDesc("Anki Connect API\u7684\u5730\u5740\uFF0C\u9ED8\u8BA4\u4E3A http://127.0.0.1:8765");
     const ankiConnectContainer = ankiConnectSetting.settingEl.createDiv();
-    ankiConnectContainer.style.display = "flex";
-    ankiConnectContainer.style.alignItems = "center";
-    ankiConnectContainer.style.gap = "10px";
-    ankiConnectContainer.style.marginTop = "10px";
+    ankiConnectContainer.setCssStyles({ display: "flex" });
+    ankiConnectContainer.setCssStyles({ alignItems: "center" });
+    ankiConnectContainer.setCssStyles({ gap: "10px" });
+    ankiConnectContainer.setCssStyles({ marginTop: "10px" });
     const urlInput = ankiConnectContainer.createEl("input");
     urlInput.type = "text";
     urlInput.placeholder = "http://127.0.0.1:8765";
     urlInput.value = this.plugin.settings.ankiConnectUrl;
-    urlInput.style.flex = "1";
-    urlInput.style.padding = "5px";
+    urlInput.setCssStyles({ flex: "1" });
+    urlInput.setCssStyles({ padding: "5px" });
     urlInput.addEventListener("change", async () => {
       this.plugin.settings.ankiConnectUrl = urlInput.value;
       await this.plugin.saveSettings();
@@ -1366,25 +1366,25 @@ ${error.message}`;
     new import_obsidian3.Setting(containerEl).setName("\u6279\u91CF\u589E\u52A0Anki Deck").setHeading();
     const deckCreationSetting = new import_obsidian3.Setting(containerEl).setName("\u6279\u91CF\u521B\u5EFADeck").setDesc("\u6BCF\u884C\u8F93\u5165\u4E00\u4E2ADeck\u540D\u79F0\uFF0C\u70B9\u51FB\u6309\u94AE\u6279\u91CF\u521B\u5EFA");
     const deckInputContainer = deckCreationSetting.settingEl.createDiv();
-    deckInputContainer.style.marginTop = "10px";
+    deckInputContainer.setCssStyles({ marginTop: "10px" });
     const deckTextArea = deckInputContainer.createEl("textarea");
     deckTextArea.placeholder = "\u8F93\u5165Deck\u540D\u79F0\uFF0C\u6BCF\u884C\u4E00\u4E2A\n\u4F8B\u5982\uFF1A\n\u9ED8\u8BA4\u724C\u7EC4\n\u82F1\u8BED\u5B66\u4E60\n\u6570\u5B66\u516C\u5F0F";
-    deckTextArea.style.width = "100%";
-    deckTextArea.style.minHeight = "150px";
-    deckTextArea.style.padding = "10px";
-    deckTextArea.style.backgroundColor = "#f5f5f5";
-    deckTextArea.style.border = "1px solid #ddd";
-    deckTextArea.style.borderRadius = "4px";
+    deckTextArea.setCssStyles({ width: "100%" });
+    deckTextArea.setCssStyles({ minHeight: "150px" });
+    deckTextArea.setCssStyles({ padding: "10px" });
+    deckTextArea.setCssStyles({ backgroundColor: "#f5f5f5" });
+    deckTextArea.setCssStyles({ border: "1px solid #ddd" });
+    deckTextArea.setCssStyles({ borderRadius: "4px" });
     const deckButtonContainer = deckInputContainer.createDiv();
-    deckButtonContainer.style.display = "flex";
-    deckButtonContainer.style.alignItems = "center";
-    deckButtonContainer.style.gap = "10px";
-    deckButtonContainer.style.marginTop = "10px";
+    deckButtonContainer.setCssStyles({ display: "flex" });
+    deckButtonContainer.setCssStyles({ alignItems: "center" });
+    deckButtonContainer.setCssStyles({ gap: "10px" });
+    deckButtonContainer.setCssStyles({ marginTop: "10px" });
     const createDeckButton = deckButtonContainer.createEl("button", {
       text: "\u6279\u91CF\u521B\u5EFADeck"
     });
     const deckCreationStatus = deckButtonContainer.createEl("span");
-    deckCreationStatus.style.fontSize = "20px";
+    deckCreationStatus.setCssStyles({ fontSize: "20px" });
     createDeckButton.addEventListener("click", async () => {
       createDeckButton.disabled = true;
       createDeckButton.textContent = "\u521B\u5EFA\u4E2D...";
@@ -1414,7 +1414,7 @@ ${error.message}`;
           }
         }
         deckCreationStatus.textContent = "\u2705";
-        deckCreationStatus.style.color = "green";
+        deckCreationStatus.setCssStyles({ color: "green" });
         if (errorMessages.length > 0) {
           new import_obsidian3.Notice(`\u6210\u529F\u521B\u5EFA ${successCount} \u4E2ADeck\uFF0C\u5931\u8D25 ${errorCount} \u4E2A
 \u5931\u8D25\u539F\u56E0:
@@ -1425,7 +1425,7 @@ ${errorMessages.join("\n")}`);
       } catch (error) {
         console.error("\u6279\u91CF\u521B\u5EFADeck\u5931\u8D25:", error);
         deckCreationStatus.textContent = "\u274C";
-        deckCreationStatus.style.color = "red";
+        deckCreationStatus.setCssStyles({ color: "red" });
         new import_obsidian3.Notice(`\u6279\u91CF\u521B\u5EFADeck\u5931\u8D25: ${error.message}`);
       } finally {
         createDeckButton.disabled = false;
