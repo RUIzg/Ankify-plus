@@ -136,10 +136,6 @@
   font-size: 0.85em;
 }
 
-.ankify-primary-button {
-  background-color: var(--interactive-success) !important;
-}
-
 .ankify-error {
   color: var(--text-error);
   padding: 5px;
@@ -283,29 +279,6 @@
   border-radius: 4px;
   background-color: var(--background-primary);
   color: var(--text-normal);
-}
-
-.ankify-primary-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
-  background-color: var(--interactive-accent) !important;
-  color: var(--text-on-accent) !important;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-weight: 500;
-  transition: background-color 0.2s ease;
-}
-
-.ankify-primary-button:hover {
-  background-color: var(--interactive-accent-hover) !important;
-}
-
-.ankify-primary-button::before {
-  content: "📝";
-  font-size: 1.2em;
 }
 
 /* 卡片编辑弹窗样式 */
