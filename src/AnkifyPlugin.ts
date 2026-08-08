@@ -2,16 +2,20 @@ import {
   App,
   Editor,
   MarkdownView,
+  Modal,
   Notice,
   Plugin,
+  PluginSettingTab,
+  Setting,
 } from "obsidian";
 import * as http from "http";
 import * as https from "https";
 import { AnkifySettings } from "./AnkifySettings";
 import { AnkiCard } from "./AnkiCard";
 import { DEFAULT_SETTINGS } from "./constants";
-import { CardEditorModal } from "./CardEditorModal";
+import { SelectableCardsModal } from "./SelectableCardsModal";
 import { AnkifySettingTab } from "./AnkifySettingTab";
+import { AnkiNoteBuilder } from "./utils/AnkiNoteBuilder";
 
 export class AnkifyPlugin extends Plugin {
   settings: AnkifySettings;
@@ -170,7 +174,10 @@ export class AnkifyPlugin extends Plugin {
       return await this.invokeAnkiConnect("deckNames");
     } catch (error) {
       console.error("获取牌组列表失败:", error);
-      throw new Error(`获取牌组列表失败: ${error.message}`);
+      new Notice(
+        "获取Anki牌组列表失败，请确保Anki已启动且安装了Anki Connect插件"
+      );
+      return [];
     }
   }
 
@@ -180,125 +187,254 @@ export class AnkifyPlugin extends Plugin {
       return await this.invokeAnkiConnect("modelNames");
     } catch (error) {
       console.error("获取笔记类型列表失败:", error);
-      throw new Error(`获取笔记类型列表失败: ${error.message}`);
+      return [];
     }
   }
 
-  // 解析卡片内容
-  parseCards(content: string): AnkiCard[] {
+  // 解析生成的Anki卡片文本
+  parseAnkiCards(text: string): AnkiCard[] {
     const cards: AnkiCard[] = [];
-    const lines = content.split("\n");
 
-    const questionMarker = this.settings.questionMarker;
-    const answerMarker = this.settings.answerMarker;
-    const tagsMarker = this.settings.tagsMarker;
+    console.log("开始解析Anki卡片，原始文本长度:", text.length);
+    console.log("原始文本前500字符:", text.substring(0, 500));
 
-    lines.forEach((line) => {
-      line = line.trim();
-      if (!line) return;
+    // 检查是否是多行格式（每个字段一行，卡片间有空行）
+    const questionMarker = this.settings.questionMarker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const answerMarker = this.settings.answerMarker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const tagsMarker = this.settings.tagsMarker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const isMultiLineFormat = new RegExp(`${questionMarker}.*\\n\\s*${answerMarker}.*?(\\n\\s*annotation:.*)?(\\n\\s*${tagsMarker}.*)?`, "i").test(
+      text
+    );
 
-      // 尝试匹配带标记的格式: %question%:问题 %answer%:答案 %tags%:#标签
-      if (line.includes(questionMarker) && line.includes(answerMarker)) {
-        const questionMatch = line.match(new RegExp(`(?:${questionMarker})[:：]\s*(.*?)(?:\s*${answerMarker}|$)`));
-        const answerMatch = line.match(new RegExp(`(?:${answerMarker})[:：]\s*(.*?)(?:\s*${tagsMarker}|$)`));
-        const tagsMatch = line.match(new RegExp(`(?:${tagsMarker})[:：]?\s*(.*?)$`));
+    if (isMultiLineFormat) {
+      console.log("检测到多行格式数据");
 
-        if (questionMatch && answerMatch) {
-          const question = questionMatch[1]?.trim();
-          const answer = answerMatch[1]?.trim();
-          const tags = tagsMatch && tagsMatch[1]
-            ? tagsMatch[1]
-                .split("#")
-                .map((tag) => tag.trim())
-                .filter((tag) => tag.length > 0)
-            : [];
+      // 通过标记符分割不同的卡片
+      const questionMarkerPattern = new RegExp(questionMarker, "gi");
+      const matches = Array.from(text.matchAll(questionMarkerPattern));
+      
+      if (matches.length === 0) {
+        return cards;
+      }
 
-          // 检测是否包含填空格式
-          const containsCloze = this.containsClozeFormat(answer);
+      for (let i = 0; i < matches.length; i++) {
+        const startMatch = matches[i];
+        const endMatch = matches[i + 1];
+        
+        // 提取当前卡片的内容
+        const cardStart = startMatch.index;
+        const cardEnd = endMatch ? endMatch.index : text.length;
+        const cardText = text.substring(cardStart, cardEnd).trim();
+        
+        const lines = cardText.split("\n").map((line) => line.trim()).filter((line) => line);
+        const card: AnkiCard = { 
+          question: "", 
+          answer: "",
+          noteType: this.settings.defaultNoteType, // 默认使用设置中的笔记类型
+          originalAnswer: "", // 初始化原始答案为空
+          tags: [] // 初始化标签为空数组
+        };
 
-          const card: AnkiCard = {
-            question: question || "",
-            answer: answer || "",
-            noteType: containsCloze ? "Cloze" : this.settings.defaultNoteType,
-            tags: tags,
-            originalAnswer: answer || "", // 保存原始答案
-          };
-
-          // 查找注释
-          const annotationMatch = line.match(
-            /(?:annotation:|注释[:：])\s*(.*?)(?:\s*tags:|标签[:：]|$)/i
-          );
-          if (annotationMatch) {
-            card.annotation = annotationMatch[1]?.trim();
-          }
-
-          // 查找标签
-          const tagsMatch2 = line.match(new RegExp(`(?:${tagsMarker})[:：]?\s*(.*?)$`, "i"));
-          if (tagsMatch2 && tagsMatch2[1]) {
-            // 解析标签，格式为 #tag1 #tag2，追加到现有标签数组
-            const newTags = tagsMatch2[1]
-              .split("#")
-              .map((tag) => tag.trim())
-              .filter((tag) => tag.length > 0);
-            card.tags = [...card.tags, ...newTags];
-          }
-
-          cards.push(card);
-        } else {
-          // 尝试匹配问题:::答案格式
-          const splitLine = line.split(":::");
-          if (splitLine.length >= 2) {
-            const answer = splitLine[1].trim();
-            const card: AnkiCard = {
-              question: splitLine[0].trim(),
-              answer: answer,
-              noteType: this.settings.defaultNoteType, // 默认使用设置中的笔记类型
-              tags: [], // 初始化标签为空数组
-              originalAnswer: answer, // 保存原始答案
-            };
+        for (const line of lines) {
+          if (line.startsWith(questionMarker)) {
+            let content = line.substring(questionMarker.length).trim();
+            // 处理冒号分隔符
+            if (content.startsWith(":") || content.startsWith("：")) {
+              content = content.substring(1).trim();
+            }
+            card.question = content;
+          } else if (line.startsWith(answerMarker)) {
+            let content = line.substring(answerMarker.length).trim();
+            // 处理冒号分隔符
+            if (content.startsWith(":") || content.startsWith("：")) {
+              content = content.substring(1).trim();
+            }
+            card.answer = content;
+            card.originalAnswer = card.answer; // 保存原始答案
             
             // 检测是否包含填空格式
             if (this.containsClozeFormat(card.answer)) {
               card.noteType = "Cloze"; // 如果包含填空格式，默认使用Cloze类型
             }
-            
-            cards.push(card);
+          } else if (line.startsWith("annotation:") || line.startsWith("注释:") || line.startsWith("注释：")) {
+            card.annotation = line.substring(line.indexOf(':') + 1).trim();
+          } else if (line.startsWith(tagsMarker)) {
+            let content = line.substring(tagsMarker.length).trim();
+            // 处理冒号分隔符
+            if (content.startsWith(":") || content.startsWith("：")) {
+              content = content.substring(1).trim();
+            }
+            const tagsText = content;
+            // 处理标签 - 追加到现有标签数组
+            if (tagsText.includes("#")) {
+              // 带#格式：#tag1 #tag2
+              const newTags = tagsText
+                .split("#")
+                .map((tag) => tag.trim())
+                .filter((tag) => tag.length > 0);
+              card.tags = [...card.tags, ...newTags];
+            } else {
+              // 不带#格式
+              const newTags = tagsText
+                .split(/[\s,]+/)
+                .map((tag) => tag.trim())
+                .filter((tag) => tag.length > 0);
+              card.tags = [...card.tags, ...newTags];
+            }
           }
         }
-      } else if (line.includes(":::")) {
-        // 尝试匹配问题:::答案格式
-        const splitLine = line.split(":::");
-        if (splitLine.length >= 2) {
-          const answer = splitLine[1].trim();
-          const card: AnkiCard = {
-            question: splitLine[0].trim(),
-            answer: answer,
-            noteType: this.settings.defaultNoteType, // 默认使用设置中的笔记类型
-            tags: [], // 初始化标签为空数组
-            originalAnswer: answer, // 保存原始答案
-          };
-          
-          // 检测是否包含填空格式
-          if (this.containsClozeFormat(card.answer)) {
-            card.noteType = "Cloze"; // 如果包含填空格式，默认使用Cloze类型
-          }
-          
+
+        // 确保卡片至少有问题
+        if (card.question) {
           cards.push(card);
         }
       }
-    });
+    } else {
+      // 检查是否是表格格式
+      const lines = text.split("\n").filter((line) => line.trim());
+
+      // 如果没有内容，直接返回空数组
+      if (lines.length === 0) {
+        return cards;
+      }
+
+      // 检查表格格式（第一行包含%question%、%answer%、annotation、%tags%等标题）
+      const headerLine = lines[0].trim();
+      const isTableFormat = new RegExp(`^${questionMarker}[\\t\\s]+${answerMarker}[\\t\\s]+annotation[\\t\\s]+${tagsMarker}$`, "i").test(
+        headerLine
+      );
+
+      if (isTableFormat) {
+        console.log("检测到表格格式数据");
+        // 跳过标题行，解析表格内容
+        for (let i = 1; i < lines.length; i++) {
+          const line = lines[i].trim();
+          if (!line) continue;
+
+          // 尝试按制表符分割
+          let parts: string[];
+          if (line.includes("\t")) {
+            parts = line.split("\t");
+          } else {
+            // 使用正则表达式匹配连续空格分隔的部分
+            parts = line.split(/\s{2,}/);
+          }
+
+          if (parts.length >= 2) {
+            const card: AnkiCard = {
+              question: parts[0].trim(),
+              answer: parts[1].trim(),
+              noteType: this.settings.defaultNoteType, // 默认使用设置中的笔记类型
+              originalAnswer: parts[1].trim(), // 保存原始答案
+              tags: [] // 初始化标签为空数组
+            };
+
+            // 检测是否包含填空格式
+            if (this.containsClozeFormat(card.answer)) {
+              card.noteType = "Cloze"; // 如果包含填空格式，默认使用Cloze类型
+            }
+
+            if (parts.length >= 3 && parts[2].trim()) {
+              card.annotation = parts[2].trim();
+            }
+
+            if (parts.length >= 4 && parts[3].trim()) {
+              // 处理标签 - 支持带#和不带#的格式，追加到现有标签数组
+              const tagsText = parts[3].trim();
+              if (tagsText) {
+                if (tagsText.includes("#")) {
+                  // 带#格式：#tag1 #tag2
+                  const tagParts = tagsText.split("#");
+                  const newTags = tagParts
+                    .map((tag) => tag.trim())
+                    .filter((tag) => tag.length > 0);
+                  card.tags = [...card.tags, ...newTags];
+                } else {
+                  // 不带#格式，假设用空格或逗号分隔
+                  const newTags = tagsText
+                    .split(/[\s,]+/)
+                    .map((tag) => tag.trim())
+                    .filter((tag) => tag.length > 0);
+                  card.tags = [...card.tags, ...newTags];
+                }
+              }
+            }
+
+            cards.push(card);
+          }
+        }
+      } else {
+        // 原有的解析逻辑
+        for (const line of lines) {
+          // 支持新格式：%question% 问题 %answer% 答案
+          const qaMatch = line.match(
+            new RegExp(`(?:${questionMarker})[:：]?\\s*(.*?)\\s*(?:${answerMarker})[:：]?\\s*(.*?)(?:\\s*annotation:|注释[:：]|$|\\s*${tagsMarker}[:：]?)`, "i")
+          );
+          if (qaMatch) {
+            const card: AnkiCard = {
+              question: qaMatch[1]?.trim() || "",
+              answer: qaMatch[2]?.trim() || "",
+              noteType: this.settings.defaultNoteType, // 默认使用设置中的笔记类型
+              originalAnswer: qaMatch[2]?.trim() || "", // 保存原始答案
+              tags: [] // 初始化标签为空数组
+            };
+
+            // 检测是否包含填空格式
+            if (this.containsClozeFormat(card.answer)) {
+              card.noteType = "Cloze"; // 如果包含填空格式，默认使用Cloze类型
+            }
+
+            // 查找注释
+            const annotationMatch = line.match(
+              /(?:annotation:|注释[:：])\s*(.*?)(?:\s*tags:|标签[:：]|$)/i
+            );
+            if (annotationMatch) {
+              card.annotation = annotationMatch[1]?.trim();
+            }
+
+            // 查找标签
+            const tagsMatch = line.match(new RegExp(`(?:${tagsMarker})[:：]?\\s*(.*?)$`, "i"));
+            if (tagsMatch && tagsMatch[1]) {
+              // 解析标签，格式为 #tag1 #tag2，追加到现有标签数组
+              const newTags = tagsMatch[1]
+                .split("#")
+                .map((tag) => tag.trim())
+                .filter((tag) => tag.length > 0);
+              card.tags = [...card.tags, ...newTags];
+            }
+
+            cards.push(card);
+          } else {
+            // 尝试匹配问题:::答案格式
+            const splitLine = line.split(":::");
+            if (splitLine.length >= 2) {
+              const answer = splitLine[1].trim();
+              const card: AnkiCard = {
+                question: splitLine[0].trim(),
+                answer: answer,
+                noteType: this.settings.defaultNoteType, // 默认使用设置中的笔记类型
+                originalAnswer: answer, // 保存原始答案
+                tags: [] // 初始化标签为空数组
+              };
+              
+              // 检测是否包含填空格式
+              if (this.containsClozeFormat(card.answer)) {
+                card.noteType = "Cloze"; // 如果包含填空格式，默认使用Cloze类型
+              }
+              
+              cards.push(card);
+            }
+          }
+        }
+      }
+    }
 
     console.log(`解析出 ${cards.length} 张卡片`, cards);
     return cards;
   }
 
-  // 检测文本是否包含填空格式
-  containsClozeFormat(text: string): boolean {
-    return /\{\{c\d+::.+?\}\}/.test(text);
-  }
-
   // 添加卡片到Anki
-  async addNotesToAnki(cards: AnkiCard[], deckName: string, noteType: string) {
+  async addNotesToAnki(cards: AnkiCard[], deckName: string, noteType: string, progressCallback?: (current: number, total: number) => void) {
     // 验证输入参数
     if (!deckName || !noteType) {
       throw new Error("牌组名称和笔记类型不能为空");
@@ -311,205 +447,9 @@ export class AnkifyPlugin extends Plugin {
       firstCard: cards[0],
     });
 
-    // 预先顺序获取所有唯一笔记类型的字段名称，避免并发请求导致连接被拒绝
-    const uniqueNoteTypes = [...new Set(cards.map(card => card.noteType))];
-    for (const nt of uniqueNoteTypes) {
-      if (!this.noteTypeFields[nt]) {
-        const fields = await this.invokeAnkiConnect("modelFieldNames", { modelName: nt });
-        console.log(`笔记类型 ${nt} 的字段名称:`, fields);
-        this.noteTypeFields[nt] = fields;
-      }
-    }
-
-    const notes = await Promise.all(
-      cards.map(async (card, index) => {
-        // 验证卡片内容
-        if (!card.question) {
-          throw new Error(
-            `卡片内容不完整：\n问题：${card.question}`
-          );
-        }
-
-        // 使用卡片自己的笔记类型
-        const cardNoteType = card.noteType;
-
-        // 根据笔记类型构建字段映射
-        let fields: Record<string, string> = {};
-
-        // 从缓存中读取字段名称（已在上方预取）
-        const modelFieldNames = this.noteTypeFields[cardNoteType];
-        console.log(`笔记类型 ${cardNoteType} 的字段名称:`, modelFieldNames);
-
-        // 根据字段名称进行映射
-        if (cardNoteType === "Cloze" || cardNoteType === "填空题") {
-          // Cloze类型通常只有一个主要字段，通常是Text或正面
-          let mainFieldName: string;
-          let extraFieldName: string | null = null;
-          
-          // 确定主要字段和额外字段
-          if (modelFieldNames.includes("Text")) {
-            mainFieldName = "Text";
-            // 优先检查是否有Back Extra字段，然后是Extra字段，最后是Back字段
-            if (modelFieldNames.includes("Back Extra")) {
-              extraFieldName = "Back Extra";
-            } else if (modelFieldNames.includes("Extra")) {
-              extraFieldName = "Extra";
-            } else if (modelFieldNames.includes("Back")) {
-              extraFieldName = "Back";
-            }
-          } else if (modelFieldNames.includes("正面")) {
-            mainFieldName = "正面";
-            // 优先检查是否有背面 额外字段，然后是额外字段，最后是背面字段
-            if (modelFieldNames.includes("背面 额外")) {
-              extraFieldName = "背面 额外";
-            } else if (modelFieldNames.includes("额外")) {
-              extraFieldName = "额外";
-            } else if (modelFieldNames.includes("背面")) {
-              extraFieldName = "背面";
-            }
-          } else if (modelFieldNames.includes("Back")) {
-            mainFieldName = "Back";
-            // 检查是否有Back Extra字段，然后是Extra字段
-            if (modelFieldNames.includes("Back Extra")) {
-              extraFieldName = "Back Extra";
-            } else if (modelFieldNames.includes("Extra")) {
-              extraFieldName = "Extra";
-            }
-          } else if (modelFieldNames.length > 0) {
-            // 使用第一个字段作为主要字段
-            mainFieldName = modelFieldNames[0];
-            // 检查是否有第二个字段作为额外字段，优先选择Back Extra或其他合适的字段
-            for (let i = 1; i < modelFieldNames.length; i++) {
-              const field = modelFieldNames[i];
-              if (field === "Back Extra" || field === "背面 额外" || field === "Extra" || field === "额外" || field === "Back" || field === "背面") {
-                extraFieldName = field;
-                break;
-              }
-            }
-            // 如果没有找到合适的字段，使用第二个字段
-            if (!extraFieldName && modelFieldNames.length > 1) {
-              extraFieldName = modelFieldNames[1];
-            }
-          } else {
-            throw new Error(`无法确定Cloze笔记类型的字段`);
-          }
-          
-          // 构建字段
-          // 对于Cloze类型，将问题和答案合并写入到主要字段
-          const clozeContent = card.question ? `${card.question}<br><br>${card.answer}` : card.answer;
-          fields = {
-            [mainFieldName]: clozeContent,
-          };
-          
-          // 如果有额外字段且有注释，将注释放到额外字段
-          if (extraFieldName && card.annotation) {
-            fields[extraFieldName] = card.annotation;
-            console.log(`将注释放入额外字段 ${extraFieldName}:`, card.annotation);
-          } else if (card.annotation) {
-            // 如果没有额外字段但有注释，仍然追加到主要字段
-            fields[mainFieldName] += `\n<hr>\n<span style="color: rgb(143, 53, 8);">${card.annotation}</span>`;
-            console.log(`将注释追加到主要字段 ${mainFieldName}:`, card.annotation);
-          }
-          
-          // 如果有 Back Extra 内容，添加到字段中（优先使用专门的 Back Extra 字段）
-          console.log(`处理 Back Extra: card.backExtra = "${card.backExtra}", modelFieldNames =`, modelFieldNames);
-          if (card.backExtra) {
-            if (modelFieldNames.includes("Back Extra")) {
-              fields["Back Extra"] = card.backExtra;
-              console.log(`将 Back Extra 内容放入 Back Extra 字段:`, card.backExtra);
-            } else if (extraFieldName && !card.annotation) {
-              // 如果没有专门的 Back Extra 字段，但有其他额外字段且没有注释，使用额外字段
-              fields[extraFieldName] = card.backExtra;
-              console.log(`将 Back Extra 内容放入额外字段 ${extraFieldName}:`, card.backExtra);
-            } else {
-              // 如果没有合适的字段，追加到主要字段
-              fields[mainFieldName] += `\n<hr>\n${card.backExtra}`;
-              console.log(`将 Back Extra 内容追加到主要字段 ${mainFieldName}`);
-            }
-          } else if (modelFieldNames.includes("Back Extra")) {
-            // 即使为空也要添加字段，确保 Anki 能识别
-            fields["Back Extra"] = "";
-            console.log(`添加空的 Back Extra 字段`);
-          }
-          
-          console.log(`最终字段:`, fields);
-        } else if (
-          modelFieldNames.includes("Front") &&
-          modelFieldNames.includes("Back")
-        ) {
-          fields = {
-            Front: card.question,
-            Back:
-              card.answer +
-              (card.annotation
-                ? `\n<hr>\n<span style="color: rgb(143, 53, 8);">${card.annotation}</span>`
-                : ""),
-          };
-        } else if (
-          modelFieldNames.includes("正面") &&
-          modelFieldNames.includes("背面")
-        ) {
-          fields = {
-            正面: card.question,
-            背面:
-              card.answer +
-              (card.annotation
-                ? `\n<hr>\n<span style="color: rgb(143, 53, 8);">${card.annotation}</span>`
-                : ""),
-          };
-        } else if (
-          modelFieldNames.includes("Text") &&
-          modelFieldNames.includes("Extra")
-        ) {
-          fields = {
-            Text: card.question,
-            Extra:
-              card.answer +
-              (card.annotation
-                ? `\n<hr>\n<span style="color: rgb(143, 53, 8);">${card.annotation}</span>`
-                : ""),
-          };
-        } else {
-          // 如果无法确定字段名称，尝试使用第一个字段作为问题，第二个字段作为答案
-          if (modelFieldNames.length >= 2) {
-            fields = {
-              [modelFieldNames[0]]: card.question,
-              [modelFieldNames[1]]:
-                card.answer +
-                (card.annotation
-                  ? `\n<hr>\n<span style="color: rgb(143, 53, 8);">${card.annotation}</span>`
-                  : ""),
-            };
-          } else {
-            throw new Error(`无法确定笔记类型 ${cardNoteType} 的字段映射`);
-          }
-        }
-
-        // 验证字段映射（Back Extra 字段可以为空）
-        for (const [key, value] of Object.entries(fields)) {
-          if (key !== "Back Extra" && (!value || value.trim() === "")) {
-            throw new Error(`字段 "${key}" 不能为空`);
-          }
-        }
-
-        // 确保ankify标签在最后
-        const userTags = (card.tags || []).filter(tag => tag !== "ankify");
-        const finalTags = [...userTags, "ankify"];
-        
-        const note = {
-          deckName,
-          modelName: cardNoteType,
-          fields,
-          tags: finalTags,
-          options: {
-            allowDuplicate: false,
-          },
-        };
-
-        console.log(`第 ${index + 1} 张卡片的标签:`, finalTags);
-        return note;
-      })
-    );
+    // 使用AnkiNoteBuilder构建笔记
+    const noteBuilder = new AnkiNoteBuilder(this.invokeAnkiConnect.bind(this));
+    const notes = await noteBuilder.buildNotes(cards, deckName);
 
     // 批量添加笔记（分批处理，每批最多10张卡片）
     try {
@@ -520,7 +460,7 @@ export class AnkifyPlugin extends Plugin {
         firstNote: notes[0],
       });
 
-      const batchSize = 10;
+      const batchSize = this.settings.batchSize;
       const allResults: number[] = [];
 
       // 分批处理卡片
@@ -543,6 +483,12 @@ export class AnkifyPlugin extends Plugin {
           console.warn(`第 ${Math.floor(i / batchSize) + 1} 批中有 ${failedNotes.length} 张卡片添加失败`);
         }
 
+        // 调用进度回调
+        if (progressCallback) {
+          const current = Math.min(i + batch.length, notes.length);
+          progressCallback(current, notes.length);
+        }
+
         // 每批之间休息100ms，避免请求过于频繁
         if (i + batchSize < notes.length) {
           await new Promise(resolve => setTimeout(resolve, 100));
@@ -562,7 +508,7 @@ export class AnkifyPlugin extends Plugin {
     const markdownImageRegex = /!\[([^\]]*)\]\(([^)]+)\)/;
     const match = text.match(markdownImageRegex);
     if (match) {
-      console.log("匹配到 Markdown 图片路径:", match[2]);
+      console.log("解析到 Markdown 图片格式:", match[2]);
       return match[2];
     }
     
@@ -570,11 +516,19 @@ export class AnkifyPlugin extends Plugin {
     const wikiImageRegex = /!\[\[([^\]]+)\]\]/;
     const wikiMatch = text.match(wikiImageRegex);
     if (wikiMatch) {
-      console.log("匹配到 Obsidian wiki 图片路径:", wikiMatch[1]);
+      console.log("解析到 Wiki 图片格式:", wikiMatch[1]);
       return wikiMatch[1];
     }
     
-    console.log("未匹配到任何图片路径:", text);
+    // 检查是否直接是图片路径（没有 ! 标记）
+    // 例如: images/Pasted image 20260530181513.png
+    const trimmedText = text.trim();
+    const imageExtensions = /\.(png|jpg|jpeg|gif|webp|bmp|svg)$/i;
+    if (imageExtensions.test(trimmedText)) {
+      console.log("解析到直接图片路径格式:", trimmedText);
+      return trimmedText;
+    }
+    
     return null;
   }
 
@@ -633,64 +587,72 @@ export class AnkifyPlugin extends Plugin {
       const base64Data = this.arrayBufferToBase64(arrayBuffer);
 
       // 获取文件扩展名以确定MIME类型
-      const extension = actualPath.split('.').pop()?.toLowerCase();
-      let mimeType = 'image/jpeg';
-      if (extension === 'png') {
-        mimeType = 'image/png';
-      } else if (extension === 'gif') {
-        mimeType = 'image/gif';
-      } else if (extension === 'webp') {
-        mimeType = 'image/webp';
-      }
+      const ext = imagePath.split('.').pop()?.toLowerCase();
+      const mimeType = this.getMimeType(ext || '');
 
-      // 构建完整的base64字符串
-      const base64 = `data:${mimeType};base64,${base64Data}`;
-      console.log("图片转换成功，base64长度:", base64.length);
+      console.log("图片读取成功，大小:", arrayBuffer.byteLength, "bytes");
 
-      return { base64, actualPath };
+      return {
+        base64: `data:${mimeType};base64,${base64Data}`,
+        actualPath: actualPath
+      };
     } catch (error) {
       console.error("读取图片失败:", error);
       throw new Error(`读取图片失败: ${error.message}`);
     }
   }
 
-  // 将ArrayBuffer转换为base64
+  // ArrayBuffer转Base64
   arrayBufferToBase64(buffer: ArrayBuffer): string {
     let binary = '';
     const bytes = new Uint8Array(buffer);
-    const len = bytes.byteLength;
-    for (let i = 0; i < len; i++) {
+    for (let i = 0; i < bytes.byteLength; i++) {
       binary += String.fromCharCode(bytes[i]);
     }
     return btoa(binary);
   }
 
+  // 获取MIME类型
+  getMimeType(ext: string): string {
+    const mimeTypes: Record<string, string> = {
+      'png': 'image/png',
+      'jpg': 'image/jpeg',
+      'jpeg': 'image/jpeg',
+      'gif': 'image/gif',
+      'webp': 'image/webp',
+      'bmp': 'image/bmp'
+    };
+    return mimeTypes[ext] || 'image/png';
+  }
+
   // 压缩图片
-  async compressImage(base64: string, maxSize: number, quality: number): Promise<string> {
+  async compressImage(base64Image: string): Promise<string> {
     return new Promise((resolve, reject) => {
       try {
-        // 从base64创建Image对象
         const img = new Image();
+
         img.onload = () => {
-          // 创建canvas
-          const canvas = document.createElement('canvas');
+          // 计算压缩后的尺寸
           let width = img.width;
           let height = img.height;
+          const maxSize = this.settings.maxImageSize;
 
-          // 计算压缩后的尺寸
-          if (width > height && width > maxSize) {
-            height = (height * maxSize) / width;
-            width = maxSize;
-          } else if (height > maxSize) {
-            width = (width * maxSize) / height;
-            height = maxSize;
+          if (width > maxSize || height > maxSize) {
+            if (width > height) {
+              height = (height * maxSize) / width;
+              width = maxSize;
+            } else {
+              width = (width * maxSize) / height;
+              height = maxSize;
+            }
           }
 
+          // 创建canvas进行压缩
+          const canvas = document.createElement('canvas');
           canvas.width = width;
           canvas.height = height;
-
-          // 绘制并压缩图片
           const ctx = canvas.getContext('2d');
+
           if (!ctx) {
             reject(new Error('无法创建canvas上下文'));
             return;
@@ -698,330 +660,655 @@ export class AnkifyPlugin extends Plugin {
 
           ctx.drawImage(img, 0, 0, width, height);
 
-          // 转换回base64
-          const compressedBase64 = canvas.toDataURL('image/jpeg', quality);
+          // 转换为base64，使用指定的质量
+          const compressedBase64 = canvas.toDataURL('image/jpeg', this.settings.imageQuality);
+
+          console.log('图片压缩完成:', {
+            原始尺寸: `${img.width}x${img.height}`,
+            压缩后尺寸: `${width}x${height}`,
+            原始大小: Math.round(base64Image.length / 1024) + 'KB',
+            压缩后大小: Math.round(compressedBase64.length / 1024) + 'KB'
+          });
+
           resolve(compressedBase64);
         };
+
         img.onerror = () => {
           reject(new Error('图片加载失败'));
         };
-        img.src = base64;
+
+        img.src = base64Image;
       } catch (error) {
         reject(error);
       }
     });
   }
 
-  // 调用AI API生成卡片
-  async generateCards(content: string, imagePath?: string): Promise<string> {
-    try {
-      let prompt = this.settings.customPrompt + content;
-      let apiKey = '';
-      let apiUrl = '';
-      let modelName = '';
-      let apiVersion = '';
+  async processContent(editor: Editor, view: MarkdownView) {
+    // 修改为处理选中的文本，而不是整篇文章
+    const selectedText = editor.getSelection();
 
-      // 根据选择的API模型设置相应的参数
-      switch (this.settings.apiModel) {
-        case 'deepseek':
-          apiKey = this.settings.deepseekApiKey;
-          apiUrl = this.settings.deepseekApiUrl;
-          modelName = 'deepseek-chat';
-          break;
-        case 'openai':
-          apiKey = this.settings.openaiApiKey;
-          apiUrl = 'https://api.openai.com/v1/chat/completions';
-          modelName = 'gpt-3.5-turbo';
-          break;
-        case 'claude':
-          apiKey = this.settings.claudeApiKey;
-          apiUrl = 'https://api.anthropic.com/v1/messages';
-          modelName = 'claude-3-opus-20240229';
-          break;
-        case 'doubao':
-          apiKey = this.settings.doubaoApiKey;
-          apiUrl = this.settings.doubaoApiUrl;
-          modelName = this.settings.doubaoModelName;
-          break;
-        case 'custom':
-          apiKey = this.settings.customApiKey;
-          apiUrl = this.settings.customApiUrl;
-          modelName = this.settings.customModelName;
-          apiVersion = this.settings.customApiVersion;
-          break;
-        default:
-          throw new Error('未选择API模型');
+    console.log("selectedText:", selectedText);
+    if (!selectedText) {
+      new Notice("请先选择要处理的文本内容");
+      return;
+    }
+
+    // 检查是否为图片路径
+    const imagePath = this.parseImagePath(selectedText);
+    
+    // 检查是否看起来像图片链接但解析失败
+    const looksLikeImageLink = selectedText.includes("![[") || selectedText.includes("![](");
+    
+    if (looksLikeImageLink && (!imagePath || imagePath.trim() === "")) {
+      console.error("图片路径解析失败：", {
+        selectedText: selectedText,
+        imagePath: imagePath
+      });
+      new Notice("图片路径解析失败，请检查图片链接格式是否正确\n选中的内容：" + selectedText);
+      return;
+    }
+    
+    if (imagePath) {
+      // 处理图片识别，传递用户实际选中的文本
+      console.log("匹配到图片路径(before processImage):", imagePath);
+      await this.processImage(imagePath, selectedText, editor, view);
+      return;
+    }
+
+    // 检查选择的模型对应的API密钥是否已设置
+    let apiKey = "";
+    const model = this.settings.apiModel;
+
+    if (model === "deepseek") {
+      apiKey = this.settings.deepseekApiKey;
+    } else if (model === "openai") {
+      apiKey = this.settings.openaiApiKey;
+    } else if (model === "claude") {
+      apiKey = this.settings.claudeApiKey;
+    } else if (model === "doubao") {
+      apiKey = this.settings.doubaoApiKey;
+    } else if (model === "custom") {
+      apiKey = this.settings.customApiKey;
+      // 检查自定义API URL
+      if (!this.settings.customApiUrl) {
+        new Notice("请先设置自定义API URL");
+        return;
       }
-
-      if (!apiKey) {
-        throw new Error(`请在设置中配置${this.settings.apiModel}的API密钥`);
+      // 检查自定义模型名称
+      if (!this.settings.customModelName) {
+        new Notice("请先设置自定义模型名称");
+        return;
       }
+    }
 
-      // 如果有图片路径，处理图片
-      let imageBase64 = '';
-      if (imagePath) {
-        const { base64 } = await this.readImageAsBase64(imagePath, '');
-        // 压缩图片
-        imageBase64 = await this.compressImage(base64, this.settings.maxImageSize, this.settings.imageQuality);
-        prompt = this.settings.visionPrompt;
-      }
+    if (!apiKey) {
+      const modelName = model === "deepseek" ? "DeepSeek" :
+                        model === "openai" ? "OpenAI" :
+                        model === "claude" ? "Claude" :
+                        model === "doubao" ? "豆包" : "自定义API";
+      new Notice(`请先设置${modelName}密钥`);
+      return;
+    }
 
-      console.log(`调用${this.settings.apiModel} API生成卡片`);
-
-      // 构建请求体
-      let requestBody: any = {};
-      let headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-      };
-
-      switch (this.settings.apiModel) {
-        case 'deepseek':
-          headers['Authorization'] = `Bearer ${apiKey}`;
-          requestBody = {
-            model: modelName,
-            messages: [
-              {
-                role: 'system',
-                content: '你是一个专业的Anki卡片生成助手，能够基于给定的内容生成高质量的Anki卡片。',
-              },
-              {
-                role: 'user',
-                content: prompt,
-              },
-            ],
-            temperature: 0.7,
-          };
-          break;
-        case 'openai':
-          headers['Authorization'] = `Bearer ${apiKey}`;
-          requestBody = {
-            model: modelName,
-            messages: [
-              {
-                role: 'system',
-                content: '你是一个专业的Anki卡片生成助手，能够基于给定的内容生成高质量的Anki卡片。',
-              },
-              {
-                role: 'user',
-                content: prompt,
-              },
-            ],
-            temperature: 0.7,
-          };
-          break;
-        case 'claude':
-          headers['x-api-key'] = apiKey;
-          headers['anthropic-version'] = '2023-06-01';
-          requestBody = {
-            model: modelName,
-            messages: [
-              {
-                role: 'user',
-                content: prompt,
-              },
-            ],
-            temperature: 0.7,
-          };
-          break;
-        case 'doubao':
-          headers['Authorization'] = `Bearer ${apiKey}`;
-          requestBody = {
-            model: modelName,
-            messages: [
-              {
-                role: 'system',
-                content: '你是一个专业的Anki卡片生成助手，能够基于给定的内容生成高质量的Anki卡片。',
-              },
-              {
-                role: 'user',
-                content: prompt,
-              },
-            ],
-            temperature: 0.7,
-          };
-          break;
-        case 'custom':
-          headers['Authorization'] = `Bearer ${apiKey}`;
-          if (apiVersion) {
-            headers['api-version'] = apiVersion;
-          }
-          requestBody = {
-            model: modelName,
-            messages: [
-              {
-                role: 'system',
-                content: '你是一个专业的Anki卡片生成助手，能够基于给定的内容生成高质量的Anki卡片。',
-              },
-              {
-                role: 'user',
-                content: prompt,
-              },
-            ],
-            temperature: 0.7,
-          };
-          break;
-      }
-
-      // 如果有图片，添加到请求体
-      if (imageBase64) {
-        // 对于支持图片的API，修改请求体
-        switch (this.settings.apiModel) {
-          case 'openai':
-          case 'doubao':
-            requestBody.messages[1].content = [
-              {
-                type: 'text',
-                text: prompt,
-              },
-              {
-                type: 'image_url',
-                image_url: {
-                  url: imageBase64,
-                },
-              },
-            ];
-            break;
-          case 'claude':
-            requestBody.messages[0].content = [
-              {
-                type: 'text',
-                text: prompt,
-              },
-              {
-                type: 'image',
-                source: {
-                  type: 'base64',
-                  media_type: 'image/jpeg',
-                  data: imageBase64.split(',')[1], // 移除data:image/jpeg;base64,前缀
-                },
-              },
-            ];
-            break;
-          default:
-            throw new Error(`${this.settings.apiModel} API不支持图片输入`);
+    // 立即弹窗显示
+    const usedPrompt = this.settings.customPrompt + selectedText;
+    new SelectableCardsModal(
+      this.app,
+      [],
+      "",
+      this,
+      editor,
+      usedPrompt,
+      "",
+      selectedText,
+      async () => {
+        // API调用函数
+        try {
+          const result = await this.callModelAPI(selectedText);
+          return { result, cards: this.parseAnkiCards(result) };
+        } catch (error) {
+          console.error("API调用失败:", error);
+          throw error;
         }
+      },
+      this.settings.insertToDocument
+    ).open();
+  }
+
+  // 处理图片识别
+  async processImage(imagePath: string, selectedText: string, editor: Editor, view: MarkdownView) {
+    try {
+      const currentFile = this.app.workspace.getActiveFile();
+      if (!currentFile) {
+        throw new Error("无法获取当前文件");
       }
 
-      console.log('发送API请求:', {
-        url: apiUrl,
-        headers: Object.fromEntries(Object.entries(headers).map(([k, v]) => [k, k === 'Authorization' ? '***' : v])),
-        body: JSON.stringify(requestBody),
-      });
+      const usedPrompt = this.settings.visionPrompt;
+      const imageInfo = `原始路径: ${imagePath}\n当前文件: ${currentFile.path}`;
 
-      // 发送请求
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: headers,
-        body: JSON.stringify(requestBody),
-      });
+      // 立即弹窗显示
+      new SelectableCardsModal(
+        this.app,
+        [],
+        "",
+        this,
+        editor,
+        usedPrompt,
+        imageInfo,
+        selectedText,  // 显示用户实际选中的内容
+        async () => {
+          // API调用函数
+          try {
+            // 读取图片并转为base64
+            const { base64: base64Image, actualPath } = await this.readImageAsBase64(imagePath, currentFile.path);
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(`API请求失败: ${response.statusText}\n${JSON.stringify(errorData)}`);
-      }
+            // 更新图片路径信息
+            const updatedImageInfo = `原始路径: ${imagePath}\n实际读取路径: ${actualPath}\n当前文件: ${currentFile.path}`;
 
-      const data = await response.json();
-      console.log('API响应:', data);
+            // 压缩图片以减少token使用
+            const compressedImage = await this.compressImage(base64Image);
 
-      // 解析响应
-      let result = '';
-      switch (this.settings.apiModel) {
-        case 'deepseek':
-        case 'openai':
-        case 'doubao':
-          result = data.choices[0].message.content;
-          break;
-        case 'claude':
-          result = data.content[0].text;
-          break;
-        case 'custom':
-          // 假设自定义API的响应格式与OpenAI类似
-          result = data.choices[0].message.content;
-          break;
-      }
+            // 调用Vision API
+            const result = await this.callVisionAPI(compressedImage);
 
-      console.log('生成的卡片内容:', result);
-      return result;
+            return {
+              result,
+              cards: this.parseAnkiCards(result),
+              imageInfo: updatedImageInfo
+            };
+          } catch (error) {
+            console.error("图片识别失败:", error);
+            throw error;
+          }
+        },
+        this.settings.insertToDocument
+      ).open();
     } catch (error) {
-      console.error('生成卡片失败:', error);
-      throw new Error(`生成卡片失败: ${error.message}`);
+      console.error("图片识别失败:", error);
+      new Notice("图片识别失败：" + error.message);
     }
   }
 
-  // 处理内容并生成卡片
-  async processContent(editor: Editor, view: MarkdownView) {
-    try {
-      const selectedText = editor.getSelection();
-      if (!selectedText) {
-        new Notice('请先选择要处理的内容');
-        return;
-      }
+  // 新增方法：将结果追加到文档末尾
+  appendResultToDocument(editor: Editor, result: string) {
+    const docContent = editor.getValue();
+    const newContent = docContent + "\n\n## Anki卡片\n\n" + result;
+    editor.setValue(newContent);
+    new Notice("Anki卡片已添加到文档末尾");
+  }
 
-      // 显示加载提示
-      const loadingNotice = new Notice('正在生成Anki卡片...');
+  // 检测答案是否包含填空格式
+  containsClozeFormat(text: string): boolean {
+    // 匹配 {{c数字::内容}} 格式
+    const clozePattern = /\{\{c\d+::[^}]+\}\}/g;
+    return clozePattern.test(text);
+  }
 
-      // 检查是否包含图片
-      const imagePath = this.parseImagePath(selectedText);
+  async callVisionAPI(base64Image: string): Promise<string> {
+    const model = this.settings.apiModel;
+    let apiUrl = "";
+    let headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    let requestBody: any = {};
 
-      // 调用AI API生成卡片
-      const result = await this.generateCards(selectedText, imagePath);
+    // 使用专门的图片识别提示词
+    const visionPrompt = this.settings.visionPrompt;
 
-      // 解析生成的卡片
-      const cards = this.parseCards(result);
+    // 根据选择的模型设置API请求参数
+    if (model === "deepseek") {
+      // 使用配置的 DeepSeek API URL
+      apiUrl = this.settings.deepseekApiUrl || "https://api.deepseek.com/v1/chat/completions";
+      headers["Authorization"] = `Bearer ${this.settings.deepseekApiKey}`;
 
-      // 隐藏加载提示
-      loadingNotice.hide();
+      // 判断是否是 V3 API 格式（URL 包含 /v3/）
+      const isV3Api = apiUrl.includes('/v3/');
 
-      if (cards.length === 0) {
-        new Notice('未能生成有效的Anki卡片');
-        return;
-      }
+      if (isV3Api) {
+        // V3 API 格式 - 类似 Python 示例的格式
+        // 提取纯base64数据（移除 data:image/xxx;base64, 前缀）
+        const base64Data = base64Image.includes('base64,')
+          ? base64Image.split('base64,')[1]
+          : base64Image;
 
-      // 根据设置决定是直接插入还是显示编辑弹窗
-      if (this.settings.insertToDocument) {
-        // 直接插入到文档
-        const cardText = cards
-          .map(
-            (card) =>
-              `${this.settings.questionMarker}:${card.question} ${this.settings.answerMarker}:${card.answer} ${this.settings.tagsMarker}:${(card.tags || []).map((tag) => `#${tag}`).join(' ')}`
-          )
-          .join('\n');
+        console.log('DeepSeek V3 API 图片识别 - base64数据长度:', base64Data.length);
+        console.log('DeepSeek V3 API 图片识别 - base64前100字符:', base64Data.substring(0, 100));
 
-        editor.replaceSelection(cardText);
-        new Notice(`成功生成 ${cards.length} 张卡片并插入到文档`);
+        requestBody = {
+          model_version: "v3.0-pro",
+          prompt: visionPrompt,
+          image_url: `data:image/jpeg;base64,${base64Data}`,  // 使用 base64 数据作为图片 URL
+          temperature: 0.7,
+          response_format: "text"
+        };
+
+        console.log('DeepSeek V3 API 请求体（不含图片数据）:', {
+          model_version: requestBody.model_version,
+          temperature: requestBody.temperature,
+          prompt: requestBody.prompt.substring(0, 100) + '...'
+        });
       } else {
-        // 显示编辑弹窗
-        new CardEditorModal(this.app, this, cards, async (editedCards) => {
-          if (editedCards.length === 0) {
-            new Notice('未保存任何卡片');
-            return;
+        // V1 API 格式 - 原有的 OpenAI 兼容格式
+        // 提取纯base64数据（移除 data:image/xxx;base64, 前缀）
+        const base64Data = base64Image.includes('base64,')
+          ? base64Image.split('base64,')[1]
+          : base64Image;
+
+        console.log('DeepSeek V1 API 图片识别 - base64数据长度:', base64Data.length);
+        console.log('DeepSeek V1 API 图片识别 - base64前100字符:', base64Data.substring(0, 100));
+
+        // DeepSeek 需要将 content 序列化为 JSON 字符串
+        const contentJson = JSON.stringify([
+          {
+            type: "text",
+            text: visionPrompt
+          },
+          {
+            type: "image",
+            image: {
+              data: base64Data,
+              format: "base64"
+            }
           }
+        ]);
 
-          try {
-            // 显示加载提示
-            const saveLoadingNotice = new Notice('正在保存卡片到Anki...');
+        requestBody = {
+          model: "deepseek-chat",
+          messages: [
+            {
+              role: "user",
+              content: contentJson
+            }
+          ],
+          temperature: 0.7,
+        };
 
-            // 添加卡片到Anki
-            const result = await this.addNotesToAnki(
-              editedCards,
-              this.settings.defaultDeck,
-              this.settings.defaultNoteType
-            );
-
-            // 隐藏加载提示
-            saveLoadingNotice.hide();
-
-            // 检查结果
-            const successCount = result.filter((id) => id !== null).length;
-            new Notice(`成功添加 ${successCount} 张卡片到Anki`);
-          } catch (error) {
-            new Notice(`添加卡片失败: ${error.message}`);
-          }
-        }).open();
+        console.log('DeepSeek V1 API 请求体（不含图片数据）:', {
+          model: requestBody.model,
+          temperature: requestBody.temperature,
+          contentLength: contentJson.length
+        });
       }
-    } catch (error) {
-      new Notice(`处理内容失败: ${error.message}`);
-      console.error('处理内容失败:', error);
+    } else if (model === "openai") {
+      apiUrl = "https://api.openai.com/v1/chat/completions";
+      headers["Authorization"] = `Bearer ${this.settings.openaiApiKey}`;
+      requestBody = {
+        model: "gpt-4-vision-preview", // GPT-4 Vision
+        messages: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "text",
+                text: visionPrompt
+              },
+              {
+                type: "image_url",
+                image_url: {
+                  url: base64Image
+                }
+              }
+            ]
+          }
+        ],
+        max_tokens: 1000,
+        temperature: 0.7,
+      };
+    } else if (model === "claude") {
+      apiUrl = "https://api.anthropic.com/v1/messages";
+      headers["x-api-key"] = this.settings.claudeApiKey;
+      headers["anthropic-version"] = "2023-06-01";
+
+      // 提取base64数据和媒体类型
+      const imageDataMatch = base64Image.match(/data:(image\/\w+);base64,(.+)/);
+      const mediaType = imageDataMatch ? imageDataMatch[1] : "image/png";
+      const imageData = imageDataMatch ? imageDataMatch[2] : base64Image;
+
+      requestBody = {
+        model: "claude-3-haiku-20240307",
+        messages: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "image",
+                source: {
+                  type: "base64",
+                  media_type: mediaType,
+                  data: imageData
+                }
+              },
+              {
+                type: "text",
+                text: visionPrompt
+              }
+            ]
+          }
+        ],
+        max_tokens: 1000,
+        temperature: 0.7,
+      };
+    } else if (model === "custom") {
+      // 自定义API - 尝试OpenAI格式
+      apiUrl = this.settings.customApiUrl;
+      headers["Authorization"] = `Bearer ${this.settings.customApiKey}`;
+
+      if (this.settings.customApiVersion) {
+        headers["api-version"] = this.settings.customApiVersion;
+      }
+
+      requestBody = {
+        model: this.settings.customModelName,
+        messages: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "text",
+                text: visionPrompt
+              },
+              {
+                type: "image_url",
+                image_url: {
+                  url: base64Image
+                }
+              }
+            ]
+          }
+        ],
+        temperature: 0.7,
+      };
+    } else if (model === "doubao") {
+      // 豆包 API
+      apiUrl = this.settings.doubaoApiUrl;
+      headers["Authorization"] = `Bearer ${this.settings.doubaoApiKey}`;
+
+      requestBody = {
+        model: this.settings.doubaoModelName,
+        messages: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "image_url",
+                image_url: {
+                  url: base64Image
+                }
+              },
+              {
+                type: "text",
+                text: visionPrompt
+              }
+            ]
+          }
+        ]
+      };
+    } else {
+      throw new Error("不支持的模型类型");
     }
+
+    // 发送API请求
+    const startTime = Date.now();
+    const response = await fetch(apiUrl, {
+      method: "POST",
+      headers: headers,
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("API 错误响应:", errorText);
+      let errorMessage = `请求失败: HTTP ${response.status}`;
+      try {
+        const errorData = JSON.parse(errorText);
+        errorMessage = errorData.error?.message || errorData.message || errorText;
+      } catch (e) {
+        errorMessage = errorText || `HTTP ${response.status} ${response.statusText}`;
+      }
+      throw new Error(errorMessage);
+    }
+
+    // 获取响应文本并检查是否为空
+    const responseText = await response.text();
+    if (!responseText || responseText.trim() === "") {
+      throw new Error("API 返回空响应");
+    }
+
+    console.log("API 原始响应:", responseText.substring(0, 500));
+
+    // 解析 JSON
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch (e) {
+      console.error("JSON 解析失败，原始响应:", responseText);
+      throw new Error(`API 返回无效 JSON 格式: ${responseText.substring(0, 200)}`);
+    }
+    const endTime = Date.now();
+    console.log(`${model.toUpperCase()} Vision API响应时间: ${endTime - startTime}ms`);
+
+    // 根据不同API响应格式获取结果
+    let result = "";
+    if (model === "deepseek") {
+      // 判断是否是 V3 API 响应格式
+      if (apiUrl.includes('/v3/')) {
+        // V3 API 格式
+        result = data.response || data.text || data.content || data.result || data.output || data.generated_text || "无法识别图片内容";
+      } else {
+        // V1 API 格式 (OpenAI 兼容格式)
+        result = data.choices[0]?.message?.content || "无法识别图片内容";
+      }
+    } else if (model === "openai") {
+      result = data.choices[0]?.message?.content || "无法识别图片内容";
+    } else if (model === "claude") {
+      result = data.content[0]?.text || "无法识别图片内容";
+    } else if (model === "doubao") {
+      result = data.choices[0]?.message?.content || "无法识别图片内容";
+    } else if (model === "custom") {
+      if (data.choices && data.choices[0]?.message?.content) {
+        result = data.choices[0].message.content;
+      } else if (data.content && data.content[0]?.text) {
+        result = data.content[0].text;
+      } else if (data.response) {
+        result = data.response;
+      } else if (data.text || data.content || data.result || data.output || data.generated_text) {
+        result = data.text || data.content || data.result || data.output || data.generated_text;
+      } else {
+        console.warn("无法从API响应中提取内容，返回完整响应:", data);
+        result = JSON.stringify(data, null, 2);
+      }
+    }
+
+    return result;
+  }
+
+  async callModelAPI(content: string): Promise<string> {
+    const prompt = this.settings.customPrompt + content;
+    const startTime = Date.now();
+    const model = this.settings.apiModel;
+    let apiUrl = "";
+    let headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    let requestBody: any = {};
+
+    // 根据选择的模型设置API请求参数
+    if (model === "deepseek") {
+      apiUrl = "https://api.deepseek.com/v1/chat/completions";
+      headers["Authorization"] = `Bearer ${this.settings.deepseekApiKey}`;
+      requestBody = {
+        model: "deepseek-chat",
+        messages: [
+          {
+            role: "user",
+            content: prompt,
+          },
+        ],
+        temperature: 0.7,
+      };
+    } else if (model === "openai") {
+      apiUrl = "https://api.openai.com/v1/chat/completions";
+      headers["Authorization"] = `Bearer ${this.settings.openaiApiKey}`;
+      requestBody = {
+        model: "gpt-3.5-turbo",
+        messages: [
+          {
+            role: "user",
+            content: prompt,
+          },
+        ],
+        temperature: 0.7,
+      };
+    } else if (model === "claude") {
+      apiUrl = "https://api.anthropic.com/v1/messages";
+      headers["x-api-key"] = this.settings.claudeApiKey;
+      headers["anthropic-version"] = "2023-06-01";
+      requestBody = {
+        model: "claude-3-haiku-20240307",
+        messages: [
+          {
+            role: "user",
+            content: prompt,
+          },
+        ],
+        max_tokens: 1000,
+        temperature: 0.7,
+      };
+    } else if (model === "doubao") {
+      // 豆包 API
+      apiUrl = this.settings.doubaoApiUrl;
+      headers["Authorization"] = `Bearer ${this.settings.doubaoApiKey}`;
+      requestBody = {
+        model: this.settings.doubaoModelName,
+        messages: [
+          {
+            role: "user",
+            content: prompt,
+          },
+        ]
+      };
+    } else if (model === "custom") {
+      // 使用自定义API设置
+      apiUrl = this.settings.customApiUrl;
+      headers["Authorization"] = `Bearer ${this.settings.customApiKey}`;
+      
+      // 如果有指定API版本，添加到请求头
+      if (this.settings.customApiVersion) {
+        headers["api-version"] = this.settings.customApiVersion;
+      }
+      
+      // 根据URL猜测API类型并设置合适的请求体
+      if (apiUrl.includes("openai")) {
+        requestBody = {
+          model: this.settings.customModelName,
+          messages: [
+            {
+              role: "user",
+              content: prompt,
+            },
+          ],
+          temperature: 0.7,
+        };
+      } else if (apiUrl.includes("anthropic")) {
+        requestBody = {
+          model: this.settings.customModelName,
+          messages: [
+            {
+              role: "user",
+              content: prompt,
+            },
+          ],
+          max_tokens: 1000,
+          temperature: 0.7,
+        };
+      } else {
+        // 默认格式（类似OpenAI）
+        requestBody = {
+          model: this.settings.customModelName,
+          messages: [
+            {
+              role: "user",
+              content: prompt,
+            },
+          ],
+          temperature: 0.7,
+        };
+      }
+    } else {
+      throw new Error("不支持的模型类型");
+    }
+
+    // 发送API请求
+    const response = await fetch(apiUrl, {
+      method: "POST",
+      headers: headers,
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("API 错误响应:", errorText);
+      let errorMessage = `请求失败: HTTP ${response.status}`;
+      try {
+        const errorData = JSON.parse(errorText);
+        errorMessage = errorData.error?.message || errorData.message || errorText;
+      } catch (e) {
+        errorMessage = errorText || `HTTP ${response.status} ${response.statusText}`;
+      }
+      throw new Error(errorMessage);
+    }
+
+    // 获取响应文本并检查是否为空
+    const responseText = await response.text();
+    if (!responseText || responseText.trim() === "") {
+      throw new Error("API 返回空响应");
+    }
+
+    console.log("API 原始响应:", responseText.substring(0, 500));
+
+    // 解析 JSON
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch (e) {
+      console.error("JSON 解析失败，原始响应:", responseText);
+      throw new Error(`API 返回无效 JSON 格式: ${responseText.substring(0, 200)}`);
+    }
+
+    const endTime = Date.now();
+    console.log(`${model.toUpperCase()} API响应时间: ${endTime - startTime}ms`);
+    
+    // 根据不同API响应格式获取结果
+    let result = "";
+    if (model === "deepseek" || model === "openai" || model === "doubao") {
+      result = data.choices[0]?.message?.content || "无法生成卡片内容";
+    } else if (model === "claude") {
+      result = data.content[0]?.text || "无法生成卡片内容";
+    } else if (model === "custom") {
+      // 尝试从不同的响应结构中提取内容
+      if (data.choices && data.choices[0]?.message?.content) {
+        // OpenAI格式
+        result = data.choices[0].message.content;
+      } else if (data.content && data.content[0]?.text) {
+        // Claude格式
+        result = data.content[0].text;
+      } else if (data.response) {
+        // 某些API可能直接返回response字段
+        result = data.response;
+      } else if (data.text || data.content || data.result || data.output || data.generated_text) {
+        // 其他可能的字段名
+        result = data.text || data.content || data.result || data.output || data.generated_text;
+      } else {
+        // 找不到合适的字段，返回整个响应作为JSON字符串
+        console.warn("无法从API响应中提取内容，返回完整响应:", data);
+        result = JSON.stringify(data, null, 2);
+      }
+    }
+    
+    return result;
   }
 }
+
+
+export default AnkifyPlugin;

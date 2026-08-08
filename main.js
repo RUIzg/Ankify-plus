@@ -29,8 +29,11 @@ var __toModule = (module2) => {
 
 // main.ts
 __export(exports, {
-  default: () => AnkifyPlugin
+  AnkifyPlugin: () => AnkifyPlugin,
+  default: () => AnkifyPlugin_default
 });
+
+// src/AnkifyPlugin.ts
 var import_obsidian4 = __toModule(require("obsidian"));
 var http = __toModule(require("http"));
 var https = __toModule(require("https"));
@@ -1588,7 +1591,7 @@ ${card.backExtra}`;
   }
 };
 
-// main.ts
+// src/AnkifyPlugin.ts
 var AnkifyPlugin = class extends import_obsidian4.Plugin {
   constructor() {
     super(...arguments);
@@ -2561,3 +2564,4 @@ var AnkifyPlugin = class extends import_obsidian4.Plugin {
     return result;
   }
 };
+var AnkifyPlugin_default = AnkifyPlugin;
