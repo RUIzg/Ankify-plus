@@ -307,3 +307,103 @@
   content: "📝";
   font-size: 1.2em;
 }
+
+/* 卡片编辑弹窗样式 */
+.ankify-modal {
+  max-width: 800px;
+  max-height: 80vh;
+}
+.ankify-modal .modal-content {
+  padding: 20px;
+}
+.ankify-card {
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  padding: 15px;
+  margin-bottom: 15px;
+  background-color: var(--background-primary);
+}
+.ankify-card h3 {
+  margin-top: 0;
+  margin-bottom: 10px;
+  font-size: 16px;
+  color: var(--text-primary);
+}
+.ankify-card textarea {
+  width: 100%;
+  min-height: 80px;
+  margin-bottom: 10px;
+  padding: 8px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  background-color: var(--background-secondary);
+  color: var(--text-primary);
+  resize: vertical;
+}
+.ankify-card input {
+  width: 100%;
+  margin-bottom: 10px;
+  padding: 8px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  background-color: var(--background-secondary);
+  color: var(--text-primary);
+}
+.ankify-card .card-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+.ankify-card .card-actions button {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+.ankify-card .card-actions button:hover {
+  opacity: 0.8;
+}
+.ankify-card .card-actions .btn-primary {
+  background-color: var(--interactive-accent);
+  color: white;
+}
+.ankify-card .card-actions .btn-secondary {
+  background-color: var(--background-modifier-hover);
+  color: var(--text-primary);
+}
+.ankify-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 20px;
+  padding-top: 15px;
+  border-top: 1px solid var(--background-modifier-border);
+}
+.ankify-controls button {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+.ankify-controls .btn-primary {
+  background-color: var(--interactive-accent);
+  color: white;
+}
+.ankify-controls .btn-secondary {
+  background-color: var(--background-modifier-hover);
+  color: var(--text-primary);
+}
+.ankify-controls .btn-danger {
+  background-color: var(--text-error);
+  color: white;
+}
+.ankify-notes {
+  margin-top: 10px;
+  padding: 10px;
+  background-color: var(--background-secondary);
+  border-radius: 4px;
+  font-size: 14px;
+  color: var(--text-muted);
+}
