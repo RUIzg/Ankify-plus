@@ -35,8 +35,6 @@ __export(exports, {
 
 // src/AnkifyPlugin.ts
 var import_obsidian4 = __toModule(require("obsidian"));
-var http = __toModule(require("http"));
-var https = __toModule(require("https"));
 
 // src/constants.ts
 var DEFAULT_SETTINGS = {
@@ -1642,10 +1640,15 @@ var AnkifyPlugin = class extends import_obsidian4.Plugin {
     }
   }
   async sendHttpRequest(url, options, retryCount = 3) {
+    if (!import_obsidian4.Platform.isDesktop) {
+      throw new Error("Anki Connect \u4EC5\u5728\u684C\u9762\u7AEF\u53EF\u7528\uFF0C\u8BF7\u4F7F\u7528\u684C\u9762\u7248 Obsidian");
+    }
+    const httpMod = await import("http");
+    const httpsMod = await import("https");
     return new Promise((resolve, reject) => {
       const parsedUrl = new URL(url);
       const isHttps = parsedUrl.protocol === "https:";
-      const client = isHttps ? https : http;
+      const client = isHttps ? httpsMod : httpMod;
       const reqOptions = {
         hostname: parsedUrl.hostname,
         port: parsedUrl.port || (isHttps ? 443 : 80),

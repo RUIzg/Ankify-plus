@@ -5,12 +5,11 @@ import {
   Modal,
   Notice,
   Plugin,
+  Platform,
   PluginSettingTab,
   Setting,
   TFile,
 } from "obsidian";
-import * as http from "http";
-import * as https from "https";
 import { AnkifySettings } from "./AnkifySettings";
 import { AnkiCard } from "./AnkiCard";
 import { DEFAULT_SETTINGS } from "./constants";
@@ -101,10 +100,15 @@ export class AnkifyPlugin extends Plugin {
     headers: Record<string, string>;
     body: string;
   }, retryCount = 3): Promise<AnkiConnectResponse> {
+    if (!Platform.isDesktop) {
+      throw new Error("Anki Connect 仅在桌面端可用，请使用桌面版 Obsidian");
+    }
+    const httpMod = await import("http");
+    const httpsMod = await import("https");
     return new Promise((resolve, reject) => {
       const parsedUrl = new URL(url);
       const isHttps = parsedUrl.protocol === "https:";
-      const client = isHttps ? https : http;
+      const client = (isHttps ? httpsMod : httpMod) as typeof import("http");
 
       const reqOptions = {
         hostname: parsedUrl.hostname,
