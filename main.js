@@ -81,11 +81,7 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
     this.plugin = plugin;
     this.editor = editor;
     this.selectedCards = cards.map(() => true);
-    console.log("\u521D\u59CB\u5316\u65F6\u7684\u8BBE\u7F6E:", plugin.settings);
-    console.log("lastUsedDeck:", plugin.settings.lastUsedDeck);
-    console.log("defaultDeck:", plugin.settings.defaultDeck);
     this.deckName = plugin.settings.lastUsedDeck || plugin.settings.defaultDeck;
-    console.log("\u6700\u7EC8\u4F7F\u7528\u7684deckName:", this.deckName);
     this.noteType = plugin.settings.defaultNoteType;
     this.usedPrompt = usedPrompt;
     this.imageInfo = imageInfo;
@@ -135,11 +131,11 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
     const loadingContainer = contentEl.createDiv({ cls: "ankify-loading-container" });
     loadingContainer.setCssStyles({ textAlign: "center" });
     loadingContainer.setCssStyles({ padding: "20px" });
-    const loadingSpinner = loadingContainer.createEl("div", { cls: "ankify-loading-spinner" });
+    const loadingSpinner = loadingContainer.createDiv({ cls: "ankify-loading-spinner" });
     loadingSpinner.setCssStyles({ fontSize: "24px" });
     loadingSpinner.setCssStyles({ marginBottom: "10px" });
     loadingSpinner.textContent = "\u23F3";
-    const loadingText = loadingContainer.createEl("div", { text: "\u6B63\u5728\u751F\u6210Anki\u5361\u7247\uFF0C\u8BF7\u7A0D\u5019..." });
+    const loadingText = loadingContainer.createDiv({ text: "\u6B63\u5728\u751F\u6210Anki\u5361\u7247\uFF0C\u8BF7\u7A0D\u5019..." });
     loadingText.setCssStyles({ fontSize: "14px" });
     loadingText.setCssStyles({ color: "#666" });
     let imageInfoEl = null;
@@ -290,38 +286,39 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
       attr: { type: "button" },
       style: { padding: "2px 8px", fontSize: "12px" }
     });
-    refreshDeckButton.addEventListener("click", async () => {
-      refreshDeckButton.disabled = true;
-      refreshDeckButton.textContent = "\u5237\u65B0\u4E2D...";
-      try {
-        const newDecks = await this.plugin.getDeckNames();
-        const currentValue = this.deckSelect.value;
-        this.deckSelect.innerHTML = "";
-        if (newDecks.length > 0) {
-          newDecks.forEach((deck) => {
-            const option = this.deckSelect.createEl("option", {
-              value: deck,
-              text: deck
+    addEventListener("click", () => {
+      void (async () => {
+        refreshDeckButton.disabled = true;
+        refreshDeckButton.textContent = "\u5237\u65B0\u4E2D...";
+        try {
+          const newDecks = await this.plugin.getDeckNames();
+          const currentValue = this.deckSelect.value;
+          this.deckSelect.innerHTML = "";
+          if (newDecks.length > 0) {
+            newDecks.forEach((deck) => {
+              const option = this.deckSelect.createEl("option", {
+                value: deck,
+                text: deck
+              });
+              if (deck === currentValue) {
+                option.selected = true;
+                this.deckName = deck;
+              }
             });
-            if (deck === currentValue) {
-              option.selected = true;
-              this.deckName = deck;
-            }
-          });
-          new import_obsidian2.Notice("\u724C\u7EC4\u5217\u8868\u5DF2\u5237\u65B0");
-        } else {
-          this.deckSelect.createEl("option", {
-            value: this.deckName,
-            text: this.deckName
-          });
+            new import_obsidian2.Notice("\u724C\u7EC4\u5217\u8868\u5DF2\u5237\u65B0");
+          } else {
+            this.deckSelect.createEl("option", {
+              value: this.deckName,
+              text: this.deckName
+            });
+          }
+        } catch (error) {
+          new import_obsidian2.Notice("\u5237\u65B0\u724C\u7EC4\u5931\u8D25\uFF0C\u8BF7\u786E\u4FDDAnki\u5DF2\u542F\u52A8\u4E14\u5B89\u88C5\u4E86Anki Connect\u63D2\u4EF6");
+        } finally {
+          refreshDeckButton.disabled = false;
+          refreshDeckButton.textContent = "\u5237\u65B0";
         }
-      } catch (error) {
-        console.error("\u5237\u65B0\u724C\u7EC4\u5931\u8D25:", error);
-        new import_obsidian2.Notice("\u5237\u65B0\u724C\u7EC4\u5931\u8D25\uFF0C\u8BF7\u786E\u4FDDAnki\u5DF2\u542F\u52A8\u4E14\u5B89\u88C5\u4E86Anki Connect\u63D2\u4EF6");
-      } finally {
-        refreshDeckButton.disabled = false;
-        refreshDeckButton.textContent = "\u5237\u65B0";
-      }
+      })();
     });
     this.deckSelect.addEventListener("change", () => {
       this.deckName = this.deckSelect.value;
@@ -603,12 +600,12 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
       });
       const backExtraContainer = cardContent.createDiv({ cls: "ankify-card-back-extra-container" });
       backExtraContainer.setCssStyles({ marginTop: "10px" });
-      const backExtraHeader = backExtraContainer.createEl("div");
+      const backExtraHeader = backExtraContainer.createDiv();
       backExtraHeader.setCssStyles({ display: "flex" });
       backExtraHeader.setCssStyles({ alignItems: "center" });
       backExtraHeader.setCssStyles({ cursor: "pointer" });
       backExtraHeader.setCssStyles({ padding: "5px 0" });
-      const backExtraToggle = backExtraHeader.createEl("span", { text: "\u25B6" });
+      const backExtraToggle = backExtraHeader.createSpan({ text: "\u25B6" });
       backExtraToggle.setCssStyles({ marginRight: "5px" });
       backExtraToggle.setCssStyles({ color: "var(--text-muted)" });
       backExtraToggle.setCssStyles({ fontSize: "12px" });
@@ -694,7 +691,7 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
       cls: "ankify-batch-tags-container"
     });
     batchTagsContainer.setCssStyles({ marginTop: "20px" });
-    const batchTagsHeader = batchTagsContainer.createEl("div");
+    const batchTagsHeader = batchTagsContainer.createDiv();
     batchTagsHeader.setCssStyles({ display: "flex" });
     batchTagsHeader.setCssStyles({ justifyContent: "space-between" });
     batchTagsHeader.setCssStyles({ alignItems: "center" });
@@ -711,9 +708,9 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
     batchTagsTitle.setCssStyles({ margin: "0" });
     batchTagsTitle.setCssStyles({ fontSize: "14px" });
     batchTagsTitle.setCssStyles({ color: "var(--text-normal)" });
-    const batchTagsToggle = batchTagsHeader.createEl("span", { text: "\u25BC" });
+    const batchTagsToggle = batchTagsHeader.createSpan({ text: "\u25BC" });
     batchTagsToggle.setCssStyles({ color: "var(--text-muted)" });
-    const batchTagsContent = batchTagsContainer.createEl("div");
+    const batchTagsContent = batchTagsContainer.createDiv();
     batchTagsContent.setCssStyles({ display: "none" });
     batchTagsContent.setCssStyles({ padding: "15px" });
     batchTagsContent.setCssStyles({ backgroundColor: "var(--background-secondary)" });
@@ -754,7 +751,7 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
     newTagInput.setCssStyles({ borderRadius: "4px" });
     newTagInput.setCssStyles({ backgroundColor: "var(--background-primary)" });
     newTagInput.setCssStyles({ color: "var(--text-normal)" });
-    const buttonContainer = batchTagsContent.createEl("div");
+    const buttonContainer = batchTagsContent.createDiv();
     buttonContainer.setCssStyles({ display: "flex" });
     buttonContainer.setCssStyles({ alignItems: "center" });
     buttonContainer.setCssStyles({ gap: "15px" });
@@ -767,7 +764,7 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
     replaceButton.setCssStyles({ border: "none" });
     replaceButton.setCssStyles({ borderRadius: "4px" });
     replaceButton.setCssStyles({ cursor: "pointer" });
-    const replaceAllContainer = buttonContainer.createEl("div");
+    const replaceAllContainer = buttonContainer.createDiv();
     replaceAllContainer.setCssStyles({ display: "flex" });
     replaceAllContainer.setCssStyles({ alignItems: "center" });
     const replaceAllCheckbox = replaceAllContainer.createEl("input", {
@@ -845,91 +842,89 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
     cancelButton.setCssStyles({ border: "1px solid var(--border-color)" });
     cancelButton.setCssStyles({ borderRadius: "4px" });
     cancelButton.setCssStyles({ cursor: "pointer" });
-    addButton.addEventListener("click", async () => {
-      const selectedCards = this.cards.filter((_, index) => this.selectedCards[index]);
-      if (selectedCards.length === 0) {
-        new import_obsidian2.Notice("\u8BF7\u81F3\u5C11\u9009\u62E9\u4E00\u5F20\u5361\u7247");
-        return;
-      }
-      try {
-        this.progressContainer = document.createElement("div");
-        this.progressContainer.setCssStyles({ position: "fixed" });
-        this.progressContainer.setCssStyles({ top: "50%" });
-        this.progressContainer.setCssStyles({ left: "50%" });
-        this.progressContainer.setCssStyles({ transform: "translate(-50%, -50%)" });
-        this.progressContainer.setCssStyles({ backgroundColor: "var(--background-primary)" });
-        this.progressContainer.setCssStyles({ border: "1px solid var(--border-color)" });
-        this.progressContainer.setCssStyles({ borderRadius: "8px" });
-        this.progressContainer.setCssStyles({ padding: "20px" });
-        this.progressContainer.setCssStyles({ minWidth: "300px" });
-        this.progressContainer.setCssStyles({ zIndex: "9999" });
-        const progressTitle = document.createElement("div");
-        progressTitle.setCssStyles({ fontSize: "14px" });
-        progressTitle.setCssStyles({ fontWeight: "bold" });
-        progressTitle.setCssStyles({ marginBottom: "10px" });
-        progressTitle.setCssStyles({ textAlign: "center" });
-        progressTitle.textContent = "\u6B63\u5728\u6DFB\u52A0\u5361\u7247\u5230Anki...";
-        this.progressContainer.appendChild(progressTitle);
-        if (this.plugin.settings.debugMode) {
-          const batchInfo = document.createElement("div");
-          batchInfo.setCssStyles({ fontSize: "12px" });
-          batchInfo.setCssStyles({ color: "var(--text-muted)" });
-          batchInfo.setCssStyles({ marginBottom: "10px" });
-          batchInfo.setCssStyles({ textAlign: "center" });
-          batchInfo.textContent = `\u6279\u6B21\u5927\u5C0F: ${this.plugin.settings.batchSize}`;
-          this.progressContainer.appendChild(batchInfo);
+    addEventListener("click", () => {
+      void (async () => {
+        const selectedCards = this.cards.filter((_, index) => this.selectedCards[index]);
+        if (selectedCards.length === 0) {
+          new import_obsidian2.Notice("\u8BF7\u81F3\u5C11\u9009\u62E9\u4E00\u5F20\u5361\u7247");
+          return;
         }
-        const progressText = document.createElement("div");
-        progressText.setCssStyles({ fontSize: "12px" });
-        progressText.setCssStyles({ marginBottom: "10px" });
-        progressText.setCssStyles({ textAlign: "center" });
-        progressText.textContent = "0 / 0";
-        this.progressContainer.appendChild(progressText);
-        const progressBar = document.createElement("div");
-        progressBar.setCssStyles({ height: "6px" });
-        progressBar.setCssStyles({ backgroundColor: "var(--background-secondary)" });
-        progressBar.setCssStyles({ borderRadius: "3px" });
-        progressBar.setCssStyles({ overflow: "hidden" });
-        const progressFill = document.createElement("div");
-        progressFill.setCssStyles({ height: "100%" });
-        progressFill.setCssStyles({ backgroundColor: "var(--interactive-accent)" });
-        progressFill.setCssStyles({ width: "0%" });
-        progressFill.setCssStyles({ transition: "width 0.3s ease" });
-        progressBar.appendChild(progressFill);
-        this.progressContainer.appendChild(progressBar);
-        document.body.appendChild(this.progressContainer);
-        const results = await this.plugin.addNotesToAnki(selectedCards, this.deckSelect.value, this.noteTypeSelect.value, (current, total) => {
-          const percentage = current / total * 100;
-          progressFill.setCssStyles({ width: `${percentage}%` });
-          progressText.textContent = `${current} / ${total}`;
-        });
-        if (this.progressContainer && document.body.contains(this.progressContainer)) {
-          document.body.removeChild(this.progressContainer);
-          this.progressContainer = null;
-        }
-        const successCount = results.filter((id) => id !== null).length;
-        if (successCount > 0) {
-          console.log("\u51C6\u5907\u4FDD\u5B58\u4E0A\u6B21\u4F7F\u7528\u7684\u724C\u7EC4:", this.deckSelect.value);
-          this.plugin.settings.lastUsedDeck = this.deckSelect.value;
-          console.log("\u8BBE\u7F6E\u5BF9\u8C61:", this.plugin.settings);
-          await this.plugin.saveSettings();
-          console.log("\u4FDD\u5B58\u6210\u529F");
-          new import_obsidian2.Notice(`\u6210\u529F\u6DFB\u52A0 ${successCount} \u5F20\u5361\u7247\u5230Anki`);
-          this.forceClose();
-        } else {
-          new import_obsidian2.Notice("\u6DFB\u52A0\u5361\u7247\u5931\u8D25\uFF0C\u8BF7\u68C0\u67E5Anki\u662F\u5426\u6B63\u5728\u8FD0\u884C");
-        }
-      } catch (error) {
-        if (this.progressContainer && document.body.contains(this.progressContainer)) {
-          try {
+        try {
+          this.progressContainer = document.body.createDiv();
+          this.progressContainer.setCssStyles({ position: "fixed" });
+          this.progressContainer.setCssStyles({ top: "50%" });
+          this.progressContainer.setCssStyles({ left: "50%" });
+          this.progressContainer.setCssStyles({ transform: "translate(-50%, -50%)" });
+          this.progressContainer.setCssStyles({ backgroundColor: "var(--background-primary)" });
+          this.progressContainer.setCssStyles({ border: "1px solid var(--border-color)" });
+          this.progressContainer.setCssStyles({ borderRadius: "8px" });
+          this.progressContainer.setCssStyles({ padding: "20px" });
+          this.progressContainer.setCssStyles({ minWidth: "300px" });
+          this.progressContainer.setCssStyles({ zIndex: "9999" });
+          const progressTitle = this.progressContainer.createDiv();
+          progressTitle.setCssStyles({ fontSize: "14px" });
+          progressTitle.setCssStyles({ fontWeight: "bold" });
+          progressTitle.setCssStyles({ marginBottom: "10px" });
+          progressTitle.setCssStyles({ textAlign: "center" });
+          progressTitle.textContent = "\u6B63\u5728\u6DFB\u52A0\u5361\u7247\u5230Anki...";
+          this.progressContainer.appendChild(progressTitle);
+          if (this.plugin.settings.debugMode) {
+            const batchInfo = this.progressContainer.createDiv();
+            batchInfo.setCssStyles({ fontSize: "12px" });
+            batchInfo.setCssStyles({ color: "var(--text-muted)" });
+            batchInfo.setCssStyles({ marginBottom: "10px" });
+            batchInfo.setCssStyles({ textAlign: "center" });
+            batchInfo.textContent = `\u6279\u6B21\u5927\u5C0F: ${this.plugin.settings.batchSize}`;
+            this.progressContainer.appendChild(batchInfo);
+          }
+          const progressText = this.progressContainer.createDiv();
+          progressText.setCssStyles({ fontSize: "12px" });
+          progressText.setCssStyles({ marginBottom: "10px" });
+          progressText.setCssStyles({ textAlign: "center" });
+          progressText.textContent = "0 / 0";
+          this.progressContainer.appendChild(progressText);
+          const progressBar = this.progressContainer.createDiv();
+          progressBar.setCssStyles({ height: "6px" });
+          progressBar.setCssStyles({ backgroundColor: "var(--background-secondary)" });
+          progressBar.setCssStyles({ borderRadius: "3px" });
+          progressBar.setCssStyles({ overflow: "hidden" });
+          const progressFill = progressBar.createDiv();
+          progressFill.setCssStyles({ height: "100%" });
+          progressFill.setCssStyles({ backgroundColor: "var(--interactive-accent)" });
+          progressFill.setCssStyles({ width: "0%" });
+          progressFill.setCssStyles({ transition: "width 0.3s ease" });
+          progressBar.appendChild(progressFill);
+          this.progressContainer.appendChild(progressBar);
+          document.body.appendChild(this.progressContainer);
+          const results = await this.plugin.addNotesToAnki(selectedCards, this.deckSelect.value, this.noteTypeSelect.value, (current, total) => {
+            const percentage = current / total * 100;
+            progressFill.setCssStyles({ width: `${percentage}%` });
+            progressText.textContent = `${current} / ${total}`;
+          });
+          if (this.progressContainer && document.body.contains(this.progressContainer)) {
             document.body.removeChild(this.progressContainer);
             this.progressContainer = null;
-          } catch (e) {
           }
+          const successCount = results.filter((id) => id !== null).length;
+          if (successCount > 0) {
+            this.plugin.settings.lastUsedDeck = this.deckSelect.value;
+            await this.plugin.saveSettings();
+            new import_obsidian2.Notice(`\u6210\u529F\u6DFB\u52A0 ${successCount} \u5F20\u5361\u7247\u5230Anki`);
+            this.forceClose();
+          } else {
+            new import_obsidian2.Notice("\u6DFB\u52A0\u5361\u7247\u5931\u8D25\uFF0C\u8BF7\u68C0\u67E5Anki\u662F\u5426\u6B63\u5728\u8FD0\u884C");
+          }
+        } catch (error) {
+          if (this.progressContainer && document.body.contains(this.progressContainer)) {
+            try {
+              document.body.removeChild(this.progressContainer);
+              this.progressContainer = null;
+            } catch (e) {
+            }
+          }
+          new import_obsidian2.Notice(`\u6DFB\u52A0\u5361\u7247\u5931\u8D25: ${error.message}`);
         }
-        console.error("\u6DFB\u52A0\u5361\u7247\u5931\u8D25:", error);
-        new import_obsidian2.Notice(`\u6DFB\u52A0\u5361\u7247\u5931\u8D25: ${error.message}`);
-      }
+      })();
     });
     cancelButton.addEventListener("click", () => {
       this.forceClose();
@@ -956,7 +951,7 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
     requestInfoEl.setCssStyles({ borderRadius: "4px" });
     requestInfoEl.setCssStyles({ backgroundColor: "var(--background-secondary)" });
     requestInfoEl.setCssStyles({ overflow: "hidden" });
-    const headerEl = requestInfoEl.createEl("div");
+    const headerEl = requestInfoEl.createDiv();
     headerEl.setCssStyles({ display: "flex" });
     headerEl.setCssStyles({ justifyContent: "space-between" });
     headerEl.setCssStyles({ alignItems: "center" });
@@ -964,7 +959,7 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
     headerEl.setCssStyles({ cursor: "pointer" });
     headerEl.setCssStyles({ backgroundColor: "var(--background-secondary)" });
     headerEl.createEl("h4", { text: "\u8BF7\u6C42\u4FE1\u606F" });
-    const toggleEl = headerEl.createEl("span", { text: "\u25BC" });
+    const toggleEl = headerEl.createSpan({ text: "\u25BC" });
     const contentInfoEl = requestInfoEl.createDiv();
     contentInfoEl.setCssStyles({ padding: "10px" });
     contentInfoEl.setCssStyles({ display: "none" });
@@ -1082,22 +1077,26 @@ var AnkifySettingTab = class extends import_obsidian3.PluginSettingTab {
       if (!urlOptions.some((opt) => opt.value === this.plugin.settings.deepseekApiUrl)) {
         customUrlInput.value = this.plugin.settings.deepseekApiUrl;
       }
-      urlSelect.addEventListener("change", async () => {
-        const selectedValue = urlSelect.value;
-        if (selectedValue === "custom") {
-          customUrlInput.setCssStyles({ display: "block" });
-          this.plugin.settings.deepseekApiUrl = customUrlInput.value || "";
-        } else {
-          customUrlInput.setCssStyles({ display: "none" });
-          this.plugin.settings.deepseekApiUrl = selectedValue;
-        }
-        await this.plugin.saveSettings();
-      });
-      customUrlInput.addEventListener("input", async () => {
-        if (urlSelect.value === "custom") {
-          this.plugin.settings.deepseekApiUrl = customUrlInput.value;
+      addEventListener("change", () => {
+        void (async () => {
+          const selectedValue = urlSelect.value;
+          if (selectedValue === "custom") {
+            customUrlInput.setCssStyles({ display: "block" });
+            this.plugin.settings.deepseekApiUrl = customUrlInput.value || "";
+          } else {
+            customUrlInput.setCssStyles({ display: "none" });
+            this.plugin.settings.deepseekApiUrl = selectedValue;
+          }
           await this.plugin.saveSettings();
-        }
+        })();
+      });
+      addEventListener("input", () => {
+        void (async () => {
+          if (urlSelect.value === "custom") {
+            this.plugin.settings.deepseekApiUrl = customUrlInput.value;
+            await this.plugin.saveSettings();
+          }
+        })();
       });
     } else if (this.plugin.settings.apiModel === "openai") {
       new import_obsidian3.Setting(containerEl).setName("OpenAI API \u5BC6\u94A5").setDesc("\u8F93\u5165\u60A8\u7684OpenAI API\u5BC6\u94A5").addText((text) => text.setPlaceholder("sk-...").setValue(this.plugin.settings.openaiApiKey).onChange(async (value) => {
@@ -1157,9 +1156,9 @@ var AnkifySettingTab = class extends import_obsidian3.PluginSettingTab {
     const apiTestButton = apiTestContainer.createEl("button", {
       text: "\u6D4B\u8BD5API\u8FDE\u63A5"
     });
-    const apiTestStatus = apiTestContainer.createEl("span");
+    const apiTestStatus = apiTestContainer.createSpan();
     apiTestStatus.setCssStyles({ fontSize: "20px" });
-    const apiTestResult = containerEl.createEl("div");
+    const apiTestResult = containerEl.createDiv();
     apiTestResult.setCssStyles({ marginTop: "10px" });
     apiTestResult.setCssStyles({ padding: "10px" });
     apiTestResult.setCssStyles({ backgroundColor: "#f5f5f5" });
@@ -1168,33 +1167,35 @@ var AnkifySettingTab = class extends import_obsidian3.PluginSettingTab {
     apiTestResult.setCssStyles({ fontFamily: "monospace" });
     apiTestResult.setCssStyles({ fontSize: "12px" });
     apiTestResult.setCssStyles({ display: "none" });
-    apiTestButton.addEventListener("click", async () => {
-      apiTestButton.disabled = true;
-      apiTestButton.textContent = "\u6D4B\u8BD5\u4E2D...";
-      apiTestStatus.textContent = "";
-      apiTestResult.textContent = "";
-      apiTestResult.setCssStyles({ display: "none" });
-      try {
-        const testResult = await this.plugin.callModelAPI("\u6D4B\u8BD5\u8FDE\u63A5");
-        apiTestStatus.textContent = "\u2705";
-        apiTestStatus.setCssStyles({ color: "green" });
-        apiTestResult.textContent = `\u8FDE\u63A5\u6210\u529F\uFF01
+    addEventListener("click", () => {
+      void (async () => {
+        apiTestButton.disabled = true;
+        apiTestButton.textContent = "\u6D4B\u8BD5\u4E2D...";
+        apiTestStatus.textContent = "";
+        apiTestResult.textContent = "";
+        apiTestResult.setCssStyles({ display: "none" });
+        try {
+          const testResult = await this.plugin.callModelAPI("\u6D4B\u8BD5\u8FDE\u63A5");
+          apiTestStatus.textContent = "\u2705";
+          apiTestStatus.setCssStyles({ color: "green" });
+          apiTestResult.textContent = `\u8FDE\u63A5\u6210\u529F\uFF01
 
 API\u8FD4\u56DE\u793A\u4F8B:
 ${testResult.substring(0, 200)}...`;
-        apiTestResult.setCssStyles({ display: "block" });
-        new import_obsidian3.Notice("API\u8FDE\u63A5\u6D4B\u8BD5\u6210\u529F");
-      } catch (error) {
-        apiTestStatus.textContent = "\u274C";
-        apiTestStatus.setCssStyles({ color: "red" });
-        apiTestResult.textContent = `\u8FDE\u63A5\u5931\u8D25\uFF1A
+          apiTestResult.setCssStyles({ display: "block" });
+          new import_obsidian3.Notice("API\u8FDE\u63A5\u6D4B\u8BD5\u6210\u529F");
+        } catch (error) {
+          apiTestStatus.textContent = "\u274C";
+          apiTestStatus.setCssStyles({ color: "red" });
+          apiTestResult.textContent = `\u8FDE\u63A5\u5931\u8D25\uFF1A
 ${error.message}`;
-        apiTestResult.setCssStyles({ display: "block" });
-        new import_obsidian3.Notice("API\u8FDE\u63A5\u6D4B\u8BD5\u5931\u8D25");
-      } finally {
-        apiTestButton.disabled = false;
-        apiTestButton.textContent = "\u6D4B\u8BD5API\u8FDE\u63A5";
-      }
+          apiTestResult.setCssStyles({ display: "block" });
+          new import_obsidian3.Notice("API\u8FDE\u63A5\u6D4B\u8BD5\u5931\u8D25");
+        } finally {
+          apiTestButton.disabled = false;
+          apiTestButton.textContent = "\u6D4B\u8BD5API\u8FDE\u63A5";
+        }
+      })();
     });
     const visionTestSetting = new import_obsidian3.Setting(containerEl).setName("\u56FE\u7247\u8BC6\u522B\u6D4B\u8BD5").setDesc("\u9009\u62E9\u56FE\u7247\u6587\u4EF6\u8FDB\u884C\u6D4B\u8BD5");
     const visionTestContainer = visionTestSetting.settingEl.createDiv();
@@ -1214,7 +1215,7 @@ ${error.message}`;
     const visionTestButton = visionTestButtonContainer.createEl("button", {
       text: "\u6D4B\u8BD5\u56FE\u7247\u8BC6\u522B"
     });
-    const visionTestStatus = visionTestButtonContainer.createEl("span");
+    const visionTestStatus = visionTestButtonContainer.createSpan();
     visionTestStatus.setCssStyles({ fontSize: "20px" });
     const visionTestResult = containerEl.createEl("textarea");
     visionTestResult.placeholder = "\u8BC6\u522B\u7ED3\u679C\u5C06\u663E\u793A\u5728\u8FD9\u91CC...";
@@ -1229,58 +1230,58 @@ ${error.message}`;
     visionTestResult.setCssStyles({ fontSize: "12px" });
     visionTestResult.setCssStyles({ display: "none" });
     visionTestResult.readOnly = true;
-    visionTestButton.addEventListener("click", async () => {
-      var _a;
-      const file = (_a = visionTestFileInput.files) == null ? void 0 : _a[0];
-      if (!file) {
-        new import_obsidian3.Notice("\u8BF7\u5148\u9009\u62E9\u56FE\u7247\u6587\u4EF6");
-        return;
-      }
-      visionTestButton.disabled = true;
-      visionTestButton.textContent = "\u8BC6\u522B\u4E2D...";
-      visionTestStatus.textContent = "";
-      visionTestResult.textContent = "";
-      visionTestResult.setCssStyles({ display: "none" });
-      try {
-        console.log("\u5F00\u59CB\u8BFB\u53D6\u56FE\u7247:", file.name, "\u5927\u5C0F:", file.size);
-        console.log("\u4F7F\u7528\u7684Prompt:", this.plugin.settings.visionPrompt);
-        const reader = new FileReader();
-        const base64Image = await new Promise((resolve, reject) => {
-          reader.onload = () => {
-            const result2 = reader.result;
-            resolve(result2);
-          };
-          reader.onerror = () => reject(reader.error);
-          reader.readAsDataURL(file);
-        });
-        console.log("Base64\u8F6C\u6362\u6210\u529F\uFF0C\u5927\u5C0F:", Math.round(base64Image.length / 1024), "KB");
-        const compressedImage = await this.plugin.compressImage(base64Image);
-        console.log("\u56FE\u7247\u538B\u7F29\u5B8C\u6210");
-        const result = await this.plugin.callVisionAPI(compressedImage);
-        visionTestStatus.textContent = "\u2705";
-        visionTestStatus.setCssStyles({ color: "green" });
-        const resultText = `\u3010\u4F7F\u7528\u7684Prompt\u3011
+    addEventListener("click", () => {
+      void (async () => {
+        var _a;
+        const file = (_a = visionTestFileInput.files) == null ? void 0 : _a[0];
+        if (!file) {
+          new import_obsidian3.Notice("\u8BF7\u5148\u9009\u62E9\u56FE\u7247\u6587\u4EF6");
+          return;
+        }
+        visionTestButton.disabled = true;
+        visionTestButton.textContent = "\u8BC6\u522B\u4E2D...";
+        visionTestStatus.textContent = "";
+        visionTestResult.textContent = "";
+        visionTestResult.setCssStyles({ display: "none" });
+        try {
+          const reader = new FileReader();
+          const base64Image = await new Promise((resolve, reject) => {
+            reader.onload = () => {
+              const result2 = reader.result;
+              resolve(result2);
+            };
+            reader.onerror = () => {
+              var _a2;
+              return reject(new Error(((_a2 = reader.error) == null ? void 0 : _a2.message) || "??????"));
+            };
+            reader.readAsDataURL(file);
+          });
+          const compressedImage = await this.plugin.compressImage(base64Image);
+          const result = await this.plugin.callVisionAPI(compressedImage);
+          visionTestStatus.textContent = "\u2705";
+          visionTestStatus.setCssStyles({ color: "green" });
+          const resultText = `\u3010\u4F7F\u7528\u7684Prompt\u3011
 ${this.plugin.settings.visionPrompt}
 
 ${"=".repeat(50)}
 
 \u3010\u8BC6\u522B\u7ED3\u679C\u3011
 ${result}`;
-        visionTestResult.textContent = resultText;
-        visionTestResult.setCssStyles({ display: "block" });
-        new import_obsidian3.Notice("\u56FE\u7247\u8BC6\u522B\u6D4B\u8BD5\u6210\u529F");
-      } catch (error) {
-        console.error("\u56FE\u7247\u8BC6\u522B\u6D4B\u8BD5\u5931\u8D25:", error);
-        visionTestStatus.textContent = "\u274C";
-        visionTestStatus.setCssStyles({ color: "red" });
-        visionTestResult.textContent = `\u8BC6\u522B\u5931\u8D25\uFF1A
+          visionTestResult.textContent = resultText;
+          visionTestResult.setCssStyles({ display: "block" });
+          new import_obsidian3.Notice("\u56FE\u7247\u8BC6\u522B\u6D4B\u8BD5\u6210\u529F");
+        } catch (error) {
+          visionTestStatus.textContent = "\u274C";
+          visionTestStatus.setCssStyles({ color: "red" });
+          visionTestResult.textContent = `\u8BC6\u522B\u5931\u8D25\uFF1A
 ${error.message}`;
-        visionTestResult.setCssStyles({ display: "block" });
-        new import_obsidian3.Notice("\u56FE\u7247\u8BC6\u522B\u6D4B\u8BD5\u5931\u8D25");
-      } finally {
-        visionTestButton.disabled = false;
-        visionTestButton.textContent = "\u6D4B\u8BD5\u56FE\u7247\u8BC6\u522B";
-      }
+          visionTestResult.setCssStyles({ display: "block" });
+          new import_obsidian3.Notice("\u56FE\u7247\u8BC6\u522B\u6D4B\u8BD5\u5931\u8D25");
+        } finally {
+          visionTestButton.disabled = false;
+          visionTestButton.textContent = "\u6D4B\u8BD5\u56FE\u7247\u8BC6\u522B";
+        }
+      })();
     });
     new import_obsidian3.Setting(containerEl).setName("\u56FE\u7247\u8BC6\u522B\u8BBE\u7F6E").setHeading();
     new import_obsidian3.Setting(containerEl).setName("\u56FE\u7247\u6700\u5927\u5C3A\u5BF8").setDesc("\u56FE\u7247\u8BC6\u522B\u524D\u4F1A\u538B\u7F29\u5230\u6B64\u5C3A\u5BF8\uFF08\u50CF\u7D20\uFF09\uFF0C\u51CF\u5C11token\u6D88\u8017\u3002\u63A8\u8350\uFF1A512-1024").addText((text) => text.setPlaceholder("1024").setValue(String(this.plugin.settings.maxImageSize)).onChange(async (value) => {
@@ -1310,25 +1311,28 @@ ${error.message}`;
     urlInput.value = this.plugin.settings.ankiConnectUrl;
     urlInput.setCssStyles({ flex: "1" });
     urlInput.setCssStyles({ padding: "5px" });
-    urlInput.addEventListener("change", async () => {
-      this.plugin.settings.ankiConnectUrl = urlInput.value;
-      await this.plugin.saveSettings();
+    addEventListener("change", () => {
+      void (async () => {
+        this.plugin.settings.ankiConnectUrl = urlInput.value;
+        await this.plugin.saveSettings();
+      })();
     });
     const testButton = ankiConnectContainer.createEl("button");
     testButton.textContent = "\u6D4B\u8BD5\u8FDE\u63A5";
-    testButton.addEventListener("click", async () => {
-      testButton.disabled = true;
-      testButton.textContent = "\u6D4B\u8BD5\u4E2D...";
-      try {
-        const result = await this.plugin.invokeAnkiConnect("version");
-        new import_obsidian3.Notice(`Anki Connect \u8FDE\u63A5\u6210\u529F\uFF01\u7248\u672C: ${result}`);
-      } catch (error) {
-        console.error("Anki Connect \u6D4B\u8BD5\u5931\u8D25:", error);
-        new import_obsidian3.Notice(`Anki Connect \u8FDE\u63A5\u5931\u8D25: ${error.message}`);
-      } finally {
-        testButton.disabled = false;
-        testButton.textContent = "\u6D4B\u8BD5\u8FDE\u63A5";
-      }
+    addEventListener("click", () => {
+      void (async () => {
+        testButton.disabled = true;
+        testButton.textContent = "\u6D4B\u8BD5\u4E2D...";
+        try {
+          const result = await this.plugin.invokeAnkiConnect("version");
+          new import_obsidian3.Notice(`Anki Connect \u8FDE\u63A5\u6210\u529F\uFF01\u7248\u672C: ${result}`);
+        } catch (error) {
+          new import_obsidian3.Notice(`Anki Connect \u8FDE\u63A5\u5931\u8D25: ${error.message}`);
+        } finally {
+          testButton.disabled = false;
+          testButton.textContent = "\u6D4B\u8BD5\u8FDE\u63A5";
+        }
+      })();
     });
     new import_obsidian3.Setting(containerEl).setName("\u9ED8\u8BA4\u724C\u7EC4").setDesc("\u6DFB\u52A0\u5361\u7247\u65F6\u7684\u9ED8\u8BA4\u724C\u7EC4\u540D\u79F0").addText((text) => text.setPlaceholder("Default").setValue(this.plugin.settings.defaultDeck).onChange(async (value) => {
       this.plugin.settings.defaultDeck = value;
@@ -1386,54 +1390,54 @@ ${error.message}`;
     const createDeckButton = deckButtonContainer.createEl("button", {
       text: "\u6279\u91CF\u521B\u5EFADeck"
     });
-    const deckCreationStatus = deckButtonContainer.createEl("span");
+    const deckCreationStatus = deckButtonContainer.createSpan();
     deckCreationStatus.setCssStyles({ fontSize: "20px" });
-    createDeckButton.addEventListener("click", async () => {
-      createDeckButton.disabled = true;
-      createDeckButton.textContent = "\u521B\u5EFA\u4E2D...";
-      deckCreationStatus.textContent = "";
-      try {
-        const deckNames = deckTextArea.value.split("\n").map((name) => name.trim()).filter((name) => name.length > 0);
-        if (deckNames.length === 0) {
-          new import_obsidian3.Notice("\u8BF7\u8F93\u5165\u81F3\u5C11\u4E00\u4E2ADeck\u540D\u79F0");
-          return;
-        }
-        const existingDecks = await this.plugin.invokeAnkiConnect("deckNames");
-        const existingDeckSet = new Set(existingDecks);
-        let successCount = 0;
-        let errorCount = 0;
-        const errorMessages = [];
-        for (const deckName of deckNames) {
-          try {
-            if (existingDeckSet.has(deckName)) {
-              throw new Error(`Deck "${deckName}" \u5DF2\u5B58\u5728`);
-            }
-            await this.plugin.invokeAnkiConnect("createDeck", { deck: deckName });
-            successCount++;
-          } catch (error) {
-            console.error(`\u521B\u5EFADeck "${deckName}" \u5931\u8D25:`, error);
-            errorCount++;
-            errorMessages.push(`"${deckName}": ${error.message}`);
+    addEventListener("click", () => {
+      void (async () => {
+        createDeckButton.disabled = true;
+        createDeckButton.textContent = "\u521B\u5EFA\u4E2D...";
+        deckCreationStatus.textContent = "";
+        try {
+          const deckNames = deckTextArea.value.split("\n").map((name) => name.trim()).filter((name) => name.length > 0);
+          if (deckNames.length === 0) {
+            new import_obsidian3.Notice("\u8BF7\u8F93\u5165\u81F3\u5C11\u4E00\u4E2ADeck\u540D\u79F0");
+            return;
           }
-        }
-        deckCreationStatus.textContent = "\u2705";
-        deckCreationStatus.setCssStyles({ color: "green" });
-        if (errorMessages.length > 0) {
-          new import_obsidian3.Notice(`\u6210\u529F\u521B\u5EFA ${successCount} \u4E2ADeck\uFF0C\u5931\u8D25 ${errorCount} \u4E2A
+          const existingDecks = await this.plugin.invokeAnkiConnect("deckNames");
+          const existingDeckSet = new Set(existingDecks);
+          let successCount = 0;
+          let errorCount = 0;
+          const errorMessages = [];
+          for (const deckName of deckNames) {
+            try {
+              if (existingDeckSet.has(deckName)) {
+                throw new Error(`Deck "${deckName}" \u5DF2\u5B58\u5728`);
+              }
+              await this.plugin.invokeAnkiConnect("createDeck", { deck: deckName });
+              successCount++;
+            } catch (error) {
+              errorCount++;
+              errorMessages.push(`"${deckName}": ${error.message}`);
+            }
+          }
+          deckCreationStatus.textContent = "\u2705";
+          deckCreationStatus.setCssStyles({ color: "green" });
+          if (errorMessages.length > 0) {
+            new import_obsidian3.Notice(`\u6210\u529F\u521B\u5EFA ${successCount} \u4E2ADeck\uFF0C\u5931\u8D25 ${errorCount} \u4E2A
 \u5931\u8D25\u539F\u56E0:
 ${errorMessages.join("\n")}`);
-        } else {
-          new import_obsidian3.Notice(`\u6210\u529F\u521B\u5EFA ${successCount} \u4E2ADeck`);
+          } else {
+            new import_obsidian3.Notice(`\u6210\u529F\u521B\u5EFA ${successCount} \u4E2ADeck`);
+          }
+        } catch (error) {
+          deckCreationStatus.textContent = "\u274C";
+          deckCreationStatus.setCssStyles({ color: "red" });
+          new import_obsidian3.Notice(`\u6279\u91CF\u521B\u5EFADeck\u5931\u8D25: ${error.message}`);
+        } finally {
+          createDeckButton.disabled = false;
+          createDeckButton.textContent = "\u6279\u91CF\u521B\u5EFADeck";
         }
-      } catch (error) {
-        console.error("\u6279\u91CF\u521B\u5EFADeck\u5931\u8D25:", error);
-        deckCreationStatus.textContent = "\u274C";
-        deckCreationStatus.setCssStyles({ color: "red" });
-        new import_obsidian3.Notice(`\u6279\u91CF\u521B\u5EFADeck\u5931\u8D25: ${error.message}`);
-      } finally {
-        createDeckButton.disabled = false;
-        createDeckButton.textContent = "\u6279\u91CF\u521B\u5EFADeck";
-      }
+      })();
     });
   }
 };
@@ -1449,7 +1453,6 @@ var AnkiNoteBuilder = class {
     for (const nt of uniqueNoteTypes) {
       if (!this.noteTypeFields[nt]) {
         const fields = await this.invokeAnkiConnect("modelFieldNames", { modelName: nt });
-        console.log(`\u7B14\u8BB0\u7C7B\u578B ${nt} \u7684\u5B57\u6BB5\u540D\u79F0:`, fields);
         this.noteTypeFields[nt] = fields;
       }
     }
@@ -1461,7 +1464,6 @@ var AnkiNoteBuilder = class {
       const cardNoteType = card.noteType;
       let fields = {};
       const modelFieldNames = this.noteTypeFields[cardNoteType];
-      console.log(`\u7B14\u8BB0\u7C7B\u578B ${cardNoteType} \u7684\u5B57\u6BB5\u540D\u79F0:`, modelFieldNames);
       if (cardNoteType === "Cloze" || cardNoteType === "\u586B\u7A7A\u9898") {
         let mainFieldName;
         let extraFieldName = null;
@@ -1511,32 +1513,24 @@ var AnkiNoteBuilder = class {
         };
         if (extraFieldName && card.annotation) {
           fields[extraFieldName] = card.annotation;
-          console.log(`\u5C06\u6CE8\u91CA\u653E\u5165\u989D\u5916\u5B57\u6BB5 ${extraFieldName}:`, card.annotation);
         } else if (card.annotation) {
           fields[mainFieldName] += `
 <hr>
 <span style="color: rgb(143, 53, 8);">${card.annotation}</span>`;
-          console.log(`\u5C06\u6CE8\u91CA\u8FFD\u52A0\u5230\u4E3B\u8981\u5B57\u6BB5 ${mainFieldName}:`, card.annotation);
         }
-        console.log(`\u5904\u7406 Back Extra: card.backExtra = "${card.backExtra}", modelFieldNames =`, modelFieldNames);
         if (card.backExtra) {
           if (modelFieldNames.includes("Back Extra")) {
             fields["Back Extra"] = card.backExtra;
-            console.log(`\u5C06 Back Extra \u5185\u5BB9\u653E\u5165 Back Extra \u5B57\u6BB5:`, card.backExtra);
           } else if (extraFieldName && !card.annotation) {
             fields[extraFieldName] = card.backExtra;
-            console.log(`\u5C06 Back Extra \u5185\u5BB9\u653E\u5165\u989D\u5916\u5B57\u6BB5 ${extraFieldName}:`, card.backExtra);
           } else {
             fields[mainFieldName] += `
 <hr>
 ${card.backExtra}`;
-            console.log(`\u5C06 Back Extra \u5185\u5BB9\u8FFD\u52A0\u5230\u4E3B\u8981\u5B57\u6BB5 ${mainFieldName}`);
           }
         } else if (modelFieldNames.includes("Back Extra")) {
           fields["Back Extra"] = "";
-          console.log(`\u6DFB\u52A0\u7A7A\u7684 Back Extra \u5B57\u6BB5`);
         }
-        console.log(`\u6700\u7EC8\u5B57\u6BB5:`, fields);
       } else if (modelFieldNames.includes("Front") && modelFieldNames.includes("Back")) {
         fields = {
           Front: card.question,
@@ -1630,11 +1624,6 @@ var AnkifyPlugin = class extends import_obsidian4.Plugin {
       version: 6,
       params
     };
-    console.log("\u53D1\u9001Anki Connect\u8BF7\u6C42:", {
-      url: this.settings.ankiConnectUrl,
-      action,
-      params
-    });
     try {
       const data = await this.sendHttpRequest(this.settings.ankiConnectUrl, {
         method: "POST",
@@ -1644,13 +1633,11 @@ var AnkifyPlugin = class extends import_obsidian4.Plugin {
         },
         body: JSON.stringify(requestBody)
       });
-      console.log("Anki Connect\u54CD\u5E94:", data);
       if (data.error) {
         throw new Error(`Anki Connect\u9519\u8BEF: ${data.error}`);
       }
       return data.result;
     } catch (error) {
-      console.error("Anki Connect\u8BF7\u6C42\u5931\u8D25:", error);
       throw new Error(`Anki Connect\u8BF7\u6C42\u5931\u8D25: ${error.message}`);
     }
   }
@@ -1683,7 +1670,6 @@ var AnkifyPlugin = class extends import_obsidian4.Plugin {
       req.setTimeout(3e4, () => {
         req.destroy();
         if (retryCount > 0) {
-          console.log(`\u8BF7\u6C42\u8D85\u65F6\uFF0C\u6B63\u5728\u91CD\u8BD5... (${retryCount} \u6B21\u5269\u4F59)`);
           this.sendHttpRequest(url, options, retryCount - 1).then(resolve).catch(reject);
         } else {
           reject(new Error("Anki Connect\u8BF7\u6C42\u8D85\u65F6\uFF0C\u8BF7\u68C0\u67E5Anki\u662F\u5426\u6B63\u5728\u8FD0\u884C"));
@@ -1691,8 +1677,7 @@ var AnkifyPlugin = class extends import_obsidian4.Plugin {
       });
       req.on("error", (error) => {
         if ((error.code === "ECONNRESET" || error.code === "ECONNREFUSED") && retryCount > 0) {
-          console.log(`\u8FDE\u63A5\u9519\u8BEF: ${error.code}\uFF0C\u6B63\u5728\u91CD\u8BD5... (${retryCount} \u6B21\u5269\u4F59)`);
-          setTimeout(() => {
+          window.setTimeout(() => {
             this.sendHttpRequest(url, options, retryCount - 1).then(resolve).catch(reject);
           }, 1e3);
         } else if (error.code === "ECONNRESET") {
@@ -1700,7 +1685,7 @@ var AnkifyPlugin = class extends import_obsidian4.Plugin {
         } else if (error.code === "ECONNREFUSED") {
           reject(new Error("Anki Connect\u8FDE\u63A5\u88AB\u62D2\u7EDD\uFF0C\u8BF7\u786E\u4FDDAnki\u5DF2\u542F\u52A8\u4E14Anki Connect\u5DF2\u5B89\u88C5\u5E76\u542F\u7528"));
         } else {
-          reject(error);
+          reject(error instanceof Error ? error : new Error(String(error)));
         }
       });
       req.write(options.body);
@@ -1711,7 +1696,6 @@ var AnkifyPlugin = class extends import_obsidian4.Plugin {
     try {
       return await this.invokeAnkiConnect("deckNames");
     } catch (error) {
-      console.error("\u83B7\u53D6\u724C\u7EC4\u5217\u8868\u5931\u8D25:", error);
       new import_obsidian4.Notice("\u83B7\u53D6Anki\u724C\u7EC4\u5217\u8868\u5931\u8D25\uFF0C\u8BF7\u786E\u4FDDAnki\u5DF2\u542F\u52A8\u4E14\u5B89\u88C5\u4E86Anki Connect\u63D2\u4EF6");
       return [];
     }
@@ -1720,21 +1704,17 @@ var AnkifyPlugin = class extends import_obsidian4.Plugin {
     try {
       return await this.invokeAnkiConnect("modelNames");
     } catch (error) {
-      console.error("\u83B7\u53D6\u7B14\u8BB0\u7C7B\u578B\u5217\u8868\u5931\u8D25:", error);
       return [];
     }
   }
   parseAnkiCards(text) {
     var _a, _b, _c, _d;
     const cards = [];
-    console.log("\u5F00\u59CB\u89E3\u6790Anki\u5361\u7247\uFF0C\u539F\u59CB\u6587\u672C\u957F\u5EA6:", text.length);
-    console.log("\u539F\u59CB\u6587\u672C\u524D500\u5B57\u7B26:", text.substring(0, 500));
     const questionMarker = this.settings.questionMarker.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const answerMarker = this.settings.answerMarker.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const tagsMarker = this.settings.tagsMarker.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const isMultiLineFormat = new RegExp(`${questionMarker}.*\\n\\s*${answerMarker}.*?(\\n\\s*annotation:.*)?(\\n\\s*${tagsMarker}.*)?`, "i").test(text);
     if (isMultiLineFormat) {
-      console.log("\u68C0\u6D4B\u5230\u591A\u884C\u683C\u5F0F\u6570\u636E");
       const questionMarkerPattern = new RegExp(questionMarker, "gi");
       const matches = Array.from(text.matchAll(questionMarkerPattern));
       if (matches.length === 0) {
@@ -1800,7 +1780,6 @@ var AnkifyPlugin = class extends import_obsidian4.Plugin {
       const headerLine = lines[0].trim();
       const isTableFormat = new RegExp(`^${questionMarker}[\\t\\s]+${answerMarker}[\\t\\s]+annotation[\\t\\s]+${tagsMarker}$`, "i").test(headerLine);
       if (isTableFormat) {
-        console.log("\u68C0\u6D4B\u5230\u8868\u683C\u683C\u5F0F\u6570\u636E");
         for (let i = 1; i < lines.length; i++) {
           const line = lines[i].trim();
           if (!line)
@@ -1885,33 +1864,19 @@ var AnkifyPlugin = class extends import_obsidian4.Plugin {
         }
       }
     }
-    console.log(`\u89E3\u6790\u51FA ${cards.length} \u5F20\u5361\u7247`, cards);
     return cards;
   }
   async addNotesToAnki(cards, deckName, noteType, progressCallback) {
     if (!deckName || !noteType) {
       throw new Error("\u724C\u7EC4\u540D\u79F0\u548C\u7B14\u8BB0\u7C7B\u578B\u4E0D\u80FD\u4E3A\u7A7A");
     }
-    console.log("\u51C6\u5907\u6DFB\u52A0\u5361\u7247\u5230Anki:", {
-      deckName,
-      noteType,
-      cardCount: cards.length,
-      firstCard: cards[0]
-    });
     const noteBuilder = new AnkiNoteBuilder(this.invokeAnkiConnect.bind(this));
     const notes = await noteBuilder.buildNotes(cards, deckName);
     try {
-      console.log("\u6B63\u5728\u6DFB\u52A0\u7B14\u8BB0\u5230Anki:", {
-        deckName,
-        noteType,
-        noteCount: notes.length,
-        firstNote: notes[0]
-      });
       const batchSize = this.settings.batchSize;
       const allResults = [];
       for (let i = 0; i < notes.length; i += batchSize) {
         const batch = notes.slice(i, i + batchSize);
-        console.log(`\u5904\u7406\u7B2C ${Math.floor(i / batchSize) + 1} \u6279\uFF0C\u5171 ${batch.length} \u5F20\u5361\u7247`);
         const result = await this.invokeAnkiConnect("addNotes", { notes: batch });
         if (!result || !Array.isArray(result)) {
           throw new Error("Anki Connect\u8FD4\u56DE\u4E86\u65E0\u6548\u7684\u7ED3\u679C");
@@ -1919,19 +1884,17 @@ var AnkifyPlugin = class extends import_obsidian4.Plugin {
         allResults.push(...result);
         const failedNotes = result.filter((id) => id === null);
         if (failedNotes.length > 0) {
-          console.warn(`\u7B2C ${Math.floor(i / batchSize) + 1} \u6279\u4E2D\u6709 ${failedNotes.length} \u5F20\u5361\u7247\u6DFB\u52A0\u5931\u8D25`);
         }
         if (progressCallback) {
           const current = Math.min(i + batch.length, notes.length);
           progressCallback(current, notes.length);
         }
         if (i + batchSize < notes.length) {
-          await new Promise((resolve) => setTimeout(resolve, 100));
+          await new Promise((resolve) => window.setTimeout(resolve, 100));
         }
       }
       return allResults;
     } catch (error) {
-      console.error("\u6DFB\u52A0\u7B14\u8BB0\u5931\u8D25:", error);
       throw new Error(`\u6DFB\u52A0\u7B14\u8BB0\u5931\u8D25: ${error.message}`);
     }
   }
@@ -1939,72 +1902,58 @@ var AnkifyPlugin = class extends import_obsidian4.Plugin {
     const markdownImageRegex = /!\[([^\]]*)\]\(([^)]+)\)/;
     const match = text.match(markdownImageRegex);
     if (match) {
-      console.log("\u89E3\u6790\u5230 Markdown \u56FE\u7247\u683C\u5F0F:", match[2]);
       return match[2];
     }
     const wikiImageRegex = /!\[\[([^\]]+)\]\]/;
     const wikiMatch = text.match(wikiImageRegex);
     if (wikiMatch) {
-      console.log("\u89E3\u6790\u5230 Wiki \u56FE\u7247\u683C\u5F0F:", wikiMatch[1]);
       return wikiMatch[1];
     }
     const trimmedText = text.trim();
     const imageExtensions = /\.(png|jpg|jpeg|gif|webp|bmp|svg)$/i;
     if (imageExtensions.test(trimmedText)) {
-      console.log("\u89E3\u6790\u5230\u76F4\u63A5\u56FE\u7247\u8DEF\u5F84\u683C\u5F0F:", trimmedText);
       return trimmedText;
     }
     return null;
   }
   async readImageAsBase64(imagePath, currentFilePath) {
-    var _a, _b, _c, _d;
+    var _a, _b, _c;
     try {
       const vault = this.app.vault;
       const currentFile = this.app.workspace.getActiveFile();
       if (!currentFile) {
         throw new Error("\u65E0\u6CD5\u83B7\u53D6\u5F53\u524D\u6587\u4EF6");
       }
-      console.log("\u5F00\u59CB\u8BFB\u53D6\u56FE\u7247:", {
-        \u539F\u59CB\u8DEF\u5F84: imagePath,
-        \u5F53\u524D\u6587\u4EF6: currentFile.path,
-        \u5F53\u524D\u6587\u4EF6\u76EE\u5F55: (_a = currentFile.parent) == null ? void 0 : _a.path
-      });
       let fullPath = imagePath;
       let file = vault.getAbstractFileByPath(imagePath);
       if (!file && !imagePath.startsWith("/")) {
-        const currentDir = ((_b = currentFile.parent) == null ? void 0 : _b.path) || "";
+        const currentDir = ((_a = currentFile.parent) == null ? void 0 : _a.path) || "";
         fullPath = currentDir ? `${currentDir}/${imagePath}` : imagePath;
-        console.log("\u5C1D\u8BD5\u76F8\u5BF9\u8DEF\u5F84:", fullPath);
         file = vault.getAbstractFileByPath(fullPath);
       }
       if (!file) {
         if (imagePath.startsWith("./")) {
           const cleanPath = imagePath.substring(2);
-          const currentDir = ((_c = currentFile.parent) == null ? void 0 : _c.path) || "";
+          const currentDir = ((_b = currentFile.parent) == null ? void 0 : _b.path) || "";
           fullPath = currentDir ? `${currentDir}/${cleanPath}` : cleanPath;
-          console.log("\u5C1D\u8BD5\u6E05\u7406\u540E\u7684\u8DEF\u5F84:", fullPath);
           file = vault.getAbstractFileByPath(fullPath);
         }
       }
       if (!file) {
-        console.error("\u6240\u6709\u8DEF\u5F84\u5C1D\u8BD5\u5931\u8D25\uFF0Cvault\u6240\u6709\u6587\u4EF6:", vault.getFiles().map((f) => f.path));
         throw new Error(`\u627E\u4E0D\u5230\u56FE\u7247\u6587\u4EF6\u3002
 \u5C1D\u8BD5\u7684\u8DEF\u5F84: ${imagePath}, ${fullPath}
 \u8BF7\u68C0\u67E5\u56FE\u7247\u8DEF\u5F84\u662F\u5426\u6B63\u786E`);
       }
       const actualPath = file.path;
-      console.log("\u6210\u529F\u627E\u5230\u6587\u4EF6:", actualPath);
       const arrayBuffer = await vault.readBinary(file);
       const base64Data = this.arrayBufferToBase64(arrayBuffer);
-      const ext = (_d = imagePath.split(".").pop()) == null ? void 0 : _d.toLowerCase();
+      const ext = (_c = imagePath.split(".").pop()) == null ? void 0 : _c.toLowerCase();
       const mimeType = this.getMimeType(ext || "");
-      console.log("\u56FE\u7247\u8BFB\u53D6\u6210\u529F\uFF0C\u5927\u5C0F:", arrayBuffer.byteLength, "bytes");
       return {
         base64: `data:${mimeType};base64,${base64Data}`,
         actualPath
       };
     } catch (error) {
-      console.error("\u8BFB\u53D6\u56FE\u7247\u5931\u8D25:", error);
       throw new Error(`\u8BFB\u53D6\u56FE\u7247\u5931\u8D25: ${error.message}`);
     }
   }
@@ -2054,12 +2003,6 @@ var AnkifyPlugin = class extends import_obsidian4.Plugin {
           }
           ctx.drawImage(img, 0, 0, width, height);
           const compressedBase64 = canvas.toDataURL("image/jpeg", this.settings.imageQuality);
-          console.log("\u56FE\u7247\u538B\u7F29\u5B8C\u6210:", {
-            \u539F\u59CB\u5C3A\u5BF8: `${img.width}x${img.height}`,
-            \u538B\u7F29\u540E\u5C3A\u5BF8: `${width}x${height}`,
-            \u539F\u59CB\u5927\u5C0F: Math.round(base64Image.length / 1024) + "KB",
-            \u538B\u7F29\u540E\u5927\u5C0F: Math.round(compressedBase64.length / 1024) + "KB"
-          });
           resolve(compressedBase64);
         };
         img.onerror = () => {
@@ -2067,13 +2010,12 @@ var AnkifyPlugin = class extends import_obsidian4.Plugin {
         };
         img.src = base64Image;
       } catch (error) {
-        reject(error);
+        reject(error instanceof Error ? error : new Error(String(error)));
       }
     });
   }
   async processContent(editor, view) {
     const selectedText = editor.getSelection();
-    console.log("selectedText:", selectedText);
     if (!selectedText) {
       new import_obsidian4.Notice("\u8BF7\u5148\u9009\u62E9\u8981\u5904\u7406\u7684\u6587\u672C\u5185\u5BB9");
       return;
@@ -2081,15 +2023,10 @@ var AnkifyPlugin = class extends import_obsidian4.Plugin {
     const imagePath = this.parseImagePath(selectedText);
     const looksLikeImageLink = selectedText.includes("![[") || selectedText.includes("![](");
     if (looksLikeImageLink && (!imagePath || imagePath.trim() === "")) {
-      console.error("\u56FE\u7247\u8DEF\u5F84\u89E3\u6790\u5931\u8D25\uFF1A", {
-        selectedText,
-        imagePath
-      });
       new import_obsidian4.Notice("\u56FE\u7247\u8DEF\u5F84\u89E3\u6790\u5931\u8D25\uFF0C\u8BF7\u68C0\u67E5\u56FE\u7247\u94FE\u63A5\u683C\u5F0F\u662F\u5426\u6B63\u786E\n\u9009\u4E2D\u7684\u5185\u5BB9\uFF1A" + selectedText);
       return;
     }
     if (imagePath) {
-      console.log("\u5339\u914D\u5230\u56FE\u7247\u8DEF\u5F84(before processImage):", imagePath);
       await this.processImage(imagePath, selectedText, editor, view);
       return;
     }
@@ -2125,7 +2062,6 @@ var AnkifyPlugin = class extends import_obsidian4.Plugin {
         const result = await this.callModelAPI(selectedText);
         return { result, cards: this.parseAnkiCards(result) };
       } catch (error) {
-        console.error("API\u8C03\u7528\u5931\u8D25:", error);
         throw error;
       }
     }, this.settings.insertToDocument).open();
@@ -2153,12 +2089,10 @@ var AnkifyPlugin = class extends import_obsidian4.Plugin {
             imageInfo: updatedImageInfo
           };
         } catch (error) {
-          console.error("\u56FE\u7247\u8BC6\u522B\u5931\u8D25:", error);
           throw error;
         }
       }, this.settings.insertToDocument).open();
     } catch (error) {
-      console.error("\u56FE\u7247\u8BC6\u522B\u5931\u8D25:", error);
       new import_obsidian4.Notice("\u56FE\u7247\u8BC6\u522B\u5931\u8D25\uFF1A" + error.message);
     }
   }
@@ -2187,8 +2121,6 @@ var AnkifyPlugin = class extends import_obsidian4.Plugin {
       const isV3Api = apiUrl.includes("/v3/");
       if (isV3Api) {
         const base64Data = base64Image.includes("base64,") ? base64Image.split("base64,")[1] : base64Image;
-        console.log("DeepSeek V3 API \u56FE\u7247\u8BC6\u522B - base64\u6570\u636E\u957F\u5EA6:", base64Data.length);
-        console.log("DeepSeek V3 API \u56FE\u7247\u8BC6\u522B - base64\u524D100\u5B57\u7B26:", base64Data.substring(0, 100));
         requestBody = {
           model_version: "v3.0-pro",
           prompt: visionPrompt,
@@ -2196,15 +2128,8 @@ var AnkifyPlugin = class extends import_obsidian4.Plugin {
           temperature: 0.7,
           response_format: "text"
         };
-        console.log("DeepSeek V3 API \u8BF7\u6C42\u4F53\uFF08\u4E0D\u542B\u56FE\u7247\u6570\u636E\uFF09:", {
-          model_version: requestBody.model_version,
-          temperature: requestBody.temperature,
-          prompt: requestBody.prompt.substring(0, 100) + "..."
-        });
       } else {
         const base64Data = base64Image.includes("base64,") ? base64Image.split("base64,")[1] : base64Image;
-        console.log("DeepSeek V1 API \u56FE\u7247\u8BC6\u522B - base64\u6570\u636E\u957F\u5EA6:", base64Data.length);
-        console.log("DeepSeek V1 API \u56FE\u7247\u8BC6\u522B - base64\u524D100\u5B57\u7B26:", base64Data.substring(0, 100));
         const contentJson = JSON.stringify([
           {
             type: "text",
@@ -2228,11 +2153,6 @@ var AnkifyPlugin = class extends import_obsidian4.Plugin {
           ],
           temperature: 0.7
         };
-        console.log("DeepSeek V1 API \u8BF7\u6C42\u4F53\uFF08\u4E0D\u542B\u56FE\u7247\u6570\u636E\uFF09:", {
-          model: requestBody.model,
-          temperature: requestBody.temperature,
-          contentLength: contentJson.length
-        });
       }
     } else if (model === "openai") {
       apiUrl = "https://api.openai.com/v1/chat/completions";
@@ -2351,7 +2271,6 @@ var AnkifyPlugin = class extends import_obsidian4.Plugin {
     });
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("API \u9519\u8BEF\u54CD\u5E94:", errorText);
       let errorMessage = `\u8BF7\u6C42\u5931\u8D25: HTTP ${response.status}`;
       try {
         const errorData = JSON.parse(errorText);
@@ -2365,16 +2284,13 @@ var AnkifyPlugin = class extends import_obsidian4.Plugin {
     if (!responseText || responseText.trim() === "") {
       throw new Error("API \u8FD4\u56DE\u7A7A\u54CD\u5E94");
     }
-    console.log("API \u539F\u59CB\u54CD\u5E94:", responseText.substring(0, 500));
     let data;
     try {
       data = JSON.parse(responseText);
     } catch (e) {
-      console.error("JSON \u89E3\u6790\u5931\u8D25\uFF0C\u539F\u59CB\u54CD\u5E94:", responseText);
       throw new Error(`API \u8FD4\u56DE\u65E0\u6548 JSON \u683C\u5F0F: ${responseText.substring(0, 200)}`);
     }
     const endTime = Date.now();
-    console.log(`${model.toUpperCase()} Vision API\u54CD\u5E94\u65F6\u95F4: ${endTime - startTime}ms`);
     let result = "";
     if (model === "deepseek") {
       if (apiUrl.includes("/v3/")) {
@@ -2398,7 +2314,6 @@ var AnkifyPlugin = class extends import_obsidian4.Plugin {
       } else if (data.text || data.content || data.result || data.output || data.generated_text) {
         result = data.text || data.content || data.result || data.output || data.generated_text;
       } else {
-        console.warn("\u65E0\u6CD5\u4ECEAPI\u54CD\u5E94\u4E2D\u63D0\u53D6\u5185\u5BB9\uFF0C\u8FD4\u56DE\u5B8C\u6574\u54CD\u5E94:", data);
         result = JSON.stringify(data, null, 2);
       }
     }
@@ -2518,7 +2433,6 @@ var AnkifyPlugin = class extends import_obsidian4.Plugin {
     });
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("API \u9519\u8BEF\u54CD\u5E94:", errorText);
       let errorMessage = `\u8BF7\u6C42\u5931\u8D25: HTTP ${response.status}`;
       try {
         const errorData = JSON.parse(errorText);
@@ -2532,16 +2446,13 @@ var AnkifyPlugin = class extends import_obsidian4.Plugin {
     if (!responseText || responseText.trim() === "") {
       throw new Error("API \u8FD4\u56DE\u7A7A\u54CD\u5E94");
     }
-    console.log("API \u539F\u59CB\u54CD\u5E94:", responseText.substring(0, 500));
     let data;
     try {
       data = JSON.parse(responseText);
     } catch (e) {
-      console.error("JSON \u89E3\u6790\u5931\u8D25\uFF0C\u539F\u59CB\u54CD\u5E94:", responseText);
       throw new Error(`API \u8FD4\u56DE\u65E0\u6548 JSON \u683C\u5F0F: ${responseText.substring(0, 200)}`);
     }
     const endTime = Date.now();
-    console.log(`${model.toUpperCase()} API\u54CD\u5E94\u65F6\u95F4: ${endTime - startTime}ms`);
     let result = "";
     if (model === "deepseek" || model === "openai" || model === "doubao") {
       result = ((_c = (_b = data.choices[0]) == null ? void 0 : _b.message) == null ? void 0 : _c.content) || "\u65E0\u6CD5\u751F\u6210\u5361\u7247\u5185\u5BB9";
@@ -2557,7 +2468,6 @@ var AnkifyPlugin = class extends import_obsidian4.Plugin {
       } else if (data.text || data.content || data.result || data.output || data.generated_text) {
         result = data.text || data.content || data.result || data.output || data.generated_text;
       } else {
-        console.warn("\u65E0\u6CD5\u4ECEAPI\u54CD\u5E94\u4E2D\u63D0\u53D6\u5185\u5BB9\uFF0C\u8FD4\u56DE\u5B8C\u6574\u54CD\u5E94:", data);
         result = JSON.stringify(data, null, 2);
       }
     }

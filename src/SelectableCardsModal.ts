@@ -41,11 +41,7 @@ export class SelectableCardsModal extends Modal {
     this.plugin = plugin;
     this.editor = editor;
     this.selectedCards = cards.map(() => true); // 默认全选
-    console.log("初始化时的设置:", plugin.settings);
-    console.log("lastUsedDeck:", plugin.settings.lastUsedDeck);
-    console.log("defaultDeck:", plugin.settings.defaultDeck);
     this.deckName = plugin.settings.lastUsedDeck || plugin.settings.defaultDeck;
-    console.log("最终使用的deckName:", this.deckName);
     this.noteType = plugin.settings.defaultNoteType;
     this.usedPrompt = usedPrompt;
     this.imageInfo = imageInfo;
@@ -113,12 +109,12 @@ export class SelectableCardsModal extends Modal {
     loadingContainer.setCssStyles({ textAlign: "center" });
     loadingContainer.setCssStyles({ padding: "20px" });
 
-    const loadingSpinner = loadingContainer.createEl("div", { cls: "ankify-loading-spinner" });
+    const loadingSpinner = loadingContainer.createDiv({ cls: "ankify-loading-spinner" });
     loadingSpinner.setCssStyles({ fontSize: "24px" });
     loadingSpinner.setCssStyles({ marginBottom: "10px" });
     loadingSpinner.textContent = "⏳";
 
-    const loadingText = loadingContainer.createEl("div", { text: "正在生成Anki卡片，请稍候..." });
+    const loadingText = loadingContainer.createDiv({ text: "正在生成Anki卡片，请稍候..." });
     loadingText.setCssStyles({ fontSize: "14px" });
     loadingText.setCssStyles({ color: "#666" });
 
@@ -327,7 +323,7 @@ export class SelectableCardsModal extends Modal {
       style: { padding: "2px 8px", fontSize: "12px" }
     });
 
-    refreshDeckButton.addEventListener("click", async () => {
+    addEventListener("click", () => { void (async () => {
       refreshDeckButton.disabled = true;
       refreshDeckButton.textContent = "刷新中...";
       
@@ -360,13 +356,12 @@ export class SelectableCardsModal extends Modal {
           });
         }
       } catch (error) {
-        console.error("刷新牌组失败:", error);
         new Notice("刷新牌组失败，请确保Anki已启动且安装了Anki Connect插件");
       } finally {
         refreshDeckButton.disabled = false;
         refreshDeckButton.textContent = "刷新";
       }
-    });
+        })(); });
 
     this.deckSelect.addEventListener("change", () => {
       this.deckName = this.deckSelect.value;
@@ -748,13 +743,13 @@ export class SelectableCardsModal extends Modal {
       backExtraContainer.setCssStyles({ marginTop: "10px" });
       
       // Back Extra 标题和折叠按钮
-      const backExtraHeader = backExtraContainer.createEl("div");
+      const backExtraHeader = backExtraContainer.createDiv();
       backExtraHeader.setCssStyles({ display: "flex" });
       backExtraHeader.setCssStyles({ alignItems: "center" });
       backExtraHeader.setCssStyles({ cursor: "pointer" });
       backExtraHeader.setCssStyles({ padding: "5px 0" });
       
-      const backExtraToggle = backExtraHeader.createEl("span", { text: "▶" });
+      const backExtraToggle = backExtraHeader.createSpan({ text: "▶" });
       backExtraToggle.setCssStyles({ marginRight: "5px" });
       backExtraToggle.setCssStyles({ color: "var(--text-muted)" });
       backExtraToggle.setCssStyles({ fontSize: "12px" });
@@ -875,7 +870,7 @@ export class SelectableCardsModal extends Modal {
     batchTagsContainer.setCssStyles({ marginTop: "20px" });
     
     // 标题和折叠按钮
-    const batchTagsHeader = batchTagsContainer.createEl("div");
+    const batchTagsHeader = batchTagsContainer.createDiv();
     batchTagsHeader.setCssStyles({ display: "flex" });
     batchTagsHeader.setCssStyles({ justifyContent: "space-between" });
     batchTagsHeader.setCssStyles({ alignItems: "center" });
@@ -897,11 +892,11 @@ export class SelectableCardsModal extends Modal {
     batchTagsTitle.setCssStyles({ color: "var(--text-normal)" });
     
     // 右侧折叠按钮
-    const batchTagsToggle = batchTagsHeader.createEl("span", { text: "▼" });
+    const batchTagsToggle = batchTagsHeader.createSpan({ text: "▼" });
     batchTagsToggle.setCssStyles({ color: "var(--text-muted)" });
     
     // 内容区域，默认隐藏
-    const batchTagsContent = batchTagsContainer.createEl("div");
+    const batchTagsContent = batchTagsContainer.createDiv();
     batchTagsContent.setCssStyles({ display: "none" });
     batchTagsContent.setCssStyles({ padding: "15px" });
     batchTagsContent.setCssStyles({ backgroundColor: "var(--background-secondary)" });
@@ -951,7 +946,7 @@ export class SelectableCardsModal extends Modal {
     newTagInput.setCssStyles({ color: "var(--text-normal)" });
     
     // 按钮和checkbox容器
-    const buttonContainer = batchTagsContent.createEl("div");
+    const buttonContainer = batchTagsContent.createDiv();
     buttonContainer.setCssStyles({ display: "flex" });
     buttonContainer.setCssStyles({ alignItems: "center" });
     buttonContainer.setCssStyles({ gap: "15px" });
@@ -968,7 +963,7 @@ export class SelectableCardsModal extends Modal {
     replaceButton.setCssStyles({ cursor: "pointer" });
     
     // 添加checkbox - 直接替换所有标签，放在按钮右边
-    const replaceAllContainer = buttonContainer.createEl("div");
+    const replaceAllContainer = buttonContainer.createDiv();
     replaceAllContainer.setCssStyles({ display: "flex" });
     replaceAllContainer.setCssStyles({ alignItems: "center" });
     
@@ -1069,7 +1064,7 @@ export class SelectableCardsModal extends Modal {
     cancelButton.setCssStyles({ borderRadius: "4px" });
     cancelButton.setCssStyles({ cursor: "pointer" });
 
-    addButton.addEventListener("click", async () => {
+    addEventListener("click", () => { void (async () => {
       const selectedCards = this.cards.filter((_, index) => this.selectedCards[index]);
 
       if (selectedCards.length === 0) {
@@ -1079,7 +1074,7 @@ export class SelectableCardsModal extends Modal {
 
       try {
         // 创建进度条容器
-        this.progressContainer = document.createElement("div");
+        this.progressContainer = document.body.createDiv();
         this.progressContainer.setCssStyles({ position: "fixed" });
         this.progressContainer.setCssStyles({ top: "50%" });
         this.progressContainer.setCssStyles({ left: "50%" });
@@ -1092,7 +1087,7 @@ export class SelectableCardsModal extends Modal {
         this.progressContainer.setCssStyles({ zIndex: "9999" });
         
         // 标题
-        const progressTitle = document.createElement("div");
+        const progressTitle = this.progressContainer.createDiv();
         progressTitle.setCssStyles({ fontSize: "14px" });
         progressTitle.setCssStyles({ fontWeight: "bold" });
         progressTitle.setCssStyles({ marginBottom: "10px" });
@@ -1102,7 +1097,7 @@ export class SelectableCardsModal extends Modal {
         
         // 批次大小信息（仅在调试模式下显示）
         if (this.plugin.settings.debugMode) {
-          const batchInfo = document.createElement("div");
+          const batchInfo = this.progressContainer.createDiv();
           batchInfo.setCssStyles({ fontSize: "12px" });
           batchInfo.setCssStyles({ color: "var(--text-muted)" });
           batchInfo.setCssStyles({ marginBottom: "10px" });
@@ -1112,7 +1107,7 @@ export class SelectableCardsModal extends Modal {
         }
         
         // 进度文本
-        const progressText = document.createElement("div");
+        const progressText = this.progressContainer.createDiv();
         progressText.setCssStyles({ fontSize: "12px" });
         progressText.setCssStyles({ marginBottom: "10px" });
         progressText.setCssStyles({ textAlign: "center" });
@@ -1120,13 +1115,13 @@ export class SelectableCardsModal extends Modal {
         this.progressContainer.appendChild(progressText);
         
         // 进度条
-        const progressBar = document.createElement("div");
+        const progressBar = this.progressContainer.createDiv();
         progressBar.setCssStyles({ height: "6px" });
         progressBar.setCssStyles({ backgroundColor: "var(--background-secondary)" });
         progressBar.setCssStyles({ borderRadius: "3px" });
         progressBar.setCssStyles({ overflow: "hidden" });
         
-        const progressFill = document.createElement("div");
+        const progressFill = progressBar.createDiv();
         progressFill.setCssStyles({ height: "100%" });
         progressFill.setCssStyles({ backgroundColor: "var(--interactive-accent)" });
         progressFill.setCssStyles({ width: "0%" });
@@ -1160,11 +1155,8 @@ export class SelectableCardsModal extends Modal {
 
         if (successCount > 0) {
           // 保存上次使用的牌组
-          console.log("准备保存上次使用的牌组:", this.deckSelect.value);
           this.plugin.settings.lastUsedDeck = this.deckSelect.value;
-          console.log("设置对象:", this.plugin.settings);
           await this.plugin.saveSettings();
-          console.log("保存成功");
           
           new Notice(`成功添加 ${successCount} 张卡片到Anki`);
           this.forceClose();
@@ -1181,10 +1173,9 @@ export class SelectableCardsModal extends Modal {
             // 忽略移除错误
           }
         }
-        console.error("添加卡片失败:", error);
         new Notice(`添加卡片失败: ${error.message}`);
       }
-    });
+        })(); });
 
     cancelButton.addEventListener("click", () => {
       this.forceClose();
@@ -1219,7 +1210,7 @@ export class SelectableCardsModal extends Modal {
     requestInfoEl.setCssStyles({ overflow: "hidden" });
 
     // 标题和切换按钮
-    const headerEl = requestInfoEl.createEl("div");
+    const headerEl = requestInfoEl.createDiv();
     headerEl.setCssStyles({ display: "flex" });
     headerEl.setCssStyles({ justifyContent: "space-between" });
     headerEl.setCssStyles({ alignItems: "center" });
@@ -1228,7 +1219,7 @@ export class SelectableCardsModal extends Modal {
     headerEl.setCssStyles({ backgroundColor: "var(--background-secondary)" });
 
     headerEl.createEl("h4", { text: "请求信息" });
-    const toggleEl = headerEl.createEl("span", { text: "▼" });
+    const toggleEl = headerEl.createSpan({ text: "▼" });
 
     // 内容区域（默认隐藏）
     const contentInfoEl = requestInfoEl.createDiv();

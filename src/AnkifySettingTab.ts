@@ -100,7 +100,7 @@ export class AnkifySettingTab extends PluginSettingTab {
       }
 
       // 下拉选择事件
-      urlSelect.addEventListener("change", async () => {
+      addEventListener("change", () => { void (async () => {
         const selectedValue = urlSelect.value;
         if (selectedValue === "custom") {
           customUrlInput.setCssStyles({ display: "block" });
@@ -110,15 +110,15 @@ export class AnkifySettingTab extends PluginSettingTab {
           this.plugin.settings.deepseekApiUrl = selectedValue;
         }
         await this.plugin.saveSettings();
-      });
+            })(); });
 
       // 自定义URL输入事件
-      customUrlInput.addEventListener("input", async () => {
+      addEventListener("input", () => { void (async () => {
         if (urlSelect.value === "custom") {
           this.plugin.settings.deepseekApiUrl = customUrlInput.value;
           await this.plugin.saveSettings();
         }
-      });
+            })(); });
 
     } else if (this.plugin.settings.apiModel === "openai") {
       new Setting(containerEl)
@@ -288,10 +288,10 @@ export class AnkifySettingTab extends PluginSettingTab {
       text: "测试API连接",
     });
 
-    const apiTestStatus = apiTestContainer.createEl("span");
+    const apiTestStatus = apiTestContainer.createSpan();
     apiTestStatus.setCssStyles({ fontSize: "20px" });
 
-    const apiTestResult = containerEl.createEl("div");
+    const apiTestResult = containerEl.createDiv();
     apiTestResult.setCssStyles({ marginTop: "10px" });
     apiTestResult.setCssStyles({ padding: "10px" });
     apiTestResult.setCssStyles({ backgroundColor: "#f5f5f5" });
@@ -301,7 +301,7 @@ export class AnkifySettingTab extends PluginSettingTab {
     apiTestResult.setCssStyles({ fontSize: "12px" });
     apiTestResult.setCssStyles({ display: "none" });
 
-    apiTestButton.addEventListener("click", async () => {
+    addEventListener("click", () => { void (async () => {
       apiTestButton.disabled = true;
       apiTestButton.textContent = "测试中...";
       apiTestStatus.textContent = "";
@@ -325,7 +325,7 @@ export class AnkifySettingTab extends PluginSettingTab {
         apiTestButton.disabled = false;
         apiTestButton.textContent = "测试API连接";
       }
-    });
+        })(); });
 
     // 图片识别测试
     const visionTestSetting = new Setting(containerEl)
@@ -354,7 +354,7 @@ export class AnkifySettingTab extends PluginSettingTab {
       text: "测试图片识别",
     });
 
-    const visionTestStatus = visionTestButtonContainer.createEl("span");
+    const visionTestStatus = visionTestButtonContainer.createSpan();
     visionTestStatus.setCssStyles({ fontSize: "20px" });
 
     const visionTestResult = containerEl.createEl("textarea");
@@ -371,7 +371,7 @@ export class AnkifySettingTab extends PluginSettingTab {
     visionTestResult.setCssStyles({ display: "none" });
     visionTestResult.readOnly = true;
 
-    visionTestButton.addEventListener("click", async () => {
+    addEventListener("click", () => { void (async () => {
       const file = visionTestFileInput.files?.[0];
       if (!file) {
         new Notice("请先选择图片文件");
@@ -385,8 +385,6 @@ export class AnkifySettingTab extends PluginSettingTab {
       visionTestResult.setCssStyles({ display: "none" });
 
       try {
-        console.log('开始读取图片:', file.name, '大小:', file.size);
-        console.log('使用的Prompt:', this.plugin.settings.visionPrompt);
 
         // 使用FileReader读取文件
         const reader = new FileReader();
@@ -395,15 +393,13 @@ export class AnkifySettingTab extends PluginSettingTab {
             const result = reader.result as string;
             resolve(result);
           };
-          reader.onerror = () => reject(reader.error);
+          reader.onerror = () => reject(new Error(reader.error?.message || "??????"));
           reader.readAsDataURL(file);
         });
 
-        console.log('Base64转换成功，大小:', Math.round(base64Image.length / 1024), 'KB');
 
         // 压缩图片
         const compressedImage = await this.plugin.compressImage(base64Image);
-        console.log('图片压缩完成');
 
         // 调用图片识别API
         const result = await this.plugin.callVisionAPI(compressedImage);
@@ -417,7 +413,6 @@ export class AnkifySettingTab extends PluginSettingTab {
         visionTestResult.setCssStyles({ display: "block" });
         new Notice("图片识别测试成功");
       } catch (error) {
-        console.error('图片识别测试失败:', error);
         visionTestStatus.textContent = "❌";
         visionTestStatus.setCssStyles({ color: "red" });
         visionTestResult.textContent = `识别失败：\n${error.message}`;
@@ -427,7 +422,7 @@ export class AnkifySettingTab extends PluginSettingTab {
         visionTestButton.disabled = false;
         visionTestButton.textContent = "测试图片识别";
       }
-    });
+        })(); });
 
     // ========== Debug模式 ==========
     // ========== 图片识别设置 ==========
@@ -486,15 +481,15 @@ export class AnkifySettingTab extends PluginSettingTab {
     urlInput.value = this.plugin.settings.ankiConnectUrl;
     urlInput.setCssStyles({ flex: "1" });
     urlInput.setCssStyles({ padding: "5px" });
-    urlInput.addEventListener("change", async () => {
+    addEventListener("change", () => { void (async () => {
       this.plugin.settings.ankiConnectUrl = urlInput.value;
       await this.plugin.saveSettings();
-    });
+        })(); });
 
     // 测试按钮
     const testButton = ankiConnectContainer.createEl("button");
     testButton.textContent = "测试连接";
-    testButton.addEventListener("click", async () => {
+    addEventListener("click", () => { void (async () => {
       testButton.disabled = true;
       testButton.textContent = "测试中...";
       
@@ -502,13 +497,12 @@ export class AnkifySettingTab extends PluginSettingTab {
         const result = await this.plugin.invokeAnkiConnect("version");
         new Notice(`Anki Connect 连接成功！版本: ${result}`);
       } catch (error) {
-        console.error("Anki Connect 测试失败:", error);
         new Notice(`Anki Connect 连接失败: ${error.message}`);
       } finally {
         testButton.disabled = false;
         testButton.textContent = "测试连接";
       }
-    });
+        })(); });
 
     new Setting(containerEl)
       .setName("默认牌组")
@@ -647,10 +641,10 @@ export class AnkifySettingTab extends PluginSettingTab {
       text: "批量创建Deck",
     });
 
-    const deckCreationStatus = deckButtonContainer.createEl("span");
+    const deckCreationStatus = deckButtonContainer.createSpan();
     deckCreationStatus.setCssStyles({ fontSize: "20px" });
 
-    createDeckButton.addEventListener("click", async () => {
+    addEventListener("click", () => { void (async () => {
       createDeckButton.disabled = true;
       createDeckButton.textContent = "创建中...";
       deckCreationStatus.textContent = "";
@@ -682,7 +676,6 @@ export class AnkifySettingTab extends PluginSettingTab {
             await this.plugin.invokeAnkiConnect("createDeck", { deck: deckName });
             successCount++;
           } catch (error) {
-            console.error(`创建Deck "${deckName}" 失败:`, error);
             errorCount++;
             errorMessages.push(`"${deckName}": ${error.message}`);
           }
@@ -697,7 +690,6 @@ export class AnkifySettingTab extends PluginSettingTab {
           new Notice(`成功创建 ${successCount} 个Deck`);
         }
       } catch (error) {
-        console.error("批量创建Deck失败:", error);
         deckCreationStatus.textContent = "❌";
         deckCreationStatus.setCssStyles({ color: "red" });
         new Notice(`批量创建Deck失败: ${error.message}`);
@@ -705,6 +697,6 @@ export class AnkifySettingTab extends PluginSettingTab {
         createDeckButton.disabled = false;
         createDeckButton.textContent = "批量创建Deck";
       }
-    });
+        })(); });
   }
 }

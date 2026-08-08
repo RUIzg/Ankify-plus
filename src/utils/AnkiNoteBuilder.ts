@@ -1,11 +1,19 @@
 // Anki笔记构建器
 import { AnkiCard } from "../AnkiCard";
 
+interface AnkiNote {
+  deckName: string;
+  modelName: string;
+  fields: Record<string, string>;
+  tags: string[];
+  options: { allowDuplicate: boolean };
+}
+
 export class AnkiNoteBuilder {
   private noteTypeFields: Record<string, string[]> = {};
-  private invokeAnkiConnect: (action: string, params: any) => Promise<any>;
+  private invokeAnkiConnect: (action: string, params: Record<string, unknown>) => Promise<string[]>;
 
-  constructor(invokeAnkiConnect: (action: string, params: any) => Promise<any>) {
+  constructor(invokeAnkiConnect: (action: string, params: Record<string, unknown>) => Promise<string[]>) {
     this.invokeAnkiConnect = invokeAnkiConnect;
   }
 
@@ -15,13 +23,12 @@ export class AnkiNoteBuilder {
    * @param deckName 牌组名称
    * @returns note对象数组
    */
-  async buildNotes(cards: AnkiCard[], deckName: string): Promise<any[]> {
+  async buildNotes(cards: AnkiCard[], deckName: string): Promise<AnkiNote[]> {
     // 预先顺序获取所有唯一笔记类型的字段名称，避免并发请求导致连接被拒绝
     const uniqueNoteTypes = [...new Set(cards.map(card => card.noteType))];
     for (const nt of uniqueNoteTypes) {
       if (!this.noteTypeFields[nt]) {
         const fields = await this.invokeAnkiConnect("modelFieldNames", { modelName: nt });
-        console.log(`笔记类型 ${nt} 的字段名称:`, fields);
         this.noteTypeFields[nt] = fields;
       }
     }
@@ -43,7 +50,6 @@ export class AnkiNoteBuilder {
 
         // 从缓存中读取字段名称（已在上方预取）
         const modelFieldNames = this.noteTypeFields[cardNoteType];
-        console.log(`笔记类型 ${cardNoteType} 的字段名称:`, modelFieldNames);
 
         // 根据字段名称进行映射
         if (cardNoteType === "Cloze" || cardNoteType === "填空题") {
@@ -109,35 +115,27 @@ export class AnkiNoteBuilder {
           // 如果有额外字段且有注释，将注释放到额外字段
           if (extraFieldName && card.annotation) {
             fields[extraFieldName] = card.annotation;
-            console.log(`将注释放入额外字段 ${extraFieldName}:`, card.annotation);
           } else if (card.annotation) {
             // 如果没有额外字段但有注释，仍然追加到主要字段
             fields[mainFieldName] += `\n<hr>\n<span style="color: rgb(143, 53, 8);">${card.annotation}</span>`;
-            console.log(`将注释追加到主要字段 ${mainFieldName}:`, card.annotation);
           }
           
           // 如果有 Back Extra 内容，添加到字段中（优先使用专门的 Back Extra 字段）
-          console.log(`处理 Back Extra: card.backExtra = "${card.backExtra}", modelFieldNames =`, modelFieldNames);
           if (card.backExtra) {
             if (modelFieldNames.includes("Back Extra")) {
               fields["Back Extra"] = card.backExtra;
-              console.log(`将 Back Extra 内容放入 Back Extra 字段:`, card.backExtra);
             } else if (extraFieldName && !card.annotation) {
               // 如果没有专门的 Back Extra 字段，但有其他额外字段且没有注释，使用额外字段
               fields[extraFieldName] = card.backExtra;
-              console.log(`将 Back Extra 内容放入额外字段 ${extraFieldName}:`, card.backExtra);
             } else {
               // 如果没有合适的字段，追加到主要字段
               fields[mainFieldName] += `\n<hr>\n${card.backExtra}`;
-              console.log(`将 Back Extra 内容追加到主要字段 ${mainFieldName}`);
             }
           } else if (modelFieldNames.includes("Back Extra")) {
             // 即使为空也要添加字段，确保 Anki 能识别
             fields["Back Extra"] = "";
-            console.log(`添加空的 Back Extra 字段`);
           }
           
-          console.log(`最终字段:`, fields);
         } else if (
           modelFieldNames.includes("Front") &&
           modelFieldNames.includes("Back")

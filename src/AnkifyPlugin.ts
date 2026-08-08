@@ -7,6 +7,7 @@ import {
   Plugin,
   PluginSettingTab,
   Setting,
+  TFile,
 } from "obsidian";
 import * as http from "http";
 import * as https from "https";
@@ -65,11 +66,6 @@ export class AnkifyPlugin extends Plugin {
       params,
     };
 
-    console.log("发送Anki Connect请求:", {
-      url: this.settings.ankiConnectUrl,
-      action,
-      params,
-    });
 
     try {
       // 使用Node.js的http/https模块来绕过CORS限制
@@ -82,7 +78,6 @@ export class AnkifyPlugin extends Plugin {
         body: JSON.stringify(requestBody),
       });
 
-      console.log("Anki Connect响应:", data);
 
       if (data.error) {
         throw new Error(`Anki Connect错误: ${data.error}`);
@@ -90,7 +85,6 @@ export class AnkifyPlugin extends Plugin {
 
       return data.result;
     } catch (error) {
-      console.error("Anki Connect请求失败:", error);
       throw new Error(`Anki Connect请求失败: ${error.message}`);
     }
   }
@@ -100,6 +94,7 @@ export class AnkifyPlugin extends Plugin {
     method: string;
     headers: Record<string, string>;
     body: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- sendHttpRequest returns parsed JSON of unknown shape
   }, retryCount = 3): Promise<any> {
     return new Promise((resolve, reject) => {
       const parsedUrl = new URL(url);
@@ -135,7 +130,6 @@ export class AnkifyPlugin extends Plugin {
       req.setTimeout(30000, () => {
         req.destroy();
         if (retryCount > 0) {
-          console.log(`请求超时，正在重试... (${retryCount} 次剩余)`);
           this.sendHttpRequest(url, options, retryCount - 1)
             .then(resolve)
             .catch(reject);
@@ -147,9 +141,8 @@ export class AnkifyPlugin extends Plugin {
       req.on("error", (error) => {
         // 处理连接错误，添加重试机制
         if ((error.code === "ECONNRESET" || error.code === "ECONNREFUSED") && retryCount > 0) {
-          console.log(`连接错误: ${error.code}，正在重试... (${retryCount} 次剩余)`);
           // 延迟1秒后重试，避免立即重试导致的问题
-          setTimeout(() => {
+          window.setTimeout(() => {
             this.sendHttpRequest(url, options, retryCount - 1)
               .then(resolve)
               .catch(reject);
@@ -159,7 +152,7 @@ export class AnkifyPlugin extends Plugin {
         } else if (error.code === "ECONNREFUSED") {
           reject(new Error("Anki Connect连接被拒绝，请确保Anki已启动且Anki Connect已安装并启用"));
         } else {
-          reject(error);
+          reject(error instanceof Error ? error : new Error(String(error)));
         }
       });
 
@@ -173,7 +166,6 @@ export class AnkifyPlugin extends Plugin {
     try {
       return await this.invokeAnkiConnect("deckNames");
     } catch (error) {
-      console.error("获取牌组列表失败:", error);
       new Notice(
         "获取Anki牌组列表失败，请确保Anki已启动且安装了Anki Connect插件"
       );
@@ -186,7 +178,6 @@ export class AnkifyPlugin extends Plugin {
     try {
       return await this.invokeAnkiConnect("modelNames");
     } catch (error) {
-      console.error("获取笔记类型列表失败:", error);
       return [];
     }
   }
@@ -195,8 +186,6 @@ export class AnkifyPlugin extends Plugin {
   parseAnkiCards(text: string): AnkiCard[] {
     const cards: AnkiCard[] = [];
 
-    console.log("开始解析Anki卡片，原始文本长度:", text.length);
-    console.log("原始文本前500字符:", text.substring(0, 500));
 
     // 检查是否是多行格式（每个字段一行，卡片间有空行）
     const questionMarker = this.settings.questionMarker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -207,7 +196,6 @@ export class AnkifyPlugin extends Plugin {
     );
 
     if (isMultiLineFormat) {
-      console.log("检测到多行格式数据");
 
       // 通过标记符分割不同的卡片
       const questionMarkerPattern = new RegExp(questionMarker, "gi");
@@ -305,7 +293,6 @@ export class AnkifyPlugin extends Plugin {
       );
 
       if (isTableFormat) {
-        console.log("检测到表格格式数据");
         // 跳过标题行，解析表格内容
         for (let i = 1; i < lines.length; i++) {
           const line = lines[i].trim();
@@ -429,7 +416,6 @@ export class AnkifyPlugin extends Plugin {
       }
     }
 
-    console.log(`解析出 ${cards.length} 张卡片`, cards);
     return cards;
   }
 
@@ -440,12 +426,6 @@ export class AnkifyPlugin extends Plugin {
       throw new Error("牌组名称和笔记类型不能为空");
     }
 
-    console.log("准备添加卡片到Anki:", {
-      deckName,
-      noteType,
-      cardCount: cards.length,
-      firstCard: cards[0],
-    });
 
     // 使用AnkiNoteBuilder构建笔记
     const noteBuilder = new AnkiNoteBuilder(this.invokeAnkiConnect.bind(this));
@@ -453,12 +433,6 @@ export class AnkifyPlugin extends Plugin {
 
     // 批量添加笔记（分批处理，每批最多10张卡片）
     try {
-      console.log("正在添加笔记到Anki:", {
-        deckName,
-        noteType,
-        noteCount: notes.length,
-        firstNote: notes[0],
-      });
 
       const batchSize = this.settings.batchSize;
       const allResults: number[] = [];
@@ -466,7 +440,6 @@ export class AnkifyPlugin extends Plugin {
       // 分批处理卡片
       for (let i = 0; i < notes.length; i += batchSize) {
         const batch = notes.slice(i, i + batchSize);
-        console.log(`处理第 ${Math.floor(i / batchSize) + 1} 批，共 ${batch.length} 张卡片`);
         
         const result = await this.invokeAnkiConnect("addNotes", { notes: batch });
 
@@ -480,7 +453,6 @@ export class AnkifyPlugin extends Plugin {
         // 检查是否有失败的笔记
         const failedNotes = result.filter((id) => id === null);
         if (failedNotes.length > 0) {
-          console.warn(`第 ${Math.floor(i / batchSize) + 1} 批中有 ${failedNotes.length} 张卡片添加失败`);
         }
 
         // 调用进度回调
@@ -491,13 +463,12 @@ export class AnkifyPlugin extends Plugin {
 
         // 每批之间休息100ms，避免请求过于频繁
         if (i + batchSize < notes.length) {
-          await new Promise(resolve => setTimeout(resolve, 100));
+          await new Promise(resolve => window.setTimeout(resolve, 100));
         }
       }
 
       return allResults;
     } catch (error) {
-      console.error("添加笔记失败:", error);
       throw new Error(`添加笔记失败: ${error.message}`);
     }
   }
@@ -508,7 +479,6 @@ export class AnkifyPlugin extends Plugin {
     const markdownImageRegex = /!\[([^\]]*)\]\(([^)]+)\)/;
     const match = text.match(markdownImageRegex);
     if (match) {
-      console.log("解析到 Markdown 图片格式:", match[2]);
       return match[2];
     }
     
@@ -516,7 +486,6 @@ export class AnkifyPlugin extends Plugin {
     const wikiImageRegex = /!\[\[([^\]]+)\]\]/;
     const wikiMatch = text.match(wikiImageRegex);
     if (wikiMatch) {
-      console.log("解析到 Wiki 图片格式:", wikiMatch[1]);
       return wikiMatch[1];
     }
     
@@ -525,7 +494,6 @@ export class AnkifyPlugin extends Plugin {
     const trimmedText = text.trim();
     const imageExtensions = /\.(png|jpg|jpeg|gif|webp|bmp|svg)$/i;
     if (imageExtensions.test(trimmedText)) {
-      console.log("解析到直接图片路径格式:", trimmedText);
       return trimmedText;
     }
     
@@ -542,11 +510,6 @@ export class AnkifyPlugin extends Plugin {
         throw new Error("无法获取当前文件");
       }
 
-      console.log("开始读取图片:", {
-        原始路径: imagePath,
-        当前文件: currentFile.path,
-        当前文件目录: currentFile.parent?.path
-      });
 
       let fullPath = imagePath;
 
@@ -557,7 +520,6 @@ export class AnkifyPlugin extends Plugin {
         // 如果直接读取失败，尝试相对于当前文件目录
         const currentDir = currentFile.parent?.path || '';
         fullPath = currentDir ? `${currentDir}/${imagePath}` : imagePath;
-        console.log("尝试相对路径:", fullPath);
         file = vault.getAbstractFileByPath(fullPath);
       }
 
@@ -567,21 +529,18 @@ export class AnkifyPlugin extends Plugin {
           const cleanPath = imagePath.substring(2);
           const currentDir = currentFile.parent?.path || '';
           fullPath = currentDir ? `${currentDir}/${cleanPath}` : cleanPath;
-          console.log("尝试清理后的路径:", fullPath);
           file = vault.getAbstractFileByPath(fullPath);
         }
       }
 
       if (!file) {
-        console.error("所有路径尝试失败，vault所有文件:", vault.getFiles().map(f => f.path));
         throw new Error(`找不到图片文件。\n尝试的路径: ${imagePath}, ${fullPath}\n请检查图片路径是否正确`);
       }
 
       const actualPath = file.path;
-      console.log("成功找到文件:", actualPath);
 
       // 读取二进制数据
-      const arrayBuffer = await vault.readBinary(file as any);
+      const arrayBuffer = await vault.readBinary(file as TFile);
 
       // 转换为base64
       const base64Data = this.arrayBufferToBase64(arrayBuffer);
@@ -590,14 +549,12 @@ export class AnkifyPlugin extends Plugin {
       const ext = imagePath.split('.').pop()?.toLowerCase();
       const mimeType = this.getMimeType(ext || '');
 
-      console.log("图片读取成功，大小:", arrayBuffer.byteLength, "bytes");
 
       return {
         base64: `data:${mimeType};base64,${base64Data}`,
         actualPath: actualPath
       };
     } catch (error) {
-      console.error("读取图片失败:", error);
       throw new Error(`读取图片失败: ${error.message}`);
     }
   }
@@ -648,6 +605,7 @@ export class AnkifyPlugin extends Plugin {
           }
 
           // 创建canvas进行压缩
+          // eslint-disable-next-line obsidianmd/prefer-create-el -- off-DOM canvas requires createElement
           const canvas = document.createElement('canvas');
           canvas.width = width;
           canvas.height = height;
@@ -663,12 +621,6 @@ export class AnkifyPlugin extends Plugin {
           // 转换为base64，使用指定的质量
           const compressedBase64 = canvas.toDataURL('image/jpeg', this.settings.imageQuality);
 
-          console.log('图片压缩完成:', {
-            原始尺寸: `${img.width}x${img.height}`,
-            压缩后尺寸: `${width}x${height}`,
-            原始大小: Math.round(base64Image.length / 1024) + 'KB',
-            压缩后大小: Math.round(compressedBase64.length / 1024) + 'KB'
-          });
 
           resolve(compressedBase64);
         };
@@ -679,7 +631,7 @@ export class AnkifyPlugin extends Plugin {
 
         img.src = base64Image;
       } catch (error) {
-        reject(error);
+        reject(error instanceof Error ? error : new Error(String(error)));
       }
     });
   }
@@ -688,7 +640,6 @@ export class AnkifyPlugin extends Plugin {
     // 修改为处理选中的文本，而不是整篇文章
     const selectedText = editor.getSelection();
 
-    console.log("selectedText:", selectedText);
     if (!selectedText) {
       new Notice("请先选择要处理的文本内容");
       return;
@@ -701,17 +652,12 @@ export class AnkifyPlugin extends Plugin {
     const looksLikeImageLink = selectedText.includes("![[") || selectedText.includes("![](");
     
     if (looksLikeImageLink && (!imagePath || imagePath.trim() === "")) {
-      console.error("图片路径解析失败：", {
-        selectedText: selectedText,
-        imagePath: imagePath
-      });
       new Notice("图片路径解析失败，请检查图片链接格式是否正确\n选中的内容：" + selectedText);
       return;
     }
     
     if (imagePath) {
       // 处理图片识别，传递用户实际选中的文本
-      console.log("匹配到图片路径(before processImage):", imagePath);
       await this.processImage(imagePath, selectedText, editor, view);
       return;
     }
@@ -768,7 +714,6 @@ export class AnkifyPlugin extends Plugin {
           const result = await this.callModelAPI(selectedText);
           return { result, cards: this.parseAnkiCards(result) };
         } catch (error) {
-          console.error("API调用失败:", error);
           throw error;
         }
       },
@@ -818,14 +763,12 @@ export class AnkifyPlugin extends Plugin {
               imageInfo: updatedImageInfo
             };
           } catch (error) {
-            console.error("图片识别失败:", error);
             throw error;
           }
         },
         this.settings.insertToDocument
       ).open();
     } catch (error) {
-      console.error("图片识别失败:", error);
       new Notice("图片识别失败：" + error.message);
     }
   }
@@ -851,7 +794,7 @@ export class AnkifyPlugin extends Plugin {
     let headers: Record<string, string> = {
       "Content-Type": "application/json",
     };
-    let requestBody: any = {};
+    let requestBody: Record<string, unknown> = {};
 
     // 使用专门的图片识别提示词
     const visionPrompt = this.settings.visionPrompt;
@@ -872,8 +815,6 @@ export class AnkifyPlugin extends Plugin {
           ? base64Image.split('base64,')[1]
           : base64Image;
 
-        console.log('DeepSeek V3 API 图片识别 - base64数据长度:', base64Data.length);
-        console.log('DeepSeek V3 API 图片识别 - base64前100字符:', base64Data.substring(0, 100));
 
         requestBody = {
           model_version: "v3.0-pro",
@@ -883,11 +824,6 @@ export class AnkifyPlugin extends Plugin {
           response_format: "text"
         };
 
-        console.log('DeepSeek V3 API 请求体（不含图片数据）:', {
-          model_version: requestBody.model_version,
-          temperature: requestBody.temperature,
-          prompt: requestBody.prompt.substring(0, 100) + '...'
-        });
       } else {
         // V1 API 格式 - 原有的 OpenAI 兼容格式
         // 提取纯base64数据（移除 data:image/xxx;base64, 前缀）
@@ -895,8 +831,6 @@ export class AnkifyPlugin extends Plugin {
           ? base64Image.split('base64,')[1]
           : base64Image;
 
-        console.log('DeepSeek V1 API 图片识别 - base64数据长度:', base64Data.length);
-        console.log('DeepSeek V1 API 图片识别 - base64前100字符:', base64Data.substring(0, 100));
 
         // DeepSeek 需要将 content 序列化为 JSON 字符串
         const contentJson = JSON.stringify([
@@ -924,11 +858,6 @@ export class AnkifyPlugin extends Plugin {
           temperature: 0.7,
         };
 
-        console.log('DeepSeek V1 API 请求体（不含图片数据）:', {
-          model: requestBody.model,
-          temperature: requestBody.temperature,
-          contentLength: contentJson.length
-        });
       }
     } else if (model === "openai") {
       apiUrl = "https://api.openai.com/v1/chat/completions";
@@ -1058,7 +987,6 @@ export class AnkifyPlugin extends Plugin {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("API 错误响应:", errorText);
       let errorMessage = `请求失败: HTTP ${response.status}`;
       try {
         const errorData = JSON.parse(errorText);
@@ -1075,18 +1003,15 @@ export class AnkifyPlugin extends Plugin {
       throw new Error("API 返回空响应");
     }
 
-    console.log("API 原始响应:", responseText.substring(0, 500));
 
     // 解析 JSON
     let data;
     try {
       data = JSON.parse(responseText);
     } catch (e) {
-      console.error("JSON 解析失败，原始响应:", responseText);
       throw new Error(`API 返回无效 JSON 格式: ${responseText.substring(0, 200)}`);
     }
     const endTime = Date.now();
-    console.log(`${model.toUpperCase()} Vision API响应时间: ${endTime - startTime}ms`);
 
     // 根据不同API响应格式获取结果
     let result = "";
@@ -1115,7 +1040,6 @@ export class AnkifyPlugin extends Plugin {
       } else if (data.text || data.content || data.result || data.output || data.generated_text) {
         result = data.text || data.content || data.result || data.output || data.generated_text;
       } else {
-        console.warn("无法从API响应中提取内容，返回完整响应:", data);
         result = JSON.stringify(data, null, 2);
       }
     }
@@ -1131,7 +1055,7 @@ export class AnkifyPlugin extends Plugin {
     let headers: Record<string, string> = {
       "Content-Type": "application/json",
     };
-    let requestBody: any = {};
+    let requestBody: Record<string, unknown> = {};
 
     // 根据选择的模型设置API请求参数
     if (model === "deepseek") {
@@ -1248,7 +1172,6 @@ export class AnkifyPlugin extends Plugin {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("API 错误响应:", errorText);
       let errorMessage = `请求失败: HTTP ${response.status}`;
       try {
         const errorData = JSON.parse(errorText);
@@ -1265,19 +1188,16 @@ export class AnkifyPlugin extends Plugin {
       throw new Error("API 返回空响应");
     }
 
-    console.log("API 原始响应:", responseText.substring(0, 500));
 
     // 解析 JSON
     let data;
     try {
       data = JSON.parse(responseText);
     } catch (e) {
-      console.error("JSON 解析失败，原始响应:", responseText);
       throw new Error(`API 返回无效 JSON 格式: ${responseText.substring(0, 200)}`);
     }
 
     const endTime = Date.now();
-    console.log(`${model.toUpperCase()} API响应时间: ${endTime - startTime}ms`);
     
     // 根据不同API响应格式获取结果
     let result = "";
@@ -1301,7 +1221,6 @@ export class AnkifyPlugin extends Plugin {
         result = data.text || data.content || data.result || data.output || data.generated_text;
       } else {
         // 找不到合适的字段，返回整个响应作为JSON字符串
-        console.warn("无法从API响应中提取内容，返回完整响应:", data);
         result = JSON.stringify(data, null, 2);
       }
     }
