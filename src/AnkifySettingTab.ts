@@ -14,10 +14,10 @@ export class AnkifySettingTab extends PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
 
-    containerEl.createEl("h2", { text: "Ankify 插件设置" });
+    new Setting(containerEl).setName("Ankify 插件设置").setHeading();
 
     // ========== 基础配置 ==========
-    containerEl.createEl("h3", { text: "基础配置" });
+    new Setting(containerEl).setName("基础配置").setHeading();
 
     // API模型选择
     new Setting(containerEl)
@@ -431,7 +431,7 @@ export class AnkifySettingTab extends PluginSettingTab {
 
     // ========== Debug模式 ==========
     // ========== 图片识别设置 ==========
-    containerEl.createEl("h3", { text: "图片识别设置" });
+    new Setting(containerEl).setName("图片识别设置").setHeading();
 
     new Setting(containerEl)
       .setName("图片最大尺寸")
@@ -466,7 +466,7 @@ export class AnkifySettingTab extends PluginSettingTab {
       );
 
     // Anki Connect 相关设置
-    containerEl.createEl("h3", { text: "Anki Connect 设置" });
+    new Setting(containerEl).setName("Anki Connect 设置").setHeading();
 
     // Anki Connect URL 设置和测试
     const ankiConnectSetting = new Setting(containerEl)
@@ -577,7 +577,7 @@ export class AnkifySettingTab extends PluginSettingTab {
       );
 
     // ========== 返回结果解析 ==========
-    containerEl.createEl("h3", { text: "返回结果解析" });
+    new Setting(containerEl).setName("返回结果解析").setHeading();
 
     new Setting(containerEl)
       .setName("问题标记符")
@@ -619,7 +619,7 @@ export class AnkifySettingTab extends PluginSettingTab {
       );
 
     // ========== 批量增加Anki Deck ==========
-    containerEl.createEl("h3", { text: "批量增加Anki Deck" });
+    new Setting(containerEl).setName("批量增加Anki Deck").setHeading();
 
     const deckCreationSetting = new Setting(containerEl)
       .setName("批量创建Deck")

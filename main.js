@@ -1033,8 +1033,8 @@ var AnkifySettingTab = class extends import_obsidian3.PluginSettingTab {
   display() {
     const { containerEl } = this;
     containerEl.empty();
-    containerEl.createEl("h2", { text: "Ankify \u63D2\u4EF6\u8BBE\u7F6E" });
-    containerEl.createEl("h3", { text: "\u57FA\u7840\u914D\u7F6E" });
+    new import_obsidian3.Setting(containerEl).setName("Ankify \u63D2\u4EF6\u8BBE\u7F6E").setHeading();
+    new import_obsidian3.Setting(containerEl).setName("\u57FA\u7840\u914D\u7F6E").setHeading();
     new import_obsidian3.Setting(containerEl).setName("AI\u6A21\u578B\u9009\u62E9").setDesc("\u9009\u62E9\u7528\u4E8E\u751F\u6210Anki\u5361\u7247\u7684AI\u6A21\u578B").addDropdown((dropdown) => {
       dropdown.addOption("deepseek", "DeepSeek").addOption("openai", "OpenAI").addOption("claude", "Claude").addOption("doubao", "\u8C46\u5305 (Doubao)").addOption("custom", "\u81EA\u5B9A\u4E49API").setValue(this.plugin.settings.apiModel).onChange(async (value) => {
         this.plugin.settings.apiModel = value;
@@ -1279,7 +1279,7 @@ ${error.message}`;
         visionTestButton.textContent = "\u6D4B\u8BD5\u56FE\u7247\u8BC6\u522B";
       }
     });
-    containerEl.createEl("h3", { text: "\u56FE\u7247\u8BC6\u522B\u8BBE\u7F6E" });
+    new import_obsidian3.Setting(containerEl).setName("\u56FE\u7247\u8BC6\u522B\u8BBE\u7F6E").setHeading();
     new import_obsidian3.Setting(containerEl).setName("\u56FE\u7247\u6700\u5927\u5C3A\u5BF8").setDesc("\u56FE\u7247\u8BC6\u522B\u524D\u4F1A\u538B\u7F29\u5230\u6B64\u5C3A\u5BF8\uFF08\u50CF\u7D20\uFF09\uFF0C\u51CF\u5C11token\u6D88\u8017\u3002\u63A8\u8350\uFF1A512-1024").addText((text) => text.setPlaceholder("1024").setValue(String(this.plugin.settings.maxImageSize)).onChange(async (value) => {
       const size = parseInt(value);
       if (!isNaN(size) && size > 0) {
@@ -1294,7 +1294,7 @@ ${error.message}`;
         await this.plugin.saveSettings();
       }
     }));
-    containerEl.createEl("h3", { text: "Anki Connect \u8BBE\u7F6E" });
+    new import_obsidian3.Setting(containerEl).setName("Anki Connect \u8BBE\u7F6E").setHeading();
     const ankiConnectSetting = new import_obsidian3.Setting(containerEl).setName("Anki Connect URL").setDesc("Anki Connect API\u7684\u5730\u5740\uFF0C\u9ED8\u8BA4\u4E3A http://127.0.0.1:8765");
     const ankiConnectContainer = ankiConnectSetting.settingEl.createDiv();
     ankiConnectContainer.style.display = "flex";
@@ -1350,7 +1350,7 @@ ${error.message}`;
       this.plugin.settings.debugMode = value;
       await this.plugin.saveSettings();
     }));
-    containerEl.createEl("h3", { text: "\u8FD4\u56DE\u7ED3\u679C\u89E3\u6790" });
+    new import_obsidian3.Setting(containerEl).setName("\u8FD4\u56DE\u7ED3\u679C\u89E3\u6790").setHeading();
     new import_obsidian3.Setting(containerEl).setName("\u95EE\u9898\u6807\u8BB0\u7B26").setDesc("\u7528\u4E8E\u8BC6\u522B\u8FD4\u56DE\u7ED3\u679C\u4E2D\u7684\u95EE\u9898\u5B57\u6BB5\uFF0C\u4F8B\u5982\uFF1A%question%").addText((text) => text.setPlaceholder("%question%").setValue(this.plugin.settings.questionMarker).onChange(async (value) => {
       this.plugin.settings.questionMarker = value;
       await this.plugin.saveSettings();
@@ -1363,7 +1363,7 @@ ${error.message}`;
       this.plugin.settings.tagsMarker = value;
       await this.plugin.saveSettings();
     }));
-    containerEl.createEl("h3", { text: "\u6279\u91CF\u589E\u52A0Anki Deck" });
+    new import_obsidian3.Setting(containerEl).setName("\u6279\u91CF\u589E\u52A0Anki Deck").setHeading();
     const deckCreationSetting = new import_obsidian3.Setting(containerEl).setName("\u6279\u91CF\u521B\u5EFADeck").setDesc("\u6BCF\u884C\u8F93\u5165\u4E00\u4E2ADeck\u540D\u79F0\uFF0C\u70B9\u51FB\u6309\u94AE\u6279\u91CF\u521B\u5EFA");
     const deckInputContainer = deckCreationSetting.settingEl.createDiv();
     deckInputContainer.style.marginTop = "10px";
