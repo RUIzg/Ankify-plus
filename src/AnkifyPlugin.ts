@@ -18,6 +18,12 @@ import { SelectableCardsModal } from "./SelectableCardsModal";
 import { AnkifySettingTab } from "./AnkifySettingTab";
 import { AnkiNoteBuilder } from "./utils/AnkiNoteBuilder";
 
+// Anki Connect 响应
+interface AnkiConnectResponse {
+  error?: string;
+  result?: unknown;
+}
+
 export class AnkifyPlugin extends Plugin {
   settings: AnkifySettings;
   noteTypeFields: Record<string, string[]> = {}; // 存储笔记类型的字段信息
@@ -59,7 +65,7 @@ export class AnkifyPlugin extends Plugin {
   }
 
   // 调用Anki Connect API
-  async invokeAnkiConnect(action: string, params = {}) {
+  async invokeAnkiConnect<T = unknown>(action: string, params: Record<string, unknown> = {}): Promise<T> {
     const requestBody = {
       action,
       version: 6,
@@ -83,7 +89,7 @@ export class AnkifyPlugin extends Plugin {
         throw new Error(`Anki Connect错误: ${data.error}`);
       }
 
-      return data.result;
+      return data.result as T;
     } catch (error) {
       throw new Error(`Anki Connect请求失败: ${error.message}`);
     }
@@ -94,8 +100,7 @@ export class AnkifyPlugin extends Plugin {
     method: string;
     headers: Record<string, string>;
     body: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- sendHttpRequest returns parsed JSON of unknown shape
-  }, retryCount = 3): Promise<any> {
+  }, retryCount = 3): Promise<AnkiConnectResponse> {
     return new Promise((resolve, reject) => {
       const parsedUrl = new URL(url);
       const isHttps = parsedUrl.protocol === "https:";
@@ -119,7 +124,7 @@ export class AnkifyPlugin extends Plugin {
         res.on("end", () => {
           try {
             const parsedData = JSON.parse(data);
-            resolve(parsedData);
+            resolve(parsedData as AnkiConnectResponse);
           } catch (error) {
             reject(new Error(`解析响应失败: ${error.message}`));
           }
@@ -164,7 +169,7 @@ export class AnkifyPlugin extends Plugin {
   // 获取可用的牌组列表
   async getDeckNames() {
     try {
-      return await this.invokeAnkiConnect("deckNames");
+      return await this.invokeAnkiConnect<string[]>("deckNames");
     } catch (error) {
       new Notice(
         "获取Anki牌组列表失败，请确保Anki已启动且安装了Anki Connect插件"
@@ -176,7 +181,7 @@ export class AnkifyPlugin extends Plugin {
   // 获取可用的笔记类型列表
   async getNoteTypes() {
     try {
-      return await this.invokeAnkiConnect("modelNames");
+      return await this.invokeAnkiConnect<string[]>("modelNames");
     } catch (error) {
       return [];
     }
@@ -441,7 +446,7 @@ export class AnkifyPlugin extends Plugin {
       for (let i = 0; i < notes.length; i += batchSize) {
         const batch = notes.slice(i, i + batchSize);
         
-        const result = await this.invokeAnkiConnect("addNotes", { notes: batch });
+        const result = await this.invokeAnkiConnect<number[]>("addNotes", { notes: batch });
 
         // 检查结果
         if (!result || !Array.isArray(result)) {
@@ -605,8 +610,7 @@ export class AnkifyPlugin extends Plugin {
           }
 
           // 创建canvas进行压缩
-          // eslint-disable-next-line obsidianmd/prefer-create-el -- off-DOM canvas requires createElement
-          const canvas = document.createElement('canvas');
+          const canvas = document.body.createEl("canvas");
           canvas.width = width;
           canvas.height = height;
           const ctx = canvas.getContext('2d');

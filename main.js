@@ -1993,7 +1993,7 @@ var AnkifyPlugin = class extends import_obsidian4.Plugin {
               height = maxSize;
             }
           }
-          const canvas = document.createElement("canvas");
+          const canvas = document.body.createEl("canvas");
           canvas.width = width;
           canvas.height = height;
           const ctx = canvas.getContext("2d");

@@ -11,9 +11,9 @@ interface AnkiNote {
 
 export class AnkiNoteBuilder {
   private noteTypeFields: Record<string, string[]> = {};
-  private invokeAnkiConnect: (action: string, params: Record<string, unknown>) => Promise<string[]>;
+  private invokeAnkiConnect: (action: string, params: Record<string, unknown>) => Promise<unknown>;
 
-  constructor(invokeAnkiConnect: (action: string, params: Record<string, unknown>) => Promise<string[]>) {
+  constructor(invokeAnkiConnect: (action: string, params: Record<string, unknown>) => Promise<unknown>) {
     this.invokeAnkiConnect = invokeAnkiConnect;
   }
 
@@ -29,7 +29,7 @@ export class AnkiNoteBuilder {
     for (const nt of uniqueNoteTypes) {
       if (!this.noteTypeFields[nt]) {
         const fields = await this.invokeAnkiConnect("modelFieldNames", { modelName: nt });
-        this.noteTypeFields[nt] = fields;
+        this.noteTypeFields[nt] = fields as string[];
       }
     }
 

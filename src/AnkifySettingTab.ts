@@ -494,7 +494,7 @@ export class AnkifySettingTab extends PluginSettingTab {
       testButton.textContent = "测试中...";
       
       try {
-        const result = await this.plugin.invokeAnkiConnect("version");
+        const result = await this.plugin.invokeAnkiConnect<number>("version");
         new Notice(`Anki Connect 连接成功！版本: ${result}`);
       } catch (error) {
         new Notice(`Anki Connect 连接失败: ${error.message}`);
@@ -661,7 +661,7 @@ export class AnkifySettingTab extends PluginSettingTab {
         }
 
         // 获取Anki中现有的Deck列表
-        const existingDecks = await this.plugin.invokeAnkiConnect("deckNames");
+        const existingDecks = await this.plugin.invokeAnkiConnect<string[]>("deckNames");
         const existingDeckSet = new Set(existingDecks);
 
         let successCount = 0;
@@ -673,7 +673,7 @@ export class AnkifySettingTab extends PluginSettingTab {
             if (existingDeckSet.has(deckName)) {
               throw new Error(`Deck "${deckName}" 已存在`);
             }
-            await this.plugin.invokeAnkiConnect("createDeck", { deck: deckName });
+            await this.plugin.invokeAnkiConnect<unknown>("createDeck", { deck: deckName });
             successCount++;
           } catch (error) {
             errorCount++;
