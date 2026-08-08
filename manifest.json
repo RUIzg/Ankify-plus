@@ -2,7 +2,7 @@
   "id": "ankify-plus",
   "name": "Ankify Plus",
   "description": "使用DeepSeek API将笔记转换为Anki卡片，支持多种模型、识图、Cloze填空、批量标签等扩展功能.",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "author": "RUIzg",
   "authorUrl": "https://github.com/RUIzg",
   "isDesktopOnly": false,
