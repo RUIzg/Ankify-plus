@@ -21,7 +21,6 @@ export class SelectableCardsModal extends Modal {
   apiCallFn: (() => Promise<{ result: string; cards: AnkiCard[]; imageInfo?: string }>) | null; // API调用函数
   insertToDocument: boolean; // 是否直接插入文档
   progressContainer: HTMLElement | null = null; // 进度提示窗
-  private allowClose = false;
 
   constructor(
     app: App,
@@ -50,20 +49,31 @@ export class SelectableCardsModal extends Modal {
     this.insertToDocument = insertToDocument;
   }
 
-  // 拦截所有 close() 调用（包括点击背景、ESC），只有 forceClose() 才真正关闭
-  close() {
-    if (this.allowClose) {
+  // 直接关闭弹窗；保留该方法以兼容现有调用点（取消/确定等按钮）
+  forceClose() {
+    // 防止重复关闭：容器已从 DOM 移除时不再执行关闭流程
+    if (this.containerEl && this.containerEl.parentNode) {
       super.close();
     }
   }
 
-  forceClose() {
-    this.allowClose = true;
-    super.close();
+  // 屏蔽 ESC 键触发的关闭，避免误触关闭编辑窗口
+  onEscapeKey(evt: KeyboardEvent) {
+    evt.preventDefault();
+    evt.stopPropagation();
   }
 
   onOpen() {
-    // 屏蔽点击背景关闭
+    // 屏蔽点击背景关闭：在容器（祖先）的捕获阶段拦截，Obsidian 在背景元素上注册的 close() 监听不会被执行
+    this.containerEl.addEventListener(
+      "click",
+      (evt) => {
+        if (evt.target === this.bgEl) {
+          evt.stopImmediatePropagation();
+        }
+      },
+      true
+    );
     this.modalEl.setCssStyles({ position: "fixed" });
     this.modalEl.setCssStyles({ top: "50%" });
     this.modalEl.setCssStyles({ left: "50%" });
@@ -73,11 +83,7 @@ export class SelectableCardsModal extends Modal {
     this.modalEl.setCssStyles({ maxHeight: "80vh" });
     this.modalEl.setCssStyles({ overflow: "auto" });
 
-    // 让右上角 X 按钮能正常关闭弹窗
-    const closeBtn = this.modalEl.querySelector(".modal-close-button") as HTMLElement;
-    if (closeBtn) {
-      closeBtn.addEventListener("click", () => this.forceClose());
-    }
+    // 右上角 X 关闭按钮由 Obsidian 内置处理（点击时调用 close()），无需额外拦截
 
     // 先显示调试信息和加载状态
     this.loadContent();
@@ -323,7 +329,7 @@ export class SelectableCardsModal extends Modal {
       style: { padding: "2px 8px", fontSize: "12px" }
     });
 
-    addEventListener("click", () => { void (async () => {
+    refreshDeckButton.addEventListener("click", () => { void (async () => {
       refreshDeckButton.disabled = true;
       refreshDeckButton.textContent = "刷新中...";
       
@@ -1064,7 +1070,7 @@ export class SelectableCardsModal extends Modal {
     cancelButton.setCssStyles({ borderRadius: "4px" });
     cancelButton.setCssStyles({ cursor: "pointer" });
 
-    addEventListener("click", () => { void (async () => {
+    addButton.addEventListener("click", () => { void (async () => {
       const selectedCards = this.cards.filter((_, index) => this.selectedCards[index]);
 
       if (selectedCards.length === 0) {

@@ -7,6 +7,7 @@ import {
   Plugin,
   Platform,
   PluginSettingTab,
+  requestUrl,
   Setting,
   TFile,
 } from "obsidian";
@@ -78,7 +79,6 @@ export class AnkifyPlugin extends Plugin {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Content-Length": Buffer.byteLength(JSON.stringify(requestBody)),
         },
         body: JSON.stringify(requestBody),
       });
@@ -103,73 +103,65 @@ export class AnkifyPlugin extends Plugin {
     if (!Platform.isDesktop) {
       throw new Error("Anki Connect 仅在桌面端可用，请使用桌面版 Obsidian");
     }
-    const httpMod = await import("http");
-    const httpsMod = await import("https");
-    return new Promise((resolve, reject) => {
-      const parsedUrl = new URL(url);
-      const isHttps = parsedUrl.protocol === "https:";
-      const client = (isHttps ? httpsMod : httpMod) as typeof import("http");
 
-      const reqOptions = {
-        hostname: parsedUrl.hostname,
-        port: parsedUrl.port || (isHttps ? 443 : 80),
-        path: parsedUrl.pathname + parsedUrl.search,
+    try {
+      // 使用 Obsidian 的 requestUrl（底层走 Electron net），
+      // 避免渲染进程无法解析 Node 内置模块（如 import("http")）以及 CORS 限制
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        window.setTimeout(() => {
+          reject(new Error("Anki Connect请求超时，请检查Anki是否正在运行"));
+        }, 30000);
+      });
+
+      const responsePromise = requestUrl({
+        url,
         method: options.method,
         headers: options.headers,
-      };
-
-      const req = client.request(reqOptions, (res) => {
-        let data = "";
-
-        res.on("data", (chunk) => {
-          data += chunk;
-        });
-
-        res.on("end", () => {
-          try {
-            const parsedData = JSON.parse(data);
-            resolve(parsedData as AnkiConnectResponse);
-          } catch (error) {
-            reject(new Error(`解析响应失败: ${error.message}`));
-          }
-        });
+        body: options.body,
+        contentType: "application/json",
+        throw: false,
       });
+      // 防止超时后请求才失败时产生未处理的 rejection
+      responsePromise.catch(() => {});
+      const response = await Promise.race([
+        responsePromise,
+        timeoutPromise,
+      ]);
 
-      // 设置超时时间为30秒，避免连接被重置
-      req.setTimeout(30000, () => {
-        req.destroy();
-        if (retryCount > 0) {
-          this.sendHttpRequest(url, options, retryCount - 1)
-            .then(resolve)
-            .catch(reject);
-        } else {
-          reject(new Error("Anki Connect请求超时，请检查Anki是否正在运行"));
-        }
-      });
+      let data: AnkiConnectResponse;
+      try {
+        data = response.json as AnkiConnectResponse;
+      } catch (e) {
+        data = JSON.parse(response.text) as AnkiConnectResponse;
+      }
+      return data;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
 
-      req.on("error", (error) => {
-        // 处理连接错误，添加重试机制
-        if ((error.code === "ECONNRESET" || error.code === "ECONNREFUSED") && retryCount > 0) {
-          // 延迟1秒后重试，避免立即重试导致的问题
-          window.setTimeout(() => {
-            this.sendHttpRequest(url, options, retryCount - 1)
-              .then(resolve)
-              .catch(reject);
-          }, 1000);
-        } else if (error.code === "ECONNRESET") {
-          reject(new Error("Anki Connect连接被重置，请检查Anki是否正在运行或Anki Connect是否已启用"));
-        } else if (error.code === "ECONNREFUSED") {
-          reject(new Error("Anki Connect连接被拒绝，请确保Anki已启动且Anki Connect已安装并启用"));
-        } else {
-          reject(error instanceof Error ? error : new Error(String(error)));
-        }
-      });
+      // 连接类错误（如Anki未启动）延迟1秒后重试，避免批量提交时并发请求导致连接被拒绝
+      const isRetryable =
+        retryCount > 0 &&
+        (message.includes("ECONNRESET") ||
+          message.includes("ECONNREFUSED") ||
+          message.includes("ERR_CONNECTION_RESET") ||
+          message.includes("ERR_CONNECTION_REFUSED") ||
+          message.includes("Failed to fetch") ||
+          message.includes("net::ERR"));
 
-      req.write(options.body);
-      req.end();
-    });
+      if (isRetryable) {
+        await new Promise((r) => window.setTimeout(r, 1000));
+        return this.sendHttpRequest(url, options, retryCount - 1);
+      }
+
+      if (message.includes("ECONNREFUSED") || message.includes("ERR_CONNECTION_REFUSED")) {
+        throw new Error("Anki Connect连接被拒绝，请确保Anki已启动且Anki Connect已安装并启用");
+      }
+      if (message.includes("ECONNRESET") || message.includes("ERR_CONNECTION_RESET")) {
+        throw new Error("Anki Connect连接被重置，请检查Anki是否正在运行或Anki Connect是否已启用");
+      }
+      throw error instanceof Error ? error : new Error(String(error));
+    }
   }
-
   // 获取可用的牌组列表
   async getDeckNames() {
     try {

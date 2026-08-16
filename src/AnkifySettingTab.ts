@@ -100,8 +100,7 @@ export class AnkifySettingTab extends PluginSettingTab {
       }
 
       // 下拉选择事件
-      addEventListener("change", () => { void (async () => {
-        const selectedValue = urlSelect.value;
+      urlSelect.addEventListener("change", () => { void (async () => {        const selectedValue = urlSelect.value;
         if (selectedValue === "custom") {
           customUrlInput.setCssStyles({ display: "block" });
           this.plugin.settings.deepseekApiUrl = customUrlInput.value || "";
@@ -113,8 +112,7 @@ export class AnkifySettingTab extends PluginSettingTab {
             })(); });
 
       // 自定义URL输入事件
-      addEventListener("input", () => { void (async () => {
-        if (urlSelect.value === "custom") {
+      customUrlInput.addEventListener("input", () => { void (async () => {        if (urlSelect.value === "custom") {
           this.plugin.settings.deepseekApiUrl = customUrlInput.value;
           await this.plugin.saveSettings();
         }
@@ -301,8 +299,7 @@ export class AnkifySettingTab extends PluginSettingTab {
     apiTestResult.setCssStyles({ fontSize: "12px" });
     apiTestResult.setCssStyles({ display: "none" });
 
-    addEventListener("click", () => { void (async () => {
-      apiTestButton.disabled = true;
+    apiTestButton.addEventListener("click", () => { void (async () => {      apiTestButton.disabled = true;
       apiTestButton.textContent = "测试中...";
       apiTestStatus.textContent = "";
       apiTestResult.textContent = "";
@@ -371,8 +368,7 @@ export class AnkifySettingTab extends PluginSettingTab {
     visionTestResult.setCssStyles({ display: "none" });
     visionTestResult.readOnly = true;
 
-    addEventListener("click", () => { void (async () => {
-      const file = visionTestFileInput.files?.[0];
+    visionTestButton.addEventListener("click", () => { void (async () => {      const file = visionTestFileInput.files?.[0];
       if (!file) {
         new Notice("请先选择图片文件");
         return;
@@ -481,16 +477,14 @@ export class AnkifySettingTab extends PluginSettingTab {
     urlInput.value = this.plugin.settings.ankiConnectUrl;
     urlInput.setCssStyles({ flex: "1" });
     urlInput.setCssStyles({ padding: "5px" });
-    addEventListener("change", () => { void (async () => {
-      this.plugin.settings.ankiConnectUrl = urlInput.value;
+    urlInput.addEventListener("change", () => { void (async () => {      this.plugin.settings.ankiConnectUrl = urlInput.value;
       await this.plugin.saveSettings();
         })(); });
 
     // 测试按钮
     const testButton = ankiConnectContainer.createEl("button");
     testButton.textContent = "测试连接";
-    addEventListener("click", () => { void (async () => {
-      testButton.disabled = true;
+    testButton.addEventListener("click", () => { void (async () => {      testButton.disabled = true;
       testButton.textContent = "测试中...";
       
       try {
@@ -644,8 +638,7 @@ export class AnkifySettingTab extends PluginSettingTab {
     const deckCreationStatus = deckButtonContainer.createSpan();
     deckCreationStatus.setCssStyles({ fontSize: "20px" });
 
-    addEventListener("click", () => { void (async () => {
-      createDeckButton.disabled = true;
+    createDeckButton.addEventListener("click", () => { void (async () => {      createDeckButton.disabled = true;
       createDeckButton.textContent = "创建中...";
       deckCreationStatus.textContent = "";
 

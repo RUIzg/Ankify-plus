@@ -73,7 +73,6 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
   constructor(app, cards, rawResult, plugin, editor, usedPrompt = "", imageInfo = "", selectedContent = "", apiCallFn = null, insertToDocument = false) {
     super(app);
     this.progressContainer = null;
-    this.allowClose = false;
     this.cards = cards;
     this.rawResult = rawResult;
     this.plugin = plugin;
@@ -87,16 +86,21 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
     this.apiCallFn = apiCallFn;
     this.insertToDocument = insertToDocument;
   }
-  close() {
-    if (this.allowClose) {
+  forceClose() {
+    if (this.containerEl && this.containerEl.parentNode) {
       super.close();
     }
   }
-  forceClose() {
-    this.allowClose = true;
-    super.close();
+  onEscapeKey(evt) {
+    evt.preventDefault();
+    evt.stopPropagation();
   }
   onOpen() {
+    this.containerEl.addEventListener("click", (evt) => {
+      if (evt.target === this.bgEl) {
+        evt.stopImmediatePropagation();
+      }
+    }, true);
     this.modalEl.setCssStyles({ position: "fixed" });
     this.modalEl.setCssStyles({ top: "50%" });
     this.modalEl.setCssStyles({ left: "50%" });
@@ -105,10 +109,6 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
     this.modalEl.setCssStyles({ maxWidth: "800px" });
     this.modalEl.setCssStyles({ maxHeight: "80vh" });
     this.modalEl.setCssStyles({ overflow: "auto" });
-    const closeBtn = this.modalEl.querySelector(".modal-close-button");
-    if (closeBtn) {
-      closeBtn.addEventListener("click", () => this.forceClose());
-    }
     this.loadContent();
   }
   onClose() {
@@ -284,7 +284,7 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
       attr: { type: "button" },
       style: { padding: "2px 8px", fontSize: "12px" }
     });
-    addEventListener("click", () => {
+    refreshDeckButton.addEventListener("click", () => {
       void (async () => {
         refreshDeckButton.disabled = true;
         refreshDeckButton.textContent = "\u5237\u65B0\u4E2D...";
@@ -840,7 +840,7 @@ var SelectableCardsModal = class extends import_obsidian.Modal {
     cancelButton.setCssStyles({ border: "1px solid var(--border-color)" });
     cancelButton.setCssStyles({ borderRadius: "4px" });
     cancelButton.setCssStyles({ cursor: "pointer" });
-    addEventListener("click", () => {
+    addButton.addEventListener("click", () => {
       void (async () => {
         const selectedCards = this.cards.filter((_, index) => this.selectedCards[index]);
         if (selectedCards.length === 0) {
@@ -1075,7 +1075,7 @@ var AnkifySettingTab = class extends import_obsidian3.PluginSettingTab {
       if (!urlOptions.some((opt) => opt.value === this.plugin.settings.deepseekApiUrl)) {
         customUrlInput.value = this.plugin.settings.deepseekApiUrl;
       }
-      addEventListener("change", () => {
+      urlSelect.addEventListener("change", () => {
         void (async () => {
           const selectedValue = urlSelect.value;
           if (selectedValue === "custom") {
@@ -1088,7 +1088,7 @@ var AnkifySettingTab = class extends import_obsidian3.PluginSettingTab {
           await this.plugin.saveSettings();
         })();
       });
-      addEventListener("input", () => {
+      customUrlInput.addEventListener("input", () => {
         void (async () => {
           if (urlSelect.value === "custom") {
             this.plugin.settings.deepseekApiUrl = customUrlInput.value;
@@ -1165,7 +1165,7 @@ var AnkifySettingTab = class extends import_obsidian3.PluginSettingTab {
     apiTestResult.setCssStyles({ fontFamily: "monospace" });
     apiTestResult.setCssStyles({ fontSize: "12px" });
     apiTestResult.setCssStyles({ display: "none" });
-    addEventListener("click", () => {
+    apiTestButton.addEventListener("click", () => {
       void (async () => {
         apiTestButton.disabled = true;
         apiTestButton.textContent = "\u6D4B\u8BD5\u4E2D...";
@@ -1228,7 +1228,7 @@ ${error.message}`;
     visionTestResult.setCssStyles({ fontSize: "12px" });
     visionTestResult.setCssStyles({ display: "none" });
     visionTestResult.readOnly = true;
-    addEventListener("click", () => {
+    visionTestButton.addEventListener("click", () => {
       void (async () => {
         var _a;
         const file = (_a = visionTestFileInput.files) == null ? void 0 : _a[0];
@@ -1309,7 +1309,7 @@ ${error.message}`;
     urlInput.value = this.plugin.settings.ankiConnectUrl;
     urlInput.setCssStyles({ flex: "1" });
     urlInput.setCssStyles({ padding: "5px" });
-    addEventListener("change", () => {
+    urlInput.addEventListener("change", () => {
       void (async () => {
         this.plugin.settings.ankiConnectUrl = urlInput.value;
         await this.plugin.saveSettings();
@@ -1317,7 +1317,7 @@ ${error.message}`;
     });
     const testButton = ankiConnectContainer.createEl("button");
     testButton.textContent = "\u6D4B\u8BD5\u8FDE\u63A5";
-    addEventListener("click", () => {
+    testButton.addEventListener("click", () => {
       void (async () => {
         testButton.disabled = true;
         testButton.textContent = "\u6D4B\u8BD5\u4E2D...";
@@ -1390,7 +1390,7 @@ ${error.message}`;
     });
     const deckCreationStatus = deckButtonContainer.createSpan();
     deckCreationStatus.setCssStyles({ fontSize: "20px" });
-    addEventListener("click", () => {
+    createDeckButton.addEventListener("click", () => {
       void (async () => {
         createDeckButton.disabled = true;
         createDeckButton.textContent = "\u521B\u5EFA\u4E2D...";
@@ -1626,8 +1626,7 @@ var AnkifyPlugin = class extends import_obsidian4.Plugin {
       const data = await this.sendHttpRequest(this.settings.ankiConnectUrl, {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
-          "Content-Length": Buffer.byteLength(JSON.stringify(requestBody))
+          "Content-Type": "application/json"
         },
         body: JSON.stringify(requestBody)
       });
@@ -1643,57 +1642,48 @@ var AnkifyPlugin = class extends import_obsidian4.Plugin {
     if (!import_obsidian4.Platform.isDesktop) {
       throw new Error("Anki Connect \u4EC5\u5728\u684C\u9762\u7AEF\u53EF\u7528\uFF0C\u8BF7\u4F7F\u7528\u684C\u9762\u7248 Obsidian");
     }
-    const httpMod = await import("http");
-    const httpsMod = await import("https");
-    return new Promise((resolve, reject) => {
-      const parsedUrl = new URL(url);
-      const isHttps = parsedUrl.protocol === "https:";
-      const client = isHttps ? httpsMod : httpMod;
-      const reqOptions = {
-        hostname: parsedUrl.hostname,
-        port: parsedUrl.port || (isHttps ? 443 : 80),
-        path: parsedUrl.pathname + parsedUrl.search,
-        method: options.method,
-        headers: options.headers
-      };
-      const req = client.request(reqOptions, (res) => {
-        let data = "";
-        res.on("data", (chunk) => {
-          data += chunk;
-        });
-        res.on("end", () => {
-          try {
-            const parsedData = JSON.parse(data);
-            resolve(parsedData);
-          } catch (error) {
-            reject(new Error(`\u89E3\u6790\u54CD\u5E94\u5931\u8D25: ${error.message}`));
-          }
-        });
-      });
-      req.setTimeout(3e4, () => {
-        req.destroy();
-        if (retryCount > 0) {
-          this.sendHttpRequest(url, options, retryCount - 1).then(resolve).catch(reject);
-        } else {
+    try {
+      const timeoutPromise = new Promise((_, reject) => {
+        window.setTimeout(() => {
           reject(new Error("Anki Connect\u8BF7\u6C42\u8D85\u65F6\uFF0C\u8BF7\u68C0\u67E5Anki\u662F\u5426\u6B63\u5728\u8FD0\u884C"));
-        }
+        }, 3e4);
       });
-      req.on("error", (error) => {
-        if ((error.code === "ECONNRESET" || error.code === "ECONNREFUSED") && retryCount > 0) {
-          window.setTimeout(() => {
-            this.sendHttpRequest(url, options, retryCount - 1).then(resolve).catch(reject);
-          }, 1e3);
-        } else if (error.code === "ECONNRESET") {
-          reject(new Error("Anki Connect\u8FDE\u63A5\u88AB\u91CD\u7F6E\uFF0C\u8BF7\u68C0\u67E5Anki\u662F\u5426\u6B63\u5728\u8FD0\u884C\u6216Anki Connect\u662F\u5426\u5DF2\u542F\u7528"));
-        } else if (error.code === "ECONNREFUSED") {
-          reject(new Error("Anki Connect\u8FDE\u63A5\u88AB\u62D2\u7EDD\uFF0C\u8BF7\u786E\u4FDDAnki\u5DF2\u542F\u52A8\u4E14Anki Connect\u5DF2\u5B89\u88C5\u5E76\u542F\u7528"));
-        } else {
-          reject(error instanceof Error ? error : new Error(String(error)));
-        }
+      const responsePromise = (0, import_obsidian4.requestUrl)({
+        url,
+        method: options.method,
+        headers: options.headers,
+        body: options.body,
+        contentType: "application/json",
+        throw: false
       });
-      req.write(options.body);
-      req.end();
-    });
+      responsePromise.catch(() => {
+      });
+      const response = await Promise.race([
+        responsePromise,
+        timeoutPromise
+      ]);
+      let data;
+      try {
+        data = response.json;
+      } catch (e) {
+        data = JSON.parse(response.text);
+      }
+      return data;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      const isRetryable = retryCount > 0 && (message.includes("ECONNRESET") || message.includes("ECONNREFUSED") || message.includes("ERR_CONNECTION_RESET") || message.includes("ERR_CONNECTION_REFUSED") || message.includes("Failed to fetch") || message.includes("net::ERR"));
+      if (isRetryable) {
+        await new Promise((r) => window.setTimeout(r, 1e3));
+        return this.sendHttpRequest(url, options, retryCount - 1);
+      }
+      if (message.includes("ECONNREFUSED") || message.includes("ERR_CONNECTION_REFUSED")) {
+        throw new Error("Anki Connect\u8FDE\u63A5\u88AB\u62D2\u7EDD\uFF0C\u8BF7\u786E\u4FDDAnki\u5DF2\u542F\u52A8\u4E14Anki Connect\u5DF2\u5B89\u88C5\u5E76\u542F\u7528");
+      }
+      if (message.includes("ECONNRESET") || message.includes("ERR_CONNECTION_RESET")) {
+        throw new Error("Anki Connect\u8FDE\u63A5\u88AB\u91CD\u7F6E\uFF0C\u8BF7\u68C0\u67E5Anki\u662F\u5426\u6B63\u5728\u8FD0\u884C\u6216Anki Connect\u662F\u5426\u5DF2\u542F\u7528");
+      }
+      throw error instanceof Error ? error : new Error(String(error));
+    }
   }
   async getDeckNames() {
     try {
